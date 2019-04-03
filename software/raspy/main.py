@@ -104,11 +104,10 @@ def main():
     # draw table
     if found_table is not None:
         found_table.draw_self(out_pict)
-
-    if settings.debugging:
-        cv2.imshow("Found table", out_pict)
-        print("table: y: {}  y: {}  width: {}  height: {}  angle: {}"
-              .format(found_table.x, found_table.y, found_table.w, found_table.h, found_table.angle))
+        if settings.debugging:
+            cv2.imshow("Found table", out_pict)
+            print("table: y: {}  y: {}  width: {}  height: {}  angle: {}"
+                  .format(found_table.x, found_table.y, found_table.width, found_table.height, found_table.angle))
 
     # find balls
     found_balls = Ball.find(gray)
@@ -126,6 +125,7 @@ def main():
     #    if (cv2.waitKey(30) & 0xFF) == 27:
     #       break
 
+    capture.release()
     cv2.waitKey()
     cv2.destroyAllWindows()
     return 0

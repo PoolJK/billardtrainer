@@ -1,18 +1,18 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="main with image" type="PythonConfigurationType" factoryName="Python">
+  <configuration default="false" name="raspy.main -d" type="PythonConfigurationType" factoryName="Python">
     <module name="billardtrainer" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
     <envs>
       <env name="PYTHONUNBUFFERED" value="1" />
     </envs>
-    <option name="SDK_HOME" value="" />
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/software" />
-    <option name="IS_MODULE_SDK" value="true" />
+    <option name="SDK_HOME" value="C:\Users\Maowli\AppData\Local\Programs\Python\Python37\python.exe" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/software/raspy" />
+    <option name="IS_MODULE_SDK" value="false" />
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
-    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/software/billardtrainer.py" />
-    <option name="PARAMETERS" value="-f resources/20190405_172601.jpg -d -pc -res 800x450" />
+    <option name="SCRIPT_NAME" value="$PROJECT_DIR$/software/raspy/main.py" />
+    <option name="PARAMETERS" value="-d" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="false" />

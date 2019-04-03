@@ -199,38 +199,6 @@ class Camera:
         self.device = old_device
         cv2.destroyAllWindows()
 
-    # method to prepare capture
-    def prepare_capture(self, device=None):
-        # capture already set?
-        if self.capture:
-            # capture open?
-            if self.capture.isOpened():
-                print("capture already open")
-                return 0
-            self.capture = None
-        # device specified? else use default
-        if device is None:
-            device = self.device
-        else:
-            # argparser produces string(0), need int(0)
-            if device == '0':
-                device = 0
-            self.device = device
-        # open capture
-        self.capture = cv2.VideoCapture(device)
-        if not self.capture.isOpened:
-            print("Error opening capture! device={}".format(device))
-            return 0
-        # get input data
-        self.height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-        if self.win_size is None:
-            self.win_size = (self.width, self.height)
-        self.fps = self.capture.get(cv2.CAP_PROP_FPS)
-        if self.fps == 0:
-            self.fps = 25
-        self.n_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
-
     # method to return calibrated frame
     def pull_cal_frame(self, src=None):
         # get frame from input
@@ -262,6 +230,38 @@ class Camera:
             self.stop_capture()
             self.prepare_capture()
         return src
+
+    # method to prepare capture
+    def prepare_capture(self, device=None):
+        # capture already set?
+        if self.capture:
+            # capture open?
+            if self.capture.isOpened():
+                print("capture already open")
+                return 0
+            self.capture = None
+        # device specified? else use default
+        if device is None:
+            device = self.device
+        else:
+            # argparser produces string(0), need int(0)
+            if device == '0':
+                device = 0
+            self.device = device
+        # open capture
+        self.capture = cv2.VideoCapture(device)
+        if not self.capture.isOpened:
+            print("Error opening capture! device={}".format(device))
+            return 0
+        # get input data
+        self.height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        if self.win_size is None:
+            self.win_size = (self.width, self.height)
+        self.fps = self.capture.get(cv2.CAP_PROP_FPS)
+        if self.fps == 0:
+            self.fps = 25
+        self.n_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
 
     # method to end capture
     def stop_capture(self):

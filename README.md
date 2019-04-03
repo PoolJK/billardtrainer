@@ -1,5 +1,6 @@
 # Billardtrainer
-A snooker and pool training system in development with Python on Raspberry-Pi and Android.  
+A snooker and pool training system in development with Python on Raspberry-Pi and Android.
+
 Using libraries:  
 ```
 Python 3.7  
