@@ -5,15 +5,22 @@ import numpy as np
 
 
 class Beamer:
+    """
+    A projector for showing image onto table.
+    Needs to take offset and distance in account to correct displayed image.
+    """
 
-    def __init__(self):
-        # white = np.zeros((IMAGEHEIGHT, IMAGEWIDTH, 3), np.uint8)
-        # white[:] = (255, 255, 255)
-        # cv2.namedWindow("beamer", cv2.WND_PROP_FULLSCREEN)
-        # cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        pass
+    def __init__(self, width, height):
+        self.width = width
+        self.height = height
 
-    def showImage(self, image):
+
+    def getImage(self, table, image):
+        """
+        Get deskewed and resized image for beamer output
+        :param table: detected table (rectangle for warp perspective)
+        :return: corrected image image for output on beamer
+        """
         # rotate table to positive 90 degrees area
         # if found_table.angle < -45.0:
         #     found_table.angle = (90.0 + found_table.angle)
@@ -27,8 +34,7 @@ class Beamer:
         # M = cv2.getRotationMatrix2D(center, tableangle, 1.0)
         # rotated = cv2.warpAffine(outPict, M, (w, h), flags = cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
-        # box = cv2.boxPoints(((found_table.x, found_table.y),
-        #                      (found_table.width, found_table.height), found_table.angle))
+        box = cv2.boxPoints(((table.x, table.y), (table.w, table.h), table.angle))
         # if args.debug:
         #     print("box: {}".format(box))
 
@@ -42,3 +48,4 @@ class Beamer:
 
         # Warp source image to destination
         im_dst = cv2.warpPerspective(image, h, (image.shape[1], image.shape[0]))
+        return im_dst

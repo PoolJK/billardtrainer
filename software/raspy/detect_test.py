@@ -69,11 +69,11 @@ def main(argv):
     if not capture.isOpened:
         print("Error access camera!")
         return -1
-    #capture.set(cv2.CAP_PROP_FRAME_WIDTH, 3280);
+    #capture.set(cv2.CAP_PROP_FRAME_WIDTH, 3280)
     #capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 2464)
-    #capture.set(cv2.CAP_PROP_FRAME_WIDTH, 2592);
+    #capture.set(cv2.CAP_PROP_FRAME_WIDTH, 2592)
     #capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1944)
-    capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280);
+    capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1280)
     capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 960)
 
     has_frame, src = capture.read()

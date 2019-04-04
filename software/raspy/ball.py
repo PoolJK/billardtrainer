@@ -1,11 +1,12 @@
 #!/usr/bin/python3
 import cv2
 import numpy as np
+import settings
 
 
 class Ball:
     """
-    Holding information of a ball
+    Parameters and functions for ball
     """
 
     # HoughCircles parameters
@@ -14,17 +15,26 @@ class Ball:
     minR = 16
     maxR = 28
 
-    def __init__(self,  position, radius,  color=[33, 55, 77]):
-        self.position = position
+    def __init__(self, x, y, radius,  color=[33, 55, 77]):
+        """
+        Generate new ball
+        :param x: x-position of center in pixles
+        :param y: y-position of center in pixels
+        :param radius: radius in pixels
+        :param color: ball color
+        """
+        self.x = x
+        self.y = y
         self.radius = radius
         self.color = color
 
     
     def draw(self, outpict):
-        #circle center
-        cv2.circle(outpict, self.position, 1, (0, 100, 100), 3)
+        # draw mid point for debugging
+        if settings.debugging:
+            cv2.drawMarker(outpict, (int(self.x), int(self.y)), (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
         # circle outline
-        cv2.circle(outpict, self.position, self.radius + 10, (255, 0, 255), 3)
+        cv2.circle(outpict, (int(self.x), int(self.y)), int(self.radius) + 5, (255, 255, 255), 3)
 
 
     # @staticmethod
@@ -65,7 +75,9 @@ class Ball:
     @staticmethod
     def find(grayimage):
         """
-        find balls in image
+        Find balls in image
+        :param grayimage: gray image for houghCircles algorithm
+        :return: list with found balls
         """
         rows = grayimage.shape[0]
         # print("{} {} {} {}".format(p1, p2, minR, maxR))
@@ -77,9 +89,7 @@ class Ball:
         balls = []
 
         if circles is not None:
-            circles = np.uint16(np.around(circles))
             for i in circles[0, :]:
-                center = (i[0], i[1])
-                balls.append(Ball(center, i[2]))
+                balls.append(Ball(i[0], i[1], i[2]))
 
         return balls
