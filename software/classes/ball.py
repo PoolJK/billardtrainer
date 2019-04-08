@@ -1,36 +1,45 @@
 #!/usr/bin/python3
 import cv2
 import numpy as np
+import raspy.settings as settings
 
 
 class Ball:
     """
-    Holding information of a ball
+    Parameters and functions for ball
     """
 
     # HoughCircles parameters
-    p1 = 50
-    p2 = 29
-    minR = 16
-    maxR = 28
+    gradient_value = 50
+    accumulator_threshold = 29
+    min_radius = 16
+    max_radius = 28
 
-    def __init__(self,  position, radius,  color=[33, 55, 77]):
-        self.position = position
+    def __init__(self, x, y, radius, color=None):
+        """
+        Generate new ball
+        :param x: x-position of center in pixles
+        :param y: y-position of center in pixels
+        :param radius: radius in pixels
+        :param color: ball color
+        """
+        if color is None:
+            color = [33, 55, 77]
+        self.x = x
+        self.y = y
         self.radius = radius
         self.color = color
 
-    
     def draw(self, outpict):
-        #circle center
-        cv2.circle(outpict, self.position, 1, (0, 100, 100), 3)
+        # draw mid point for debugging
+        if settings.debugging:
+            cv2.drawMarker(outpict, (int(self.x), int(self.y)), (255, 255, 255), cv2.MARKER_CROSS, 20, 10)
         # circle outline
-        cv2.circle(outpict, self.position, self.radius + 10, (255, 0, 255), 3)
-
+        cv2.circle(outpict, (int(self.x), int(self.y)), int(self.radius) + 10, (255, 255, 255), 10)
 
     # @staticmethod
     # def nothing(x):
     #     pass
-
 
     # @staticmethod
     # def testParametersOnline():
@@ -61,25 +70,26 @@ class Ball:
     #         if maxR < 1: maxR = 1
     #         Ball.find()
 
-
     @staticmethod
-    def find(grayimage):
-        """
-        find balls in image
-        """
-        rows = grayimage.shape[0]
-        # print("{} {} {} {}".format(p1, p2, minR, maxR))
+    def find(img, dp=1, min_dist=1, gradient_value=None, accumulator_threshold=None, min_radius=None, max_radius=None):
+        if gradient_value is None:
+            gradient_value = Ball.gradient_value
+        if accumulator_threshold is None:
+            accumulator_threshold = Ball.accumulator_threshold
+        if min_radius is None:
+            min_radius = Ball.min_radius
+        if max_radius is None:
+            max_radius = Ball.max_radius
+        # print("{} {} {} {} {} {}".format(dp, min_dist, gradient_value, accumulator_threshold, min_radius, max_radius))
 
         # find circles in image
-        circles = cv2.HoughCircles(grayimage, cv2.HOUGH_GRADIENT, 1, rows / 8, param1 = Ball.p1,
-                                   param2 = Ball.p2, minRadius = Ball.minR, maxRadius = Ball.maxR)
+        circles = cv2.HoughCircles(img, cv2.HOUGH_GRADIENT, dp=dp, minDist=min_dist, param1=gradient_value,
+                                   param2=accumulator_threshold, minRadius=min_radius, maxRadius=max_radius)
 
         balls = []
 
         if circles is not None:
-            circles = np.uint16(np.around(circles))
             for i in circles[0, :]:
-                center = (i[0], i[1])
-                balls.append(Ball(center, i[2]))
+                balls.append(Ball(i[0], i[1], i[2]))
 
         return balls

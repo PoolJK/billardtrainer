@@ -11,7 +11,7 @@ from classes.camera import Camera
 IMAGEWIDTH = 1280
 IMAGEHEIGHT = 720
 
-camera = Camera()
+camera = Camera(cv2.CAP_DSHOW)
 
 
 def mouse_callback(event, x, y, flags, param):
@@ -38,7 +38,7 @@ def main(args):
         cv2.imshow("Source Image", src)
         cv2.setMouseCallback("Source Image", mouse_callback)
         # create white image for output
-        white = np.zeros((IMAGEHEIGHT, IMAGEWIDTH,  3), np.uint8)
+        white = np.zeros((IMAGEHEIGHT, IMAGEWIDTH, 3), np.uint8)
         white[:] = (255, 255, 255)
         cv2.namedWindow("Beamer")
         # don't fullscreen it when on pc
@@ -82,9 +82,9 @@ def main(args):
         camera.stop_capture()
 
     # resize and crop
-    ratio = IMAGEWIDTH/IMAGEHEIGHT
+    ratio = IMAGEWIDTH / IMAGEHEIGHT
     crop = int((src.shape[0] - src.shape[1] / ratio) * 0.5)
-    src = src[crop:src.shape[0]-crop, :, :]
+    src = src[crop:src.shape[0] - crop, :, :]
     src = cv2.resize(src, (IMAGEWIDTH, IMAGEHEIGHT), cv2.INTER_CUBIC)
 
     # create gray blurred image from source
@@ -102,11 +102,11 @@ def main(args):
         print("no table found")
     else:
         # draw table
-        found_table.drawSelf(output)
+        found_table.draw_self(output)
         if args.debug:
             cv2.imshow("Found table", output)
             print("table: y: {}  y: {}  width: {}  height: {}  angle: {}"
-                  .format(found_table.x, found_table.y, found_table.width, found_table.height,found_table.angle))
+                  .format(found_table.x, found_table.y, found_table.width, found_table.height, found_table.angle))
 
     # find balls
     found_balls = Ball.find(blur)
