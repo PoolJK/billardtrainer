@@ -2,7 +2,7 @@
 
 import cv2
 
-from raspy import detect_test
+from raspy.detect import Detect as detect
 # from classes.camera import Camera
 
 
@@ -11,12 +11,13 @@ def main(args):
     # if 1 <= n <= 5:
     #     args.filename = 'resources/testimages/ball'+str(n)+'.jpg'
     # Camera(cv2.CAP_DSHOW).show_video()
-    args.__setattr__('calibrate_cam', True)  # input("calibrate camera? (y) ") == 'y')
+    # args.__setattr__('calibrate_cam', True)  # input("calibrate camera? (y) ") == 'y')
     # camera = Camera(cv2.CAP_DSHOW)
     # camera.calibrate_cam()
 
-    detect_test.main(args.filename)
-    # detect_test.further_test()
+    # detect.main(detect, args.filename)
+    # detect.further_test()
+    detect.video_test()
 
     # raspy.main(args)
     # print("(r): run from start")
