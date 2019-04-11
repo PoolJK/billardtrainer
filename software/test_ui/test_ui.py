@@ -1,12 +1,13 @@
 # interface during development
 
-import cv2
+# import cv2
 
-from raspy.detect import Detect as detect
+# from raspy.detect_test import DetectTest
 # from classes.camera import Camera
 
 
 def main(args):
+    pass
     # n = int(input("Select image by number (1-5) or skip to use camera ") or 0)
     # if 1 <= n <= 5:
     #     args.filename = 'resources/testimages/ball'+str(n)+'.jpg'
@@ -17,12 +18,12 @@ def main(args):
 
     # detect.main(detect, args.filename)
     # detect.further_test()
-    detect.video_test()
+    # DetectTest.video_test('resources/experimental/Video/rolling.mp4')
 
     # raspy.main(args)
     # print("(r): run from start")
     # print("(any): quit")
     # key = cv2.waitKey() & 0xFF
-    cv2.destroyAllWindows()
+    # cv2.destroyAllWindows()
     # if key == ord('r'):
     #    main(args)
