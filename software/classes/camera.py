@@ -1,6 +1,7 @@
 # the camera wants a class too :'-/
 
 import cv2
+import time
 import numpy as np
 
 
@@ -30,12 +31,12 @@ class Camera:
 
     # method to calibrate optical parameters
     def calibrate_cam(self, filename=None, show_help=True):
+        start = time.time()
         # save specified device to temporary variable
         old_device = self.device
         # if a separate calibration is specified and it is comma separated files
         if isinstance(filename, str) and ',' in filename:
-            print("c: capture image | +/-: in-/decrease blocksize | ü/.: in-/decrease constant | r: reset calibration"
-                  "| q: quit calibration | ESC: exit")
+
             for f in filename.split(','):
                 self.calibrate_cam(f, False)
             return 0
@@ -44,8 +45,7 @@ class Camera:
             self.prepare_capture(filename)
         # help me, I don't know what to do!
         if show_help:
-            print("\'c\': capture image | \'+\'/\'-\': in-/decrease blocksize | "
-                  "\'ü\'/\'.\': in-/decrease constant | \'r\': reset calibration"
+            print("\'c\': capture image | \'+\'/\'-\': in-/decrease alpha | \'r\': reset calibration"
                   "| \'q\': next image or finish calibration | \'ESC\': exit")
 
         # calibration grid definition (chessboard_9x6.png)
@@ -67,6 +67,9 @@ class Camera:
         object_points = []
         image_points = []
 
+        # new matrix alpha
+        alpha = 1
+
         # params for bw threshold
         block_size = 133
         con = 4
@@ -78,8 +81,11 @@ class Camera:
         font_color = (255, 255, 255)
         line_type = 1
 
+        end = time.time()
+        # print('setuptime: {}ms'.format(int((end-start)*1000)))
         # calibration loop
         while True:
+            start = time.time()
             # new frame, reinit text position
             pos = (10, 70)
 
@@ -108,8 +114,9 @@ class Camera:
                 src = cv2.drawChessboardCorners(src, (grid[0], grid[1]), corners, ret)
             """
             # display everything
-            cv2.imshow('bw', cv2.resize(bw, self.win_size))
-            cv2.resizeWindow('bw', self.win_size[0], self.win_size[1])
+            end = time.time()
+            # print('cornerdetecttime: {}ms'.format(int((end-start)*1000)))
+            start = time.time()
             # if a calibration is available, output the calibrated frame as well
             if self.calibration is not None:
                 cal = self.pull_cal_frame(src)
@@ -138,11 +145,16 @@ class Camera:
                         pos = (pos[0], pos[1] + line_scale)
                     cv2.putText(src, "roi: " + str(self.calibration['roi']), pos, font, font_scale, font_color,
                                 line_type)
+            cv2.imshow('bw', cv2.resize(bw, self.win_size))
+            cv2.resizeWindow('bw', self.win_size[0], self.win_size[1])
             # marker if corners are found or not
             cv2.circle(src, (30, 30), 20, (0, 0, 255) if corners is None else (0, 255, 0), -1)
             cv2.imshow("src", cv2.resize(src, self.win_size))
             cv2.resizeWindow('src', self.win_size[0], self.win_size[1])
-            key = cv2.waitKey(int(1000 / self.fps)) & 0xFF
+
+            end = time.time()
+            # print('displaytime: {}ms'.format(int((end-start)*1000)))
+            key = cv2.waitKey(1) & 0xFF
             # process key inputs
             if key == ord('c'):
                 # add current image to calibration
@@ -152,9 +164,9 @@ class Camera:
                     object_points.append(object_points_grid)
                     image_points.append(corners)
                     # calibrate camera (add new image points to existing calibration
-                    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, gray.shape[::-1], None,
-                                                                       None)
-                    new_mtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, src.shape[:2], 1)
+                    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, gray.shape[::-1],
+                                                                       None, None)
+                    new_mtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, src.shape[:2], alpha)
                     # save calibration
                     self.calibration = {'mtx': mtx, 'dist': dist, 'new_mtx': new_mtx, 'roi': roi}
                     print('calibration updated')
@@ -162,11 +174,11 @@ class Camera:
                 # next image or finish
                 break
             elif key == ord('+'):
-                block_size += 2
-                print("block_size = {}".format(block_size))
+                alpha = alpha + 0.1 if alpha < 0.9 else 1
+                print("alpha = {}".format(alpha))
             elif key == ord('-'):
-                block_size -= 2 if block_size > 1 else 0
-                print("block_size = {}".format(block_size))
+                alpha = alpha - 0.1 if alpha > 0.1 else 0
+                print("alpha = {}".format(alpha))
             elif key == ord('ü'):
                 con += 1
                 print("con = {}".format(con))
