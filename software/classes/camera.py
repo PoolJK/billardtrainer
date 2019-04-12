@@ -15,8 +15,13 @@ class Camera:
     calibration = None
     device = None
     win_size = None
+    standard_size = None
+    debug = False
 
     def __init__(self, args, win_size=None):
+        if args.debug:
+            self.debug = True
+            self.standard_size = (1280, 720)
         # size of cv2 windows
         if win_size:
             self.win_size = win_size
@@ -36,7 +41,6 @@ class Camera:
         old_device = self.device
         # if a separate calibration is specified and it is comma separated files
         if isinstance(filename, str) and ',' in filename:
-
             for f in filename.split(','):
                 self.calibrate_cam(f, False)
             return 0
@@ -59,10 +63,10 @@ class Camera:
         # termination criteria for sub pixel corner detection
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-        # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
+        # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(grid[0],grid[1],0)
         object_points_grid = np.zeros((grid[1] * grid[0], 3), np.float32)
         object_points_grid[:, :2] = np.mgrid[0:scale * grid[0]:scale, 0:scale * grid[1]:scale].T.reshape(-1, 2)
-
+        # print(object_points_grid)
         # prepare empty arrays for found corner points
         object_points = []
         image_points = []
@@ -97,8 +101,7 @@ class Camera:
             # find corners
             # search in src first, if not finding any, search the processed frames
             for tmp in [src, gray, bw]:
-                ret, corners = cv2.findChessboardCorners(tmp, (grid[0], grid[1]), None,
-                                                         flags=cv2.CALIB_CB_FAST_CHECK)
+                ret, corners = cv2.findChessboardCorners(tmp, (grid[0], grid[1]), None, flags=cv2.CALIB_CB_FAST_CHECK)
                 if ret:
                     break
             if ret:
@@ -106,13 +109,6 @@ class Camera:
                 # sub pixel refine corners
                 corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
                 src = cv2.drawChessboardCorners(src, (grid[0], grid[1]), corners, ret)
-            """
-            ret, corners = cv2.findChessboardCorners(bw, (grid[0], grid[1]), None,
-                                                     flags=cv2.CALIB_CB_FAST_CHECK)
-            if ret:
-                corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-                src = cv2.drawChessboardCorners(src, (grid[0], grid[1]), corners, ret)
-            """
             # display everything
             end = time.time()
             # print('cornerdetecttime: {}ms'.format(int((end-start)*1000)))
@@ -154,7 +150,12 @@ class Camera:
 
             end = time.time()
             # print('displaytime: {}ms'.format(int((end-start)*1000)))
-            key = cv2.waitKey(1) & 0xFF
+            if self.n_frames == 1:
+                # only one frame, show until keypress
+                key = cv2.waitKey() & 0xFF
+            else:
+                # more than one or no frame, don't wait until showing next
+                key = cv2.waitKey(1) & 0xFF
             # process key inputs
             if key == ord('c'):
                 # add current image to calibration
@@ -164,13 +165,16 @@ class Camera:
                     object_points.append(object_points_grid)
                     image_points.append(corners)
                     # calibrate camera (add new image points to existing calibration
+                    print(gray.shape[::1])
+                    print(self.get_calibration())
+                    mtx, dist, rvecs, tvecs, new_mtx, roi = self.get_calibration()
                     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, gray.shape[::-1],
-                                                                       None, None)
-                    new_mtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, src.shape[:2], alpha)
+                                                                       mtx, dist, rvecs, tvecs)
+                    new_mtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (src.shape[1], src.shape[0]), alpha)
                     # save calibration
-                    self.calibration = {'mtx': mtx, 'dist': dist, 'new_mtx': new_mtx, 'roi': roi}
+                    self.set_calibration(mtx, dist, rvecs, tvecs, new_mtx, roi)
                     print('calibration updated')
-            elif key == ord('q'):
+            elif key in (ord('q'), ord('n')):
                 # next image or finish
                 break
             elif key == ord('+'):
@@ -199,6 +203,16 @@ class Camera:
         self.device = old_device
         cv2.destroyAllWindows()
 
+    def set_calibration(self, mtx, dist, rvecs, tvecs, new_mtx, roi):
+        self.calibration = {'mtx': mtx, 'dist': dist, 'rvecs': rvecs, 'tvecs': tvecs, 'new_mtx': new_mtx, 'roi': roi}
+
+    def get_calibration(self):
+        if self.calibration is not None:
+            return self.calibration['mtx'], self.calibration['dist'], self.calibration['rvecs'], \
+                   self.calibration['tvecs'], self.calibration['new_mtx'], self.calibration['roi']
+        else:
+            return None, None, None, None, None, None
+
     # method to return calibrated frame
     def pull_cal_frame(self, src=None):
         # get frame from input
@@ -210,7 +224,7 @@ class Camera:
         # alternative: use warpPerspective (https://www.programcreek.com/python/example/84096/cv2.undistort)
         # or remap
         # (https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html)
-        out = cv2.undistort(src, self.calibration['mtx'], self.calibration['dist'], None, self.calibration['new_mtx'])
+        out = cv2.undistort(src, self.calibration['mtx'], self.calibration['dist'])
         # use region of interest for cropping (roi don't make much sense currently)
         # x, y, w, h = self.calibration['roi']
         # src = src[y:y+h, x:x+w]
@@ -229,7 +243,11 @@ class Camera:
             # reopen capture
             self.stop_capture()
             self.prepare_capture()
-        return src
+        # standard image size during testing
+        if self.debug:
+            return cv2.resize(src, self.standard_size, cv2.INTER_CUBIC)
+        else:
+            return src
 
     # method to prepare capture
     def prepare_capture(self, device=None):
