@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="billardtrainer with image and live camera calibration" type="PythonConfigurationType" factoryName="Python">
+  <configuration default="false" name="billardtrainer -f image -cf 0" type="PythonConfigurationType" factoryName="Python">
     <module name="billardtrainer" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />

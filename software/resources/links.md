@@ -4,3 +4,4 @@ https://www.pyimagesearch.com/category/opencv-3/
 https://www.intorobotics.com/how-to-detect-and-track-object-with-opencv/  
 https://pythonprogramming.net/haar-cascade-object-detection-python-opencv-tutorial/  
 https://www.pyimagesearch.com/2018/09/26/install-opencv-4-on-your-raspberry-pi/  
+https://medium.com/front-end-weekly/avoid-80-of-merge-conflicts-with-git-rebase-b5d755a082a6
