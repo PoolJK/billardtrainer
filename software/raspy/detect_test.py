@@ -1,4 +1,5 @@
 import os
+import time
 import cv2
 import numpy as np
 
@@ -12,8 +13,11 @@ class DetectTest:
     y_scale = 0
     camera = None
     win_size = None
+    debug = False
 
     def __init__(self, args):
+        if args.debug:
+            self.debug = True
         # get display resolution
         if args.res:
             x, y = 0, 0
@@ -53,7 +57,8 @@ class DetectTest:
         pass
 
     def main(self):
-        print('starting main(), \'q\' to quit, \'s\' to save output frame')
+        print('starting main(){}, \'x\' to quit, \'s\' to save output frame'
+              .format(' in debug mode' if self.debug else ''))
         cv2.namedWindow('out', cv2.WINDOW_NORMAL)
         cv2.namedWindow('hsv_mask', cv2.WINDOW_NORMAL)
         cv2.namedWindow('hsv', cv2.WINDOW_NORMAL)
@@ -71,7 +76,12 @@ class DetectTest:
         cv2.createTrackbar('s_upper', 'hsv_mask', 255, 255, self.nothing)
         cv2.createTrackbar('v_upper', 'hsv_mask', 255, 255, self.nothing)
         while True:
+            start = time.time()
             src = self.camera.pull_cal_frame()
+            srctime = int((time.time()-start)*1000)
+            if src is None:
+                print('error in main: couldn\'t read from src')
+                return 0
             # calculate scales for mouse_callback
             self.x_scale = src.shape[1] / self.win_size[0]
             self.y_scale = src.shape[0] / self.win_size[1]
@@ -116,8 +126,12 @@ class DetectTest:
             cv2.resizeWindow('hsv_mask', self.win_size[0], self.win_size[1])
             cv2.resizeWindow('out', self.win_size[0], self.win_size[1])
             cv2.resizeWindow('hsv', self.win_size[0], self.win_size[1])
+            if self.debug:
+                print('\rmain loop time: {}ms, read src took {}ms'
+                      .format(int((time.time()-start)*1000), srctime), end='')
             key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
+            if key == ord('x'):
+                print('')
                 break
             if key == ord('s'):
                 # save current frame to disk
@@ -127,6 +141,12 @@ class DetectTest:
                     except OSError:
                         pass
                 cv2.imwrite('resources/experimental/Video/out.jpg', out)
+            if key == 27:
+                # ESC = exit
+                print('bye')
+                self.camera.stop_capture()
+                cv2.destroyAllWindows()
+                exit(0)
         self.camera.stop_capture()
         cv2.destroyAllWindows()
         return 0

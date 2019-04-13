@@ -22,6 +22,7 @@ class Camera:
         if args.debug:
             self.debug = True
             self.standard_size = (1280, 720)
+            print('set standard_size = {}'.format(self.standard_size))
         # size of cv2 windows
         if win_size:
             self.win_size = win_size
@@ -85,8 +86,8 @@ class Camera:
         font_color = (255, 255, 255)
         line_type = 1
 
-        end = time.time()
-        # print('setuptime: {}ms'.format(int((end-start)*1000)))
+        if self.debug:
+            print('setup time: {}ms'.format(int((time.time()-start)*1000)))
         # calibration loop
         while True:
             start = time.time()
@@ -95,6 +96,10 @@ class Camera:
 
             # get frame
             src = self.pull_frame()
+            src_time = int((time.time()-start)*1000)
+            if src is None:
+                print('error in calibration: couldn\'t read src')
+                return 0
             gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
             bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, block_size, con)
 
@@ -110,10 +115,9 @@ class Camera:
                 corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
                 src = cv2.drawChessboardCorners(src, (grid[0], grid[1]), corners, ret)
             # display everything
-            end = time.time()
-            # print('cornerdetecttime: {}ms'.format(int((end-start)*1000)))
-            start = time.time()
+            detect_time = int((time.time()-start)*1000) - src_time
             # if a calibration is available, output the calibrated frame as well
+            cal_time = 0
             if self.calibration is not None:
                 cal = self.pull_cal_frame(src)
                 cv2.imshow('cal', cv2.resize(cal, self.win_size))
@@ -123,11 +127,12 @@ class Camera:
                 x, y, w, h = self.calibration['roi']
                 roi = cal[y:y+h, x:x+w]
                 try:
-                    cv2.imshow('cal+roi', roi)
+                    cv2.imshow('cal+roi', cv2.resize(roi, self.win_size))
                     cv2.resizeWindow('cal+roi', self.win_size[0], self.win_size[1])
                 except cv2.error:
-                    pass
-                # write some details into the image
+                    print('cv2.error occurred in camera->calibration')
+                # TODO: why does this crash the script on Pi?
+                """# write some details into the image
                 with np.printoptions(precision=3, suppress=True):
                     cv2.putText(src, "mtx:", pos, font, font_scale, font_color, line_type)
                     pos = (pos[0], pos[1] + line_scale)
@@ -141,15 +146,17 @@ class Camera:
                         pos = (pos[0], pos[1] + line_scale)
                     cv2.putText(src, "roi: " + str(self.calibration['roi']), pos, font, font_scale, font_color,
                                 line_type)
+                """
+                cal_time = int((time.time() - start)*1000) - detect_time
             cv2.imshow('bw', cv2.resize(bw, self.win_size))
             cv2.resizeWindow('bw', self.win_size[0], self.win_size[1])
             # marker if corners are found or not
             cv2.circle(src, (30, 30), 20, (0, 0, 255) if corners is None else (0, 255, 0), -1)
             cv2.imshow("src", cv2.resize(src, self.win_size))
             cv2.resizeWindow('src', self.win_size[0], self.win_size[1])
-
-            end = time.time()
-            # print('displaytime: {}ms'.format(int((end-start)*1000)))
+            if self.debug:
+                print('\rmain loop time: {}ms, cal: {}ms, detect: {}ms, src: {}ms'
+                      .format(int((time.time()-start)*1000), cal_time, detect_time, src_time), end='')
             if self.n_frames == 1:
                 # only one frame, show until keypress
                 key = cv2.waitKey() & 0xFF
@@ -165,8 +172,9 @@ class Camera:
                     object_points.append(object_points_grid)
                     image_points.append(corners)
                     # calibrate camera (add new image points to existing calibration
-                    print(gray.shape[::1])
-                    print(self.get_calibration())
+                    # print(gray.shape[::1])
+                    if self.debug:
+                        print('\ncurrent calibration = {}'.format(self.get_calibration()))
                     mtx, dist, rvecs, tvecs, new_mtx, roi = self.get_calibration()
                     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, gray.shape[::-1],
                                                                        mtx, dist, rvecs, tvecs)
@@ -176,6 +184,8 @@ class Camera:
                     print('calibration updated')
             elif key in (ord('q'), ord('n')):
                 # next image or finish
+                if self.debug:
+                    print('')
                 break
             elif key == ord('+'):
                 alpha = alpha + 0.1 if alpha < 0.9 else 1
@@ -218,7 +228,7 @@ class Camera:
         # get frame from input
         src = self.pull_frame(src)
         # if no calibration available, return frame
-        if not self.calibration:
+        if not self.calibration or src is None:
             return src
         # use calibration parameters to generate calibrated image
         # alternative: use warpPerspective (https://www.programcreek.com/python/example/84096/cv2.undistort)
@@ -238,7 +248,7 @@ class Camera:
             has_frame, src = self.capture.read()
             if not has_frame:
                 print("error reading frame from specified source: {}".format(self.device))
-                return 0
+                return None
         if 0 < self.n_frames <= self.capture.get(cv2.CAP_PROP_POS_FRAMES):
             # reopen capture
             self.stop_capture()
