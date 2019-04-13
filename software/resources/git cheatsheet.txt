@@ -1,0 +1,59 @@
+# git log of current branch (as in pycharm->version control->log) (also see better git log below):
+git log --graph --decorate --oneline
+# git reflog of HEAD position (use before git reset HEAD@{...})
+git reflog
+# reset HEAD position to previous commit after messing up:
+git reset HEAD@{x}
+# (where x = number of HEAD from reflog)
+
+# what's going on?
+git status
+git branch
+
+# what's going on in remote repo?
+git fetch origin
+git branch -r
+git status
+
+# save current unsaved changes and clear them
+git stash
+# reapply saved changes
+git pop
+
+# switch to other branch:
+git checkout branch_name
+
+# update current local branch from remote tracking branch:
+git stash
+git fetch origin
+git rebase origin/remote_branch_name
+git stash pop
+
+# add all changes:
+git add .
+# commit:
+git commit -m 'commit_message'
+# commit to previous commit and edit last commit message (keeping working tree clean):
+git commit --amend
+# commit to previous commit without editing the message:
+git commit --amend --no-edit
+
+# clean up working tree 
+
+# example 1: rebase to remove commit
+# step 0: show log and count the commits top to bottom starting with '1'
+git lg
+# step 1: start rebase; branch_name~3 is first commit from bottom up to be removed; branch_name~2 is first commit from bottom up to be kept
+git rebase --onto branch_name~3 branch_name~2 branch_name
+# step 2: add/remove/edit conflicts (easier in pycharm changelist)
+git add .
+git rebase --continue
+
+# push to origin (after cleaning up working tree)
+git push origin HEAD:remote_branch_name
+
+# better git log:
+git config --global alias.lg "log --color --graph --pretty=format:'%C(yellow)%h%Creset - %C(red)%<(20,trunc)%d%Creset %<(50,trunc)%s %Cgreen%cr%Creset %C(bold blue)<%an>%Creset' --abbrev-commit"
+(usage: git lg)
+# see all aliases:
+git config --get-regexp alias
