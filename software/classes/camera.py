@@ -17,17 +17,22 @@ class Camera:
     win_size = None
     standard_size = None
     debug = False
+    mirror = False
 
     def __init__(self, args, win_size=None):
         if args.debug:
             self.debug = True
             self.standard_size = (1280, 720)
             print('set standard_size = {}'.format(self.standard_size))
+        if args.mirror:
+            self.mirror = True
         # size of cv2 windows
         if win_size:
             self.win_size = win_size
         # if source is specified
         if args.filename:
+            if args.filename == '0':
+                args.filename = 0
             self.device = args.filename
         # else open device default (DSHOW on PC, 0 on Pi)
         else:
@@ -124,13 +129,13 @@ class Camera:
                 cv2.resizeWindow('cal', self.win_size[0], self.win_size[1])
                 # use region of interest for cropping
                 # the roi vector is weird. I think, cv itself doesn't know what it's doing here.
-                x, y, w, h = self.calibration['roi']
-                roi = cal[y:y+h, x:x+w]
-                try:
-                    cv2.imshow('cal+roi', cv2.resize(roi, self.win_size))
-                    cv2.resizeWindow('cal+roi', self.win_size[0], self.win_size[1])
-                except cv2.error:
-                    print('cv2.error occurred in camera->calibration')
+                # x, y, w, h = self.calibration['roi']
+                # roi = cal[y:y+h, x:x+w]
+                # try:
+                #     cv2.imshow('cal+roi', cv2.resize(roi, self.win_size))
+                #     cv2.resizeWindow('cal+roi', self.win_size[0], self.win_size[1])
+                # except cv2.error:
+                #     print('cv2.error occurred in camera->calibration')
                 # TODO: why does this crash the script on Pi?
                 """# write some details into the image
                 with np.printoptions(precision=3, suppress=True):
@@ -172,16 +177,7 @@ class Camera:
                     object_points.append(object_points_grid)
                     image_points.append(corners)
                     # calibrate camera (add new image points to existing calibration
-                    # print(gray.shape[::1])
-                    if self.debug:
-                        print('\ncurrent calibration = {}'.format(self.get_calibration()))
-                    mtx, dist, rvecs, tvecs, new_mtx, roi = self.get_calibration()
-                    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, gray.shape[::-1],
-                                                                       mtx, dist, rvecs, tvecs)
-                    new_mtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (src.shape[1], src.shape[0]), alpha)
-                    # save calibration
-                    self.set_calibration(mtx, dist, rvecs, tvecs, new_mtx, roi)
-                    print('calibration updated')
+                    self.perform_calibration(gray, object_points, image_points, alpha)
             elif key in (ord('q'), ord('n')):
                 # next image or finish
                 if self.debug:
@@ -213,6 +209,63 @@ class Camera:
         self.device = old_device
         cv2.destroyAllWindows()
 
+    def perform_calibration(self, gray_image, object_points, image_points, alpha):
+        """ method 1: """
+        # # print(gray.shape[::1])
+        # if self.debug:
+        #     print('\ncurrent calibration = {}'.format(self.get_calibration()))
+        # mtx, dist, rvecs, tvecs, new_mtx, roi = self.get_calibration()
+        # ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, gray_image.shape[::-1],
+        #                                                    mtx, dist, rvecs, tvecs)
+        # new_mtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (gray_image.shape[1], gray_image.shape[0]), alpha)
+        # # save calibration
+        # self.set_calibration(mtx, dist, rvecs, tvecs, new_mtx, roi)
+        # print('calibration updated')
+
+        """ method 2: """
+        n = len(image_points)
+        grid = (9, 6)
+        scale = 1
+        calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC+cv2.fisheye.CALIB_CHECK_COND +\
+            cv2.fisheye.CALIB_FIX_SKEW
+        k = np.zeros((3, 3))
+        d = np.zeros((4, 1))
+        rvecs = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(n)]
+        tvecs = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(n)]
+        # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(grid[0],grid[1],0)
+        object_points_grid = np.zeros((1, grid[0] * grid[1], 3), np.float32)
+        object_points_grid[0, :, :2] = np.mgrid[0:scale * grid[0]:scale, 0:scale * grid[1]:scale].T.reshape(-1, 2)
+        object_points = []
+        for i in image_points:
+            object_points.append(object_points_grid)
+        print('\ngray_image.shape={}'.format(gray_image.shape[::-1]))
+        rms, _, _, _, _ = cv2.fisheye.calibrate(object_points, image_points, gray_image.shape[::-1], k, d, rvecs,
+                                                tvecs,  calibration_flags,
+                                                (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-6))
+        if self.calibration is None:
+            self.calibration = {'k': k, 'd': d}
+        else:
+            self.calibration['k'] = k
+            self.calibration['d'] = d
+        # print('k={} d={}'.format(k, d))
+
+    def calibrate_image(self, src):
+        # use calibration parameters to generate calibrated image
+        """ method 1: """
+        # alternative: use warpPerspective (https://www.programcreek.com/python/example/84096/cv2.undistort)
+        # or remap
+        # (https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html)
+        # out = cv2.undistort(src, self.calibration['mtx'], self.calibration['dist'])
+        # use region of interest for cropping (roi don't make much sense currently)
+        # x, y, w, h = self.calibration['roi']
+        # src = src[y:y+h, x:x+w]
+        """ method 2: """
+        s = src.shape[:-1][::-1]
+        map1, map2 = cv2.fisheye.initUndistortRectifyMap(self.calibration['k'], self.calibration['d'], np.eye(3),
+                                                         self.calibration['k'], s, cv2.CV_32F)
+        out = cv2.remap(src, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        return out
+
     def set_calibration(self, mtx, dist, rvecs, tvecs, new_mtx, roi):
         self.calibration = {'mtx': mtx, 'dist': dist, 'rvecs': rvecs, 'tvecs': tvecs, 'new_mtx': new_mtx, 'roi': roi}
 
@@ -230,15 +283,7 @@ class Camera:
         # if no calibration available, return frame
         if not self.calibration or src is None:
             return src
-        # use calibration parameters to generate calibrated image
-        # alternative: use warpPerspective (https://www.programcreek.com/python/example/84096/cv2.undistort)
-        # or remap
-        # (https://opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html)
-        out = cv2.undistort(src, self.calibration['mtx'], self.calibration['dist'])
-        # use region of interest for cropping (roi don't make much sense currently)
-        # x, y, w, h = self.calibration['roi']
-        # src = src[y:y+h, x:x+w]
-        return out
+        return self.calibrate_image(src)
 
     # method to return a frame
     def pull_frame(self, src=None):
@@ -253,6 +298,8 @@ class Camera:
             # reopen capture
             self.stop_capture()
             self.prepare_capture()
+        if self.mirror:
+            src = cv2.flip(src, 1)
         # standard image size during testing
         if self.debug:
             return cv2.resize(src, self.standard_size, cv2.INTER_CUBIC)
@@ -272,9 +319,6 @@ class Camera:
         if device is None:
             device = self.device
         else:
-            # argparser produces string(0), need int(0)
-            if device == '0':
-                device = 0
             self.device = device
         # open capture
         self.capture = cv2.VideoCapture(device)
