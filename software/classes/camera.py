@@ -1,5 +1,6 @@
 # the camera wants a class too :'-/
 
+import os
 import cv2
 import time
 import numpy as np
@@ -69,16 +70,10 @@ class Camera:
         # termination criteria for sub pixel corner detection
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-        # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(grid[0],grid[1],0)
-        object_points_grid = np.zeros((grid[1] * grid[0], 3), np.float32)
-        object_points_grid[:, :2] = np.mgrid[0:scale * grid[0]:scale, 0:scale * grid[1]:scale].T.reshape(-1, 2)
-        # print(object_points_grid)
-        # prepare empty arrays for found corner points
-        object_points = []
         image_points = []
 
         # new matrix alpha
-        alpha = 1
+        balance = 1
 
         # params for bw threshold
         block_size = 133
@@ -94,6 +89,7 @@ class Camera:
         if self.debug:
             print('setup time: {}ms'.format(int((time.time()-start)*1000)))
         # calibration loop
+        file_n = 0
         while True:
             start = time.time()
             # new frame, reinit text position
@@ -174,21 +170,28 @@ class Camera:
                 if corners is None:
                     print('no corners detected, can\'t calibrate')
                 else:
-                    object_points.append(object_points_grid)
                     image_points.append(corners)
                     # calibrate camera (add new image points to existing calibration
-                    self.perform_calibration(gray, object_points, image_points, alpha)
+                    self.perform_calibration(gray, image_points, balance)
+                    path = 'resources/experimental/'
+                    while os.path.isfile(path+'cal{}.jpg'.format(file_n)):
+                        file_n += 1
+                    cv2.imwrite('resources/experimental/cal{}.jpg'.format(file_n), gray)
             elif key in (ord('q'), ord('n')):
                 # next image or finish
                 if self.debug:
                     print('')
                 break
             elif key == ord('+'):
-                alpha = alpha + 0.1 if alpha < 0.9 else 1
-                print("alpha = {}".format(alpha))
+                block_size += 2
+                balance = balance + 0.1 if balance < 0.9 else 1
+                print("alpha = {}".format(balance))
+                self.perform_calibration(gray, image_points, balance)
             elif key == ord('-'):
-                alpha = alpha - 0.1 if alpha > 0.1 else 0
-                print("alpha = {}".format(alpha))
+                block_size = block_size - 2 if block_size > 3 else 1
+                balance = balance - 0.1 if balance > 0.1 else 0
+                print("alpha = {}".format(balance))
+                self.perform_calibration(gray, image_points, balance)
             elif key == ord('ü'):
                 con += 1
                 print("con = {}".format(con))
@@ -196,9 +199,10 @@ class Camera:
                 print("con = {}".format(con))
                 con -= 1
             elif key == ord('r'):
-                print("calibration reset")
-                object_points = []
-                image_points = []
+                print("\nremoving last image")
+                image_points.pop()
+                os.remove('resources/experimental/cal{}.jpg'.format(file_n))
+                file_n -= 1
                 self.calibration = None
             elif key == 27:
                 # exit
@@ -209,12 +213,18 @@ class Camera:
         self.device = old_device
         cv2.destroyAllWindows()
 
-    def perform_calibration(self, gray_image, object_points, image_points, alpha):
+    def perform_calibration(self, gray_image, image_points, balance):
         """ method 1: """
         # # print(gray.shape[::1])
         # if self.debug:
         #     print('\ncurrent calibration = {}'.format(self.get_calibration()))
         # mtx, dist, rvecs, tvecs, new_mtx, roi = self.get_calibration()
+        # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(grid[0],grid[1],0)
+        # object_points_grid = np.zeros((1, grid[0] * grid[1], 3), np.float32)
+        # object_points_grid[0, :, :2] = np.mgrid[0:scale * grid[0]:scale, 0:scale * grid[1]:scale].T.reshape(-1, 2)
+        # object_points = []
+        # for i in image_points:
+        #     object_points.append(object_points_grid)
         # ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, gray_image.shape[::-1],
         #                                                    mtx, dist, rvecs, tvecs)
         # new_mtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (gray_image.shape[1], gray_image.shape[0]), alpha)
@@ -226,28 +236,29 @@ class Camera:
         n = len(image_points)
         grid = (9, 6)
         scale = 1
-        calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC+cv2.fisheye.CALIB_CHECK_COND +\
-            cv2.fisheye.CALIB_FIX_SKEW
+        calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC+cv2.fisheye.CALIB_FIX_SKEW
         k = np.zeros((3, 3))
         d = np.zeros((4, 1))
-        rvecs = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(n)]
-        tvecs = [np.zeros((1, 1, 3), dtype=np.float64) for i in range(n)]
         # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(grid[0],grid[1],0)
         object_points_grid = np.zeros((1, grid[0] * grid[1], 3), np.float32)
         object_points_grid[0, :, :2] = np.mgrid[0:scale * grid[0]:scale, 0:scale * grid[1]:scale].T.reshape(-1, 2)
         object_points = []
         for i in image_points:
             object_points.append(object_points_grid)
-        print('\ngray_image.shape={}'.format(gray_image.shape[::-1]))
-        rms, _, _, _, _ = cv2.fisheye.calibrate(object_points, image_points, gray_image.shape[::-1], k, d, rvecs,
-                                                tvecs,  calibration_flags,
-                                                (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 1e-6))
+        rms, k, d, rvecs, tvecs = cv2.fisheye.calibrate(object_points, image_points, gray_image.shape[::-1], k, d,
+                                                        flags=calibration_flags, criteria=(cv2.TERM_CRITERIA_EPS +
+                                                                                           cv2.TERM_CRITERIA_MAX_ITER,
+                                                                                           30, 1e-6))
+        new_k = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(k, d, gray_image.shape[::-1], np.eye(3),
+                                                                       balance=balance)
+        map1, map2 = cv2.fisheye.initUndistortRectifyMap(k, d, np.eye(3), new_k, gray_image.shape[::-1], cv2.CV_16SC2)
         if self.calibration is None:
-            self.calibration = {'k': k, 'd': d}
+            self.calibration = {'k': k, 'd': d, 'map1': map1, 'map2': map2}
         else:
             self.calibration['k'] = k
             self.calibration['d'] = d
-        # print('k={} d={}'.format(k, d))
+            self.calibration['map1'] = map1
+            self.calibration['map2'] = map2
 
     def calibrate_image(self, src):
         # use calibration parameters to generate calibrated image
@@ -260,10 +271,8 @@ class Camera:
         # x, y, w, h = self.calibration['roi']
         # src = src[y:y+h, x:x+w]
         """ method 2: """
-        s = src.shape[:-1][::-1]
-        map1, map2 = cv2.fisheye.initUndistortRectifyMap(self.calibration['k'], self.calibration['d'], np.eye(3),
-                                                         self.calibration['k'], s, cv2.CV_32F)
-        out = cv2.remap(src, map1, map2, interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+        out = cv2.remap(src, self.calibration['map1'], self.calibration['map2'],
+                        interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
         return out
 
     def set_calibration(self, mtx, dist, rvecs, tvecs, new_mtx, roi):
@@ -319,6 +328,11 @@ class Camera:
         if device is None:
             device = self.device
         else:
+            # if filename, try to accept ommitting resources/experimental:
+            if os.path.isfile('resources/experimental/'+device):
+                device = 'resources/experimental/'+device
+            elif os.path.isfile('resources/'+device):
+                device = 'resources/'+device
             self.device = device
         # open capture
         self.capture = cv2.VideoCapture(device)
