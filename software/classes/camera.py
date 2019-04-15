@@ -16,20 +16,21 @@ class Camera:
     calibration = None
     device = None
     win_size = None
-    standard_size = None
+    src_size = None
     debug = False
     mirror = False
 
-    def __init__(self, args, win_size=None):
+    def __init__(self, args, sres=None, dres=None):
         if args.debug:
             self.debug = True
-            self.standard_size = (1280, 720)
-            print('set standard_size = {}'.format(self.standard_size))
+        # size of src
+        if sres is not None:
+            self.src_size = sres
+        # size of cv2 windows
+        if dres is not None:
+            self.win_size = dres
         if args.mirror:
             self.mirror = True
-        # size of cv2 windows
-        if win_size:
-            self.win_size = win_size
         # if source is specified
         if args.filename:
             if args.filename == '0':
@@ -310,8 +311,8 @@ class Camera:
         if self.mirror:
             src = cv2.flip(src, 1)
         # standard image size during testing
-        if self.debug:
-            return cv2.resize(src, self.standard_size, cv2.INTER_CUBIC)
+        if self.debug and self.src_size is not None:
+            return cv2.resize(src, self.src_size, cv2.INTER_CUBIC)
         else:
             return src
 
@@ -338,7 +339,19 @@ class Camera:
         self.capture = cv2.VideoCapture(device)
         if not self.capture.isOpened:
             print("Error opening capture! device={}".format(device))
+            print('trying again with dev = 1')
+            if device != 1:
+                self.prepare_capture(1)
             return 0
+
+        # use src_size or try high resolution:
+        if self.src_size is None:
+            self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
+            self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, 1080)
+        else:
+            self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.src_size[0])
+            self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.src_size[1])
+
         # get input data
         self.height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -347,7 +360,14 @@ class Camera:
         self.fps = self.capture.get(cv2.CAP_PROP_FPS)
         if self.fps == 0:
             self.fps = 25
-        self.n_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
+        try:
+            self.n_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
+        except cv2.Error as e:
+            self.n_frames = -1
+            if self.debug:
+                print(e)
+        if self.debug:
+            print('src width={} height={} fps={} n_frames={}'.format(self.width, self.height, self.fps, self.n_frames))
 
     # method to end capture
     def stop_capture(self):

@@ -1,7 +1,7 @@
 ## Software in the project
 
 Usage in development branch (working folder = `/billardtrainer/software/`):  
-`(python) billardtrainer.py [-h] [-f FILENAME] [-cf CAL_FILENAME] [-res RES] [-pc] [-ui] [-d] [-push]`
+`(python) billardtrainer.py [-h] [-f FILENAME] [-cf CAL_FILENAME] [-sr RES] [-dr RES] [-pc] [-ui] [-d] [-push]`
 
 optional arguments:  
   ```
@@ -10,7 +10,8 @@ optional arguments:
                         input (device, file, video, stream)
   -cf CAL_FILENAME, --calibration-file CAL_FILENAME
                         input for calibration (device, file, video, stream)
-  -res RES              display resolution
+  -sr RES               source resolution
+  -dr RES               display resolution
   -pc                   for testing on pc
   -ui                   use user interface, assumes -pc      # currently not functional
   -d, --debug           show more debug output

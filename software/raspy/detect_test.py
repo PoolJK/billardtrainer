@@ -13,24 +13,37 @@ class DetectTest:
     y_scale = 0
     camera = None
     win_size = None
+    src_size = None
     debug = False
 
     def __init__(self, args):
         if args.debug:
             self.debug = True
         # get display resolution
-        if args.res:
+        if args.dres:
             x, y = 0, 0
-            if ',' in args.res:
-                x, y = args.res.split(',')
-            elif 'x' in args.res:
-                x, y = args.res.split('x')
+            if ',' in args.dres:
+                x, y = args.dres.split(',')
+            elif 'x' in args.dres:
+                x, y = args.dres.split('x')
             else:
                 print('bad resolution format, use 1280,720 or 1280x720')
                 exit(0)
             self.win_size = (int(x), int(y))
+        if args.sres:
+            x, y = 0, 0
+            if ',' in args.sres:
+                x, y = args.dres.split(',')
+            elif 'x' in args.sres:
+                x, y = args.sres.split('x')
+            else:
+                print('bad resolution format, use 1280,720 or 1280x720')
+                exit(0)
+            self.src_size = (int(x), int(y))
+        else:
+            self.src_size = None
         # set up camera (and calibrate)
-        self.camera = Camera(args, self.win_size)
+        self.camera = Camera(args, self.src_size, self.win_size)
 
     def mouse_callback(self, event, x, y, flags, param):
         # on left mouse clock, print coordinates and image value

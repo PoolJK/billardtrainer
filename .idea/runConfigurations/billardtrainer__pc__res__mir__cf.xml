@@ -12,7 +12,7 @@
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/software/billardtrainer.py" />
-    <option name="PARAMETERS" value="-d -pc -res 800x450 -mir -cf resources/image0.jpg,resources/image1.jpg,resources/image2.jpg,resources/image3.jpg" />
+    <option name="PARAMETERS" value="-d -pc -dr 720x480 -mir -cf resources/image0.jpg,resources/image1.jpg,resources/image2.jpg,resources/image3.jpg" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="false" />

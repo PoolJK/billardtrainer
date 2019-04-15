@@ -11,7 +11,8 @@ cl_parser.add_argument('-f', '--file', dest="filename", help="input (device, fil
                        required=False)
 cl_parser.add_argument('-cf', '--calibration-file', dest="cal_filename",
                        help="input for calibration (device, file, video, stream)", required=False)
-cl_parser.add_argument('-res', dest='res', help='display resolution', required=False)
+cl_parser.add_argument('-sr', '--source-resolution', dest='sres', help='source resolution', required=False)
+cl_parser.add_argument('-dr', '--display-resolution', dest='dres', help='display resolution', required=False)
 cl_parser.add_argument('-pc', dest="pc_test", help="for testing on pc",
                        action="store_true", default=False)
 cl_parser.add_argument('-ui', dest="use_ui", help="use user interface, assumes -pc",
@@ -22,6 +23,7 @@ cl_parser.add_argument('-push', '--push-to-pi', dest="push_to_pi", help="push so
                        action="store_true", default=False)
 cl_parser.add_argument('-mir', '--mirror', dest="mirror", help="mirror input", action="store_true", required=False)
 args = cl_parser.parse_args()
+
 if args.push_to_pi:
     # remove -push and -pc flags if set
     sys.argv.remove('-push')
@@ -51,18 +53,25 @@ if args.push_to_pi:
     # TODO: elif os.name == osx: ...
     # exit, you're done on PC
     exit(0)
-if args.use_ui:
-    args.pc_test = True
-    test_ui.main(args)
-    exit(0)
-try:
-    # if you're here, you might be on the pi, so try to catch all errors
+
+on_pi = cv2.getVersionMajor() < 4
+
+if on_pi:
+    # on the pi try to catch all errors
+    try:
+        detect_test = DetectTest(args)
+        detect_test.main()
+    except Exception as e:
+        # wait to be able to read console output on raspberry pi before closing terminal on error:
+        print('\nsome error occurred: {}'.format(sys.exc_info()[0]))
+        print(e.args)
+        cv2.waitKey()
+        raise e
+else:
+    if args.use_ui:
+        args.pc_test = True
+        test_ui.main(args)
+        exit(0)
     detect_test = DetectTest(args)
     detect_test.main()
-except Exception as e:
-    # wait to be able to read console output on raspberry pi before closing terminal on error:
-    print('\nsome error occurred: {}'.format(sys.exc_info()[0]))
-    print(e.args)
-    cv2.waitKey()
-    raise e
 exit(0)
