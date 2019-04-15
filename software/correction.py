@@ -1,69 +1,80 @@
+#!/usr/bin/python3
 
-import os
 import cv2
 import math
 import numpy as np
+import time
 
-src = cv2.imread('resources/snook2b.jpg')
-src2 = src
-cv2.namedWindow('src', cv2.WINDOW_NORMAL)
-cv2.imshow('src', src)
-k = cv2.waitKey(0)
 
-if k == 27:         # wait for ESC key to exit
-    cv2.destroyAllWindows()
-elif k == ord('s'): # wait for 's' key to save and exit
-    cv2.imwrite('resources/Bild.jpg',src)
-    cv2.destroyAllWindows()
+def scale(val):
+    return round((val / 25.5) + 0.001, 3)
 
-# input
-strength = 3.4 # strength as floating point >= 0. 0 = no change, high numbers equal stronger correction.
-zoom = 1.3    # as floating point >= 1.(1 = no change in zoom)
 
-# algorithm
-imageHeight, imageWidth, imageChannels = src.shape
-print (src.shape)
-src2= np.zeros((imageHeight, imageWidth, 3), np.uint8)
-src2[:] = (255, 255, 255)
+def nothing(*x):
+    pass
 
-halfWidth  = imageWidth / 2
-halfHeight = imageHeight / 2
 
-if strength == 0:
-    strength = 0.00001
+def correct():
+    src = cv2.imread('resources/testimages/snook4b.jpg')
+    src = cv2.resize(src, (int(src.shape[1]/4), int(src.shape[0]/4)), cv2.INTER_CUBIC)
+    cv2.namedWindow('src', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('src', 480, 800)
+    cv2.namedWindow('correction', cv2.WINDOW_NORMAL)
+    cv2.resizeWindow('correction', 480, 800)
+    cv2.imshow('src', src)
 
-correctionRadius = math.sqrt(math.pow(imageWidth,2) + math.pow(imageHeight,2)) / strength
-print (correctionRadius)
+    # algorithm
+    image_height, image_width, image_channels = src.shape
+    print('src.shape={}'.format(src.shape))
+    src2 = np.zeros(src.shape, np.uint8)
+    src2[:] = (255, 255, 255)  # TODO: needed?
 
-n=0;
-for x in range(imageWidth):
-    for y in range(imageHeight):
-        newX = x - halfWidth
-        newY = y - halfHeight
-        distance = math.sqrt(math.pow(newX,2) + math.pow(newY,2))
-        r = distance / correctionRadius
-        if r == 0:
-            theta = 1
-        else:
-            theta = math.atan(r)/r
+    half_width = image_width / 2
+    half_height = image_height / 2
 
-        sourceX = int(halfWidth + theta * newX * zoom)
-        sourceY = int(halfHeight + theta * newY * zoom)
-        if sourceX < imageWidth:
-            if sourceY < imageHeight:
-                (b, g, r) = src[sourceY, sourceX]
+    cv2.createTrackbar('strength', 'correction', 126, 255, nothing)
+    cv2.createTrackbar('zoom', 'correction', 45, 255, nothing)
+
+    corr_r_base = math.sqrt(math.pow(image_width, 2) + math.pow(image_height, 2))
+    while True:
+        start = time.time()
+        n = 0
+        zoom = scale(cv2.getTrackbarPos('zoom', 'correction'))
+        strength = scale(cv2.getTrackbarPos('strength', 'correction'))
+        correction_radius = corr_r_base / strength
+        print('zoom={} strength={} correction_radius={}'.format(zoom, strength, correction_radius))
+        for x in range(image_width):
+            for y in range(image_height):
+                new_x = x - half_width
+                new_y = y - half_height
+                distance = math.sqrt(math.pow(new_x, 2) + math.pow(new_y, 2))
+                if r == 0:
+                    theta = 1
+                else:
+                    r = distance / correction_radius
+                    theta = math.atan(r)/r
+                source_x = int(half_width + theta * new_x * zoom)
+                source_y = int(half_height + theta * new_y * zoom)
+                if source_x < image_width and source_y < image_height:
+                    (b, g, r) = src[source_y, source_x]
+                else:
+                    (b, g, r) = (0, 0, 0)
                 src2[y, x] = (b, g, r)
+                n += 1
+        print(n)
 
-        n+=1
+        cv2.imshow('correction', src2)
+        end = time.time()
+        print('calc time = {}'.format(end - start))
+        key = cv2.waitKey()
 
-print(n)
-
-cv2.namedWindow('correction', cv2.WINDOW_NORMAL)
-cv2.imshow('correction', src2)
-b = cv2.waitKey(0)
-
-if b == 27:         # wait for ESC key to exit
+        if key == 27:  # wait for ESC key to exit
+            break
+        elif key == ord('s'):  # wait for 's' key to save
+            cv2.imwrite('resources/correction_out.jpg', src2)
     cv2.destroyAllWindows()
-elif b == ord('s'): # wait for 's' key to save and exit
-    cv2.imwrite('resources/Bild1.jpg',src)
-    cv2.destroyAllWindows()
+    exit(0)
+
+
+if __name__ == '__main__':
+    correct()

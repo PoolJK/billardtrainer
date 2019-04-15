@@ -20,12 +20,25 @@ what's going on in remote repo?
 save current unsaved changes and clear them:    
 `git stash`  
 reapply saved changes:  
-`git pop`
+`git stash pop`
+list saved changes:  
+`git stash list`
+clear saved changes:  
+`git stash clear`
 
 switch to other branch:  
 `git checkout branch_name`
 
-update current local branch from remote tracking branch:  
+set upstream branch for current branch:  
+`git branch -u <upstream_branch_name>`
+
+unset upstream branch for current branch:  
+`git branch --unset-upstream`
+
+hard reset current local branch to be exactly like remote:  
+`git reset --hard origin/<branch_name>`
+
+update current local branch from remote tracking branch (update->rebase in pycharm):  
 `git stash`  
 `git fetch origin`  
 `git rebase origin/remote_branch_name`  
@@ -61,3 +74,9 @@ better git log:
 
 see all aliases:  
 `git config --get-regexp alias`
+
+set your name and email:  
+`git config --global user.email your@email.com`
+
+list all global vars:  
+`git config --global --list`
