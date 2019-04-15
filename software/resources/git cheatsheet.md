@@ -51,6 +51,8 @@ git rebase --onto commit-2 commit-1 branch_name
 # use -Xtheirs to accept theirs by default
 # resolving conflicts is simpler in pycharm
 
+# set remote tracking branch for current local branch
+git branch -u origin/branch_name
 # push current branch to origin (after cleaning up working tree)
 git push origin HEAD:remote_branch_name
 
