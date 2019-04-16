@@ -4,6 +4,7 @@ import os
 import cv2
 import time
 import numpy as np
+import re
 
 
 class Camera:
@@ -43,38 +44,55 @@ class Camera:
         self.calibrate_cam(args.cal_filename)
 
     # method to calibrate optical parameters
-    def calibrate_cam(self, filename=None, show_help=True):
+    def calibrate_cam(self, cal_filename=None, show_help=True, interactive=True, image_points=None):
         start = time.time()
         # save specified device to temporary variable
         old_device = self.device
+        if image_points is None:
+            image_points = []
         # if a separate calibration is specified and it is comma separated files
-        if isinstance(filename, str) and ',' in filename:
-            for f in filename.split(','):
-                self.calibrate_cam(f, False)
-            return 0
+        if isinstance(cal_filename, str):
+            if ',' in cal_filename:
+                for f in cal_filename.split(','):
+                    self.calibrate_cam(f, False, False, image_points)
+                return 0
+            elif '*' in cal_filename:
+                # select all files with selector
+                files_list = os.listdir(os.path.dirname(cal_filename))
+                reg_exp = os.path.basename(cal_filename).replace('*', '[0-9]+')
+                found = False
+                for file in files_list:
+                    if re.match(reg_exp, file):
+                        found = True
+                        self.calibrate_cam(os.path.dirname(cal_filename) + '/' + file, False, False, image_points)
+                if not found:
+                    print('No files found matching {}'.format(cal_filename))
+                return 0
+            if self.debug:
+                print('calibration file: {}'.format(cal_filename))
+            self.prepare_capture(cal_filename, quiet=True)
         # no calibration specified, use input feed
         else:
-            self.prepare_capture(filename)
+            self.prepare_capture(cal_filename)
         # help me, I don't know what to do!
-        if show_help:
-            print("\'c\': capture image | \'+\'/\'-\': in-/decrease alpha | \'r\': reset calibration"
-                  "| \'q\': next image or finish calibration | \'ESC\': exit")
+        if show_help and interactive:
+            print("\'c\': capture image | \'+\'/\'-\': in-/decrease balance | \'r\': remove last image"
+                  "| \'q\', \'n\': next image or finish calibration | \'ESC\': exit")
 
         # calibration grid definition (chessboard_9x6.png)
         grid = [9, 6]
         scale = 10  # mm between corners
 
-        cv2.namedWindow('src', cv2.WINDOW_NORMAL)
-        cv2.namedWindow('bw', cv2.WINDOW_NORMAL)
-        cv2.namedWindow('cal', cv2.WINDOW_NORMAL)
+        if interactive:
+            cv2.namedWindow('src', cv2.WINDOW_NORMAL)
+            cv2.namedWindow('bw', cv2.WINDOW_NORMAL)
+            cv2.namedWindow('cal', cv2.WINDOW_NORMAL)
 
         # termination criteria for sub pixel corner detection
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-        image_points = []
-
         # new matrix alpha
-        balance = 1
+        balance = .5
 
         # params for bw threshold
         block_size = 133
@@ -87,7 +105,7 @@ class Camera:
         font_color = (255, 255, 255)
         line_type = 1
 
-        if self.debug:
+        if self.debug and interactive:
             print('setup time: {}ms'.format(int((time.time()-start)*1000)))
         # calibration loop
         file_n = 0
@@ -120,7 +138,7 @@ class Camera:
             detect_time = int((time.time()-start)*1000) - src_time
             # if a calibration is available, output the calibrated frame as well
             cal_time = 0
-            if self.calibration is not None:
+            if interactive and self.calibration is not None:
                 cal = self.pull_cal_frame(src)
                 cv2.imshow('cal', cv2.resize(cal, self.win_size))
                 cv2.resizeWindow('cal', self.win_size[0], self.win_size[1])
@@ -150,43 +168,55 @@ class Camera:
                                 line_type)
                 """
                 cal_time = int((time.time() - start)*1000) - detect_time
-            cv2.imshow('bw', cv2.resize(bw, self.win_size))
-            cv2.resizeWindow('bw', self.win_size[0], self.win_size[1])
-            # marker if corners are found or not
-            cv2.circle(src, (30, 30), 20, (0, 0, 255) if corners is None else (0, 255, 0), -1)
-            cv2.imshow("src", cv2.resize(src, self.win_size))
-            cv2.resizeWindow('src', self.win_size[0], self.win_size[1])
-            if self.debug:
-                print('\rmain loop time: {}ms, cal: {}ms, detect: {}ms, src: {}ms'
-                      .format(int((time.time()-start)*1000), cal_time, detect_time, src_time), end='')
-            if self.n_frames == 1:
-                # only one frame, show until keypress
-                key = cv2.waitKey() & 0xFF
+            if interactive:
+                cv2.imshow('bw', cv2.resize(bw, self.win_size))
+                cv2.resizeWindow('bw', self.win_size[0], self.win_size[1])
+                # marker if corners are found or not
+                cv2.circle(src, (30, 30), 20, (0, 0, 255) if corners is None else (0, 255, 0), -1)
+                cv2.imshow("src", cv2.resize(src, self.win_size))
+                cv2.resizeWindow('src', self.win_size[0], self.win_size[1])
+                if self.debug:
+                    print('\rmain loop time: {}ms, cal: {}ms, detect: {}ms, src: {}ms'
+                          .format(int((time.time()-start)*1000), cal_time, detect_time, src_time), end='')
+
+            # ganz hässlicher hack:
+            if not interactive:
+                key = ord('c')
             else:
-                # more than one or no frame, don't wait until showing next
-                key = cv2.waitKey(1) & 0xFF
+                if self.n_frames == 1:
+                    # only one frame, show until keypress
+                    key = cv2.waitKey() & 0xFF
+                else:
+                    # more than one or no frame, don't wait until showing next
+                    key = cv2.waitKey(1) & 0xFF
             # process key inputs
             if key == ord('c'):
                 # add current image to calibration
                 if corners is None:
-                    print('no corners detected, can\'t calibrate')
+                    print('\nno corners detected, can\'t calibrate')
                 else:
                     image_points.append(corners)
                     # calibrate camera (add new image points to existing calibration
                     self.perform_calibration(gray, image_points, balance)
-                    path = 'resources/experimental/'
-                    while os.path.isfile(path+'cal{}.jpg'.format(file_n)):
-                        file_n += 1
-                    cv2.imwrite('resources/experimental/cal{}.jpg'.format(file_n), gray)
+                    if interactive:
+                        path = 'resources/experimental/'
+                        if not os.path.isdir(path):
+                            os.makedirs(path)
+                        while os.path.isfile(path+'cal{:02d}.jpg'.format(file_n)):
+                            file_n += 1
+                        cv2.imwrite('resources/experimental/cal{:02d}.jpg'.format(file_n), gray)
+                    # if not a stream go to next
+                    if self.n_frames > 0:
+                        break
             elif key in (ord('q'), ord('n')):
                 # next image or finish
-                if self.debug:
+                if self.debug and interactive:
                     print('')
                 break
             elif key == ord('+'):
                 block_size += 2
                 balance = balance + 0.1 if balance < 0.9 else 1
-                print("alpha = {}".format(balance))
+                print("\nbalance = {}".format(balance))
                 self.perform_calibration(gray, image_points, balance)
             elif key == ord('-'):
                 block_size = block_size - 2 if block_size > 3 else 1
@@ -202,7 +232,7 @@ class Camera:
             elif key == ord('r'):
                 print("\nremoving last image")
                 image_points.pop()
-                os.remove('resources/experimental/cal{}.jpg'.format(file_n))
+                os.remove('resources/experimental/cal{:02d}.jpg'.format(file_n))
                 file_n -= 1
                 self.calibration = None
             elif key == 27:
@@ -293,7 +323,7 @@ class Camera:
         # if no calibration available, return frame
         if not self.calibration or src is None:
             return src
-        return self.calibrate_image(src)
+        return src, self.calibrate_image(src)
 
     # method to return a frame
     def pull_frame(self, src=None):
@@ -307,7 +337,7 @@ class Camera:
         if 0 < self.n_frames <= self.capture.get(cv2.CAP_PROP_POS_FRAMES):
             # reopen capture
             self.stop_capture()
-            self.prepare_capture()
+            self.prepare_capture(quiet=True)
         if self.mirror:
             src = cv2.flip(src, 1)
         # standard image size during testing
@@ -317,7 +347,7 @@ class Camera:
             return src
 
     # method to prepare capture
-    def prepare_capture(self, device=None):
+    def prepare_capture(self, device=None, quiet=False):
         # capture already set?
         if self.capture:
             # capture open?
@@ -366,7 +396,7 @@ class Camera:
             self.n_frames = -1
             if self.debug:
                 print(e)
-        if self.debug:
+        if self.debug and not quiet:
             print('src width={} height={} fps={} n_frames={}'.format(self.width, self.height, self.fps, self.n_frames))
 
     # method to end capture

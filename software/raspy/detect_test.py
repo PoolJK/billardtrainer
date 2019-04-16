@@ -90,7 +90,7 @@ class DetectTest:
         cv2.createTrackbar('v_upper', 'hsv_mask', 255, 255, self.nothing)
         while True:
             start = time.time()
-            src = self.camera.pull_cal_frame()
+            xsrc, src = self.camera.pull_cal_frame()
             srctime = int((time.time()-start)*1000)
             if src is None:
                 print('error in main: couldn\'t read from src')
@@ -135,7 +135,7 @@ class DetectTest:
             cv2.imshow('hsv', hsv_d)
             out_d = cv2.resize(out, self.win_size, cv2.INTER_CUBIC)
             cv2.imshow('out', out_d)
-            cv2.imshow('xsrc', cv2.resize(self.camera.pull_frame(), self.win_size))
+            cv2.imshow('xsrc', cv2.resize(xsrc, self.win_size))
             cv2.resizeWindow('hsv_mask', self.win_size[0], self.win_size[1])
             cv2.resizeWindow('out', self.win_size[0], self.win_size[1])
             cv2.resizeWindow('hsv', self.win_size[0], self.win_size[1])
@@ -148,12 +148,14 @@ class DetectTest:
                 break
             if key == ord('s'):
                 # save current frame to disk
-                if not os.path.isdir('resources/experimental/outputs'):
-                    try:
-                        os.makedirs('resources/experimental/outputs')
-                    except OSError:
-                        pass
-                cv2.imwrite('resources/experimental/Video/out.jpg', out)
+                c = 0
+                path = 'resources/experimental/outputs'
+                if not os.path.isdir(path):
+                    os.makedirs(path)
+                while os.path.isfile(path + '/out{:02d}.jpg'.format(c)):
+                    c += 1
+                cv2.imwrite(path + '/out{:02d}.jpg'.format(c), out)
+                cv2.imwrite(path + '/in{:02d}.jpg'.format(c), xsrc)
             if key == 27:
                 # ESC = exit
                 print('bye')
