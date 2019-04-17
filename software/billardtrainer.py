@@ -37,7 +37,17 @@ if args.push_to_pi:
         repo = Repo(os.pardir)
         for diff in repo.head.commit.diff(None):
             # push file to pi using pscp (putty)
-            os.system('pscp -pw pi ../{} pi@raspberrypi:/home/pi/billardtrainer/{}'.format(diff.b_path, diff.b_path))
+            attempts = 0
+            e = 1
+            while e > 0 and attempts < 5:
+                e = os.system('pscp -pw pi ../{} pi@raspberrypi:/home/pi/billardtrainer/{}'
+                              .format(diff.b_path, diff.b_path))
+                if e > 0:
+                    print('retrying')
+                if attempts == 5:
+                    print('error sending to pi')
+                    exit(0)
+                attempts += 1
         # save args to pi_command file used by putty
         cmd = open('pi_command', 'w')
         args = ''

@@ -70,6 +70,7 @@ class DetectTest:
         pass
 
     def main(self):
+        self.camera.prepare_capture()
         print('starting main(){}, \'x\' to quit, \'s\' to save output frame'
               .format(' in debug mode' if self.debug else ''))
         cv2.namedWindow('out', cv2.WINDOW_NORMAL)
@@ -91,6 +92,8 @@ class DetectTest:
         while True:
             start = time.time()
             xsrc, src = self.camera.pull_cal_frame()
+            if src is None:
+                break
             srctime = int((time.time()-start)*1000)
             if src is None:
                 print('error in main: couldn\'t read from src')

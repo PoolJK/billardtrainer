@@ -1,10 +1,179 @@
-# the camera wants a class too :'-/
+#!/usr/bin/python3
 
+import sys
+from threading import Thread, Lock
 import os
-import cv2
-import time
-import numpy as np
 import re
+import time
+from queue import Queue
+
+import cv2
+import numpy as np
+
+
+class InputStream:
+    def __init__(self, device, width=None, height=None, queue_size=10, debug=False):
+        self.debug = debug
+        self.onpi = cv2.getVersionMajor() < 4
+        self.device = device
+        self.first = True
+        self.stream = self.open(device)
+        if device == 0:
+            # allow startup
+            try:
+                _, _ = self.stream.read()
+            except Exception as e:
+                lp(e)
+        # TODO: opening error handling
+        self.last_queued = self.last_read = self.last_received = self.start = time.time()
+        # try:
+        #     self.height = int(self.stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        #     self.width = int(self.stream.get(cv2.CAP_PROP_FRAME_WIDTH))
+        # except Exception as e:
+        #     lp(e)
+        self.width = width
+        self.height = height
+        self.d_fps = []
+        if device == 0:
+            self.d_fps.append(25)
+        else:
+            self.d_fps.append(self.stream.get(cv2.CAP_PROP_FPS))
+        self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, width)
+        self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, height)
+        self.s_fps = []
+        self.s_fps.append(1.0)
+        self.stopped = False
+        self.Q = Queue(queue_size)
+
+    def run(self):
+        t = Thread(target=self.update, args=())
+        t.daemon = True
+        t.start()
+        return self
+
+    def update(self):
+        while True:
+            # if the thread indicator variable is set, stop the
+            # thread
+            if self.stopped:
+                lp('stream thread was stopped')
+                return
+            # check time since last received image
+            if self.time_since_input() > 10000:
+                if self.debug:
+                    lp('input timed out after 10s, stopping thread')
+                self.stop()
+                return
+            # read the next frame
+            # TODO: produces error on pi
+            grabbed = False
+            while time.time() - self.start < 2:
+                pass
+            try:
+                grabbed, frame = self.stream.read()
+            except Exception as e:
+                lp('error grabbing frame: {}'.format(e))
+            if grabbed:
+                dt = self.time_since_input()
+                self.last_received = time.time()
+                if dt > 0:
+                    self.s_fps.append(1000/dt)
+                else:
+                    self.s_fps.append(0)
+                d_fps = self.get_display_fps()
+                s_fps = self.get_source_fps()
+                # ensure the queue has room in it
+                if not self.Q.full():
+                    # put queue- and timestamp on it
+                    cv2.putText(frame, 'q:{} tsl:{: 3d}ms fps:{:02.1f}(display) {:02.1f}(source)'
+                                .format(self.Q.qsize() + 1, dt, d_fps, s_fps),
+                                (0, self.height), cv2.FONT_HERSHEY_COMPLEX, max(.4, self.height / 800),
+                                (255, 255, 255))
+                    # add the frame to the queue
+                    self.Q.put(frame)
+                    self.last_queued = time.time()
+            else:
+                if self.debug:
+                    lp('no frame in input, taking nap')
+                #elif fps > 0:
+                time.sleep(1)
+
+    def set(self, p1, p2):
+        ret = self.stream.set(p1, p2)
+        self.height = int(self.stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.width = int(self.stream.get(cv2.CAP_PROP_FRAME_WIDTH))
+        return ret
+
+    def get(self, args):
+        return self.stream.get(args)
+
+    def time_elapsed(self):
+        return int((time.time() - self.start) * 1000)
+
+    def time_since_input(self):
+        return int((time.time() - self.last_received) * 1000)
+
+    def time_since_read(self):
+        return int((time.time() - self.last_read) * 1000)
+
+    def get_display_fps(self):
+        if len(self.d_fps) == 25:
+            self.d_fps.remove(self.d_fps[0])
+        return round(np.average(self.d_fps), 1)
+
+    def get_source_fps(self):
+        if len(self.s_fps) == 10:
+            self.s_fps.remove(self.s_fps[0])
+        return round(np.average(self.s_fps), 1)
+
+    def open(self, device=None):
+        if device is None:
+            if self.device is None:
+                lp('error no device specified')
+                return 0
+            device = self.device
+        if self.debug:
+            lp('InputStream opening device={}'.format(device))
+        self.stream = cv2.VideoCapture(device)
+        return self.stream
+
+    def read(self):
+        if self.time_since_input() > 10000:
+            if self.debug:
+                lp('source timed out in read(), stopping')
+            self.stop()
+            return 0
+        if self.stopped:
+            if self.debug:
+                lp('failed read: source is stopped')
+            return 0
+        # TODO: this call is blocking
+        # if self.Q.empty():
+        last = self.Q.get()
+        dt = self.time_since_read()
+        if dt > 50/3:
+            self.d_fps.append(1000 / dt)
+        else:
+            self.d_fps.append(0)
+        if self.Q.empty() and last is not None:
+            self.Q.put(last)
+        self.last_read = time.time()
+        return last
+
+    def more(self):
+        return self.Q.qsize() > 0
+
+    def stop(self):
+        lp('InputStream: releasing stream')
+        self.stopped = True
+        self.stream.release()
+
+
+def lp(msg):
+    lock = Lock()
+    lock.acquire()
+    print(msg)
+    lock.release()
 
 
 class Camera:
@@ -16,8 +185,6 @@ class Camera:
     capture = None
     calibration = None
     device = None
-    win_size = None
-    src_size = None
     debug = False
     mirror = False
 
@@ -27,9 +194,13 @@ class Camera:
         # size of src
         if sres is not None:
             self.src_size = sres
+        else:
+            self.src_size = (1920, 1080)
         # size of cv2 windows
         if dres is not None:
             self.win_size = dres
+        else:
+            self.win_size = self.src_size
         if args.mirror:
             self.mirror = True
         # if source is specified
@@ -85,7 +256,7 @@ class Camera:
 
         if interactive:
             cv2.namedWindow('src', cv2.WINDOW_NORMAL)
-            cv2.namedWindow('bw', cv2.WINDOW_NORMAL)
+            #cv2.namedWindow('bw', cv2.WINDOW_NORMAL)
             cv2.namedWindow('cal', cv2.WINDOW_NORMAL)
 
         # termination criteria for sub pixel corner detection
@@ -116,6 +287,8 @@ class Camera:
 
             # get frame
             src = self.pull_frame()
+            if src is None:
+                break
             src_time = int((time.time()-start)*1000)
             if src is None:
                 print('error in calibration: couldn\'t read src')
@@ -139,7 +312,7 @@ class Camera:
             # if a calibration is available, output the calibrated frame as well
             cal_time = 0
             if interactive and self.calibration is not None:
-                cal = self.pull_cal_frame(src)
+                cal = self.calibrate_image(src)
                 cv2.imshow('cal', cv2.resize(cal, self.win_size))
                 cv2.resizeWindow('cal', self.win_size[0], self.win_size[1])
                 # use region of interest for cropping
@@ -169,8 +342,8 @@ class Camera:
                 """
                 cal_time = int((time.time() - start)*1000) - detect_time
             if interactive:
-                cv2.imshow('bw', cv2.resize(bw, self.win_size))
-                cv2.resizeWindow('bw', self.win_size[0], self.win_size[1])
+                #cv2.imshow('bw', cv2.resize(bw, self.win_size))
+                #cv2.resizeWindow('bw', self.win_size[0], self.win_size[1])
                 # marker if corners are found or not
                 cv2.circle(src, (30, 30), 20, (0, 0, 255) if corners is None else (0, 255, 0), -1)
                 cv2.imshow("src", cv2.resize(src, self.win_size))
@@ -306,23 +479,13 @@ class Camera:
                         interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
         return out
 
-    def set_calibration(self, mtx, dist, rvecs, tvecs, new_mtx, roi):
-        self.calibration = {'mtx': mtx, 'dist': dist, 'rvecs': rvecs, 'tvecs': tvecs, 'new_mtx': new_mtx, 'roi': roi}
-
-    def get_calibration(self):
-        if self.calibration is not None:
-            return self.calibration['mtx'], self.calibration['dist'], self.calibration['rvecs'], \
-                   self.calibration['tvecs'], self.calibration['new_mtx'], self.calibration['roi']
-        else:
-            return None, None, None, None, None, None
-
     # method to return calibrated frame
     def pull_cal_frame(self, src=None):
         # get frame from input
         src = self.pull_frame(src)
         # if no calibration available, return frame
-        if not self.calibration or src is None:
-            return src
+        if not self.calibration or src is 0:
+            return src, src
         return src, self.calibrate_image(src)
 
     # method to return a frame
@@ -330,10 +493,9 @@ class Camera:
         if src is None:
             if self.capture is None:
                 self.prepare_capture()
-            has_frame, src = self.capture.read()
-            if not has_frame:
-                print("error reading frame from specified source: {}".format(self.device))
-                return None
+            src = self.capture.read()
+        if src is 0:
+            return None
         if 0 < self.n_frames <= self.capture.get(cv2.CAP_PROP_POS_FRAMES):
             # reopen capture
             self.stop_capture()
@@ -351,7 +513,7 @@ class Camera:
         # capture already set?
         if self.capture:
             # capture open?
-            if self.capture.isOpened():
+            if not self.capture.stopped:
                 print("capture already open")
                 return 0
             self.capture = None
@@ -365,15 +527,20 @@ class Camera:
             elif os.path.isfile('resources/'+device):
                 device = 'resources/'+device
             self.device = device
-        # open capture
-        self.capture = cv2.VideoCapture(device)
-        if not self.capture.isOpened:
+        # open capture queue
+        self.capture = InputStream(device, self.src_size[0], self.src_size[1], debug=self.debug)
+        self.capture.run()
+        if device == 0:
+            print('main 2s later')
+            time.sleep(2)
+        if self.capture.stopped:
             print("Error opening capture! device={}".format(device))
-            print('trying again with dev = 1')
+            print('trying again with device = 1')
             if device != 1:
                 self.prepare_capture(1)
+                return 0
+            print('device = 1 didn\'t work!')
             return 0
-
         # use src_size or try high resolution:
         if self.src_size is None:
             self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, 1920)
@@ -381,7 +548,6 @@ class Camera:
         else:
             self.capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.src_size[0])
             self.capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.src_size[1])
-
         # get input data
         self.height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -392,14 +558,15 @@ class Camera:
             self.fps = 25
         try:
             self.n_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
-        except cv2.Error as e:
+        except:
             self.n_frames = -1
             if self.debug:
-                print(e)
+                print(sys.exc_info()[0])
+        if self.n_frames < 0:
+            self.n_frames = -1
         if self.debug and not quiet:
             print('src width={} height={} fps={} n_frames={}'.format(self.width, self.height, self.fps, self.n_frames))
 
     # method to end capture
     def stop_capture(self):
-        self.capture.release()
-        self.capture = None
+        self.capture.stop()
