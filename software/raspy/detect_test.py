@@ -70,9 +70,9 @@ class DetectTest:
         pass
 
     def main(self):
-        self.camera.prepare_capture()
         print('starting main(){}, \'x\' to quit, \'s\' to save output frame'
               .format(' in debug mode' if self.debug else ''))
+        self.camera.prepare_capture()
         cv2.namedWindow('out', cv2.WINDOW_NORMAL)
         cv2.namedWindow('hsv_mask', cv2.WINDOW_NORMAL)
         cv2.namedWindow('hsv', cv2.WINDOW_NORMAL)
