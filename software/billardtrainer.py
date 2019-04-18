@@ -22,6 +22,9 @@ cl_parser.add_argument('-d', '--debug', dest="debug", help="show more debug outp
 cl_parser.add_argument('-push', '--push-to-pi', dest="push_to_pi", help="push sources to pi",
                        action="store_true", default=False)
 cl_parser.add_argument('-mir', '--mirror', dest="mirror", help="mirror input", action="store_true", required=False)
+cl_parser.add_argument('-test', '--camera-test', dest='camera_test', help='only test specified input',
+                       action='store_true', default=False)
+cl_parser.add_argument('-p', '--preview', dest='preview', help='only show preview', action='store_true', default=False)
 args = cl_parser.parse_args()
 
 if args.push_to_pi:
@@ -65,23 +68,20 @@ if args.push_to_pi:
     exit(0)
 
 on_pi = cv2.getVersionMajor() < 4
-
-if on_pi:
-    # on the pi try to catch all errors
-    try:
-        detect_test = DetectTest(args)
+# on the pi try to catch all errors
+try:
+    detect_test = DetectTest(args)
+    if not args.camera_test and not args.preview:
         detect_test.main()
-    except Exception as e:
-        # wait to be able to read console output on raspberry pi before closing terminal on error:
+except Exception as e:
+    # wait to be able to read console output on raspberry pi before closing terminal on error:
+    if on_pi:
         print('\nsome error occurred: {}'.format(sys.exc_info()[0]))
         print(e.args)
         cv2.waitKey()
-        raise e
-else:
-    if args.use_ui:
-        args.pc_test = True
-        test_ui.main(args)
-        exit(0)
-    detect_test = DetectTest(args)
-    detect_test.main()
+    raise e
+if not on_pi and args.use_ui:
+    args.pc_test = True
+    test_ui.main(args)
+    exit(0)
 exit(0)

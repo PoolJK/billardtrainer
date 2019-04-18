@@ -38,8 +38,10 @@ class InputStream:
                     return 0
                 device = self.device
             self.stream = cv2.VideoCapture(device)
-        self.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        self.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
+        self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
+        self.width = self.stream.get(cv2.CAP_PROP_FRAME_WIDTH)
+        self.height = self.stream.get(cv2.CAP_PROP_FRAME_HEIGHT)
         self.last_queued = self.last_read = self.last_received = self.start = now()
         self.d_fps = []
         # V4L doesn't support fps property
@@ -84,8 +86,11 @@ class InputStream:
                 else:
                     self.s_fps.append(0)
                 # push one out if full
-                if not self.Q.empty() and self.Q.full():
-                    self.Q.get_nowait()
+                if self.Q.full():
+                    try:
+                        self.Q.get_nowait()
+                    except queue.Empty:
+                        pass
                 self.Q.put(frame)
                 self.last_queued = n
             else:
@@ -156,8 +161,9 @@ class InputStream:
         # put queue- and timestamp on it
         cv2.putText(frame, 'q:{} tsl:{: 3d}ms fps:{:02.1f}(display) {:02.1f}(source)'
                     .format(self.Q.qsize() + 1, t_s_read, d_fps, s_fps),
-                    (0, self.height), cv2.FONT_HERSHEY_COMPLEX, max(.5, self.height / 800),
+                    (0, frame.shape[0]), cv2.FONT_HERSHEY_COMPLEX, max(.5, frame.shape[0] / 800),
                     (255, 255, 255))
+        self.last = frame
         return frame
 
     def stop_capture(self):
@@ -224,8 +230,14 @@ class Camera:
         # else open device default (DSHOW on PC, 0 on Pi)
         else:
             self.device = cv2.CAP_DSHOW if args.pc_test else 0
-        # run calibration
-        self.calibrate_cam(args.cal_filename)
+        # camera_test flag set?
+        if args.camera_test:
+            self.camera_test(self.device)
+        elif args.preview:
+            self.show_preview(self.device)
+        else:
+            # run calibration
+            self.calibrate_cam(args.cal_filename)
 
     # method to calibrate optical parameters
     def calibrate_cam(self, cal_filename=None, show_help=True, interactive=True, image_points=None):
@@ -263,7 +275,7 @@ class Camera:
                   "| \'q\', \'n\': next image or finish calibration | \'ESC\': exit")
 
         # calibration grid definition (chessboard_9x6.png)
-        grid = [9, 6]
+        grid = (9, 6)
 
         if interactive:
             # cv2.namedWindow('bw', cv2.WINDOW_NORMAL)
@@ -302,14 +314,14 @@ class Camera:
                 if ret:
                     break
             """
-            ret, corners = cv2.findChessboardCorners(bw, (grid[0], grid[1]), None, flags=cv2.CALIB_CB_FAST_CHECK)
+            ret, corners = cv2.findChessboardCorners(bw, grid, None, flags=cv2.CALIB_CB_FAST_CHECK)
             t1 = now()
 
             # if corners have been found
             if ret:
                 # sub pixel refine corners
                 corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
-                src = cv2.drawChessboardCorners(src, (grid[0], grid[1]), corners, ret)
+                src = cv2.drawChessboardCorners(src, grid, corners, ret)
             t2 = now()
 
             # display everything if interactive
@@ -441,9 +453,9 @@ class Camera:
             if self.capture is None or self.capture.stopped:
                 self.prepare_capture(quiet=True)
             src = self.capture.read()
-        if src is 0:
+        if src is 0 or src is None:
             return None
-        # if single frame is source:
+        # if single frame is source: TODO: handle better
         if 0 < self.n_frames <= self.capture.get(cv2.CAP_PROP_POS_FRAMES):
             # reopen capture
             self.stop_capture()
@@ -472,10 +484,10 @@ class Camera:
                 device = self.device
             else:
                 # if filename, try to accept ommitting resources/experimental:
-                if os.path.isfile('resources/experimental/'+device):
-                    device = 'resources/experimental/'+device
-                elif os.path.isfile('resources/'+device):
-                    device = 'resources/'+device
+                if os.path.isfile('resources/experimental/{0}'.format(device)):
+                    device = 'resources/experimental/{0}'.format(device)
+                elif os.path.isfile('resources/{0}'.format(device)):
+                    device = 'resources/{0}'.format(device)
                 self.device = device
             # open capture queue
             self.capture = InputStream(device, self.src_size[1], self.src_size[0], debug=self.debug)
@@ -488,21 +500,95 @@ class Camera:
             print('camera: error, couldn\'t start capture')
             return 0
         # get input data
-        self.height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         self.width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+        self.height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
         if self.win_size is None:
             self.win_size = (self.width, self.height)
         self.fps = self.capture.get(cv2.CAP_PROP_FPS)
         if self.fps == 0:
             self.fps = 25
-        # V4L doesn't support frame_count:
+        # workaround V4L doesn't support frame_count, stream return some weird negative number:
         if device is not None and device is not 0:
             self.n_frames = self.capture.get(cv2.CAP_PROP_FRAME_COUNT)
         else:
             self.n_frames = -1
+        if self.n_frames < 0:
+            self.n_frames = -1
         if self.debug and not quiet:
-            print('prepare_capture: captured src width={} height={} fps={} n_frames={}'.format(self.width, self.height, self.fps, self.n_frames))
+            print('prepare_capture: captured src {}x{}@{}fps n_frames={}'.format(self.width, self.height, self.fps, self.n_frames))
 
     # method to end capture
     def stop_capture(self):
         self.capture.stop_capture()
+
+    # method to display all available resolutions from input
+    def camera_test(self, device):
+        """ test 1: get available resolutions """
+        # better idea: use 'v4l2-ctl --list-formats-ext' (sudo apt-get install v4l-utils" if not installed)
+        # clean up device name for saving:
+        import string
+        valid_chars = "-_() %s%s" % (string.ascii_letters, string.digits)
+        replace_chars = ".:/"
+        s = str(device)
+        for c in replace_chars:
+            s = s.replace(c, '_')
+        s = ''.join(c for c in s if c in valid_chars)
+        cap = cv2.VideoCapture(device)
+        path = 'resources/experimental/camera_test/'
+        if not os.path.isdir(path):
+            os.makedirs(path)
+
+        # start low
+        frame_width = 16
+        # loop high
+        while frame_width < 4000:
+            # advance resolution
+            frame_width += 16
+            # test 16:9, 16:10, 4:3
+            for frame_height in np.arange(int(frame_width / 16 * 9) - int(frame_width / 16 * 9) % 4, frame_width, 4):
+                # have to set width first, else height might not be set
+                cap.set(cv2.CAP_PROP_FRAME_WIDTH, frame_width)
+                cap.set(cv2.CAP_PROP_FRAME_HEIGHT, frame_height)
+                # calculate aspect string
+                aspect = int(frame_height / frame_width * 16)
+                if aspect == 12:
+                    aspect = '4:3'
+                else:
+                    aspect = '16:{}'.format(aspect)
+                # measure actual dims in source
+                measured_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                measured_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                print('\rset: {: 4d}x{: 4d} measured: {: 4d}x{: 4d}'.format(frame_width, frame_height, measured_width,
+                                                                            measured_height), end='')
+                # if measure equals set, save and display result
+                if measured_height == frame_height and measured_width == frame_width:
+                    r, img = cap.read()
+                    cv2.imwrite('{}/{}x{}_dev={}.jpg'.format(path, frame_width, frame_height, s), img)
+                    # log
+                    print('\nfound: {}x{} ({})'.format(frame_width, frame_height, aspect))
+        cap.release()
+        """ test 2: try out modes
+        self.prepare_capture(device, quiet=True)
+        mode = 0
+        cv2.namedWindow('preview', cv2.WINDOW_NORMAL)
+        cv2.imshow('preview', self.pull_frame())
+        cv2.resizeWindow('preview', self.win_size[0], self.win_size[1])
+        while True:
+            print('\rmode={}, trying mode={}: '.format(self.capture.get(cv2.CAP_PROP_MODE), mode), end='')
+            self.capture.set(cv2.CAP_PROP_MODE, mode)
+            cv2.imshow('preview', self.pull_frame())
+            mode += 1
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+        self.stop_capture() 
+        """
+
+    def show_preview(self, device):
+        self.prepare_capture(device)
+        while True:
+            cv2.imshow('preview', self.pull_frame())
+            key = cv2.waitKey(1) & 0xFF
+            if key == ord('q'):
+                break
+        self.stop_capture()

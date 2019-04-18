@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="billardtrainer -f stream -cf cal*.jpg -dr" type="PythonConfigurationType" factoryName="Python">
+  <configuration default="false" name="-f stream -cf cal*.jpg -dr 800x450" type="PythonConfigurationType" factoryName="Python">
     <module name="billardtrainer" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
