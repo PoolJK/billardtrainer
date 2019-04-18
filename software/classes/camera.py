@@ -1,207 +1,18 @@
 #!/usr/bin/python3
 
-from threading import Thread, Lock
 import os
 import re
-import time
-import queue
-from queue import Queue
-
-import cv2
-import numpy as np
-
-
-class InputStream:
-    def __init__(self, device, height=None, width=None, queue_size=1, debug=False):
-        self.debug = debug
-        self.onpi = cv2.getVersionMajor() < 4
-        self.device = device
-        self.stopped = True
-        self.t = Thread(target=self.update, args=())
-        self.t.daemon = True
-        self.last_queued = self.last_read = self.last_received = self.start = now()
-        self.height = height or 1080
-        self.width = width or 1920
-        self.d_fps = []
-        self.s_fps = []
-        self.Q = Queue(queue_size)
-        self.last = None
-        self.stream = self.open(device)
-
-    def open(self, device=None):
-        if hasattr(self, 'stream') and self.stream.isOpened():
-            pass
-        else:
-            if device is None:
-                if self.device is None:
-                    print('InputStream: open: error opening stream: no device specified')
-                    return 0
-                device = self.device
-            self.stream = cv2.VideoCapture(device)
-        self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
-        self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
-        self.width = self.stream.get(cv2.CAP_PROP_FRAME_WIDTH)
-        self.height = self.stream.get(cv2.CAP_PROP_FRAME_HEIGHT)
-        self.last_queued = self.last_read = self.last_received = self.start = now()
-        self.d_fps = []
-        # V4L doesn't support fps property
-        if device == 0:
-            self.d_fps.append(1)
-        else:
-            self.d_fps.append(self.stream.get(cv2.CAP_PROP_FPS))
-        self.s_fps = []
-        self.s_fps.append(0.0)
-        self.stopped = False
-        return self.stream
-
-    def start_capture(self):
-        self.t = Thread(target=self.update, args=())
-        self.t.daemon = True
-        self.t.start()
-        return self
-
-    def update(self):
-        while True:
-            n = now()
-            # if the thread indicator variable is set, stop the thread
-            if self.stopped:
-                return
-            # check time since last received image
-            if dt(self.last_received, n) > 10000:
-                if self.debug:
-                    lp('InputStream.thread: input timed out after 10s, stopping')
-                self.stop_capture()
-                return
-            # read the next frame
-            try:
-                grabbed, frame = self.stream.read()
-            except Exception as e:
-                lp('error grabbing frame: {}'.format(e))
-                grabbed, frame = None, None
-            if grabbed:
-                t_s_last = dt(self.last_received, n)
-                self.last_received = n
-                if 16 < t_s_last < 2000:
-                    self.s_fps.append(1000/t_s_last)
-                else:
-                    self.s_fps.append(0)
-                # push one out if full
-                if self.Q.full():
-                    try:
-                        self.Q.get_nowait()
-                    except queue.Empty:
-                        pass
-                self.Q.put(frame)
-                self.last_queued = n
-            else:
-                time.sleep(1)
-
-    def set(self, p1, p2):
-        # set flags of stream (if exists)
-        if not hasattr(self, 'stream'):
-            if self.debug:
-                print('InputStream: set called, but stream is None')
-            return 0
-        ret = self.stream.set(p1, p2)
-        self.height = int(self.stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.width = int(self.stream.get(cv2.CAP_PROP_FRAME_WIDTH))
-        return ret
-
-    def get(self, args):
-        # return flags of stream
-        if not hasattr(self, 'stream'):
-            return 0
-        return self.stream.get(args)
-
-    def get_display_fps(self):
-        if len(self.d_fps) == 10:
-            self.d_fps.remove(self.d_fps[0])
-        return round(np.average(self.d_fps), 1)
-
-    def get_source_fps(self):
-        if len(self.s_fps) == 10:
-            self.s_fps.remove(self.s_fps[0])
-        return round(np.average(self.s_fps), 1)
-
-    def read(self):
-        n = now()
-
-        # check if still running TODO: needed?
-        if self.stopped:
-            if self.debug:
-                lp('InputStream: failed read: source is stopped')
-            return 0
-
-        # check source is still sending frames
-        if dt(self.last_received, n) > 10000:
-            if self.debug:
-                lp('InputStream: source timed out during read(), stopping')
-            self.stop_capture()
-            return 0
-
-        # get frame from Queue, None if timeout
-        try:
-            frame = self.Q.get(timeout=5)
-        except queue.Empty:
-            frame = None
-        if frame is None:
-            print('InputStream: timeout in read')
-            return 0
-
-        # update fps data
-        d_fps = self.get_display_fps()
-        s_fps = self.get_source_fps()
-        t_s_read = dt(self.last_read, n)
-        if t_s_read > 50/3:
-            self.d_fps.append(1000 / t_s_read)
-        else:
-            self.d_fps.append(0)
-        self.last_read = n
-
-        # put queue- and timestamp on it
-        cv2.putText(frame, 'q:{} tsl:{: 3d}ms fps:{:02.1f}(display) {:02.1f}(source)'
-                    .format(self.Q.qsize() + 1, t_s_read, d_fps, s_fps),
-                    (0, frame.shape[0]), cv2.FONT_HERSHEY_COMPLEX, max(.5, frame.shape[0] / 800),
-                    (255, 255, 255))
-        self.last = frame
-        return frame
-
-    def stop_capture(self):
-        self.stopped = True
-        if self.t.is_alive():
-            self.t.join()
-        try:
-            self.stream.release()
-        except Exception as e:
-            print(e)
-
-
-def lp(msg):
-    # lock protected print in Threads
-    lock = Lock()
-    lock.acquire()
-    print(msg)
-    lock.release()
-
-
-def dt(t1, t2):
-    # time difference as int in [ms]
-    return int((t2-t1)*1000)
-
-
-def now():
-    # current time
-    return time.time()
+from classes.utils import *
+from classes.input_stream import InputStream
 
 
 class Camera:
 
-    height = 0
-    width = 0
     fps = 0
     n_frames = 0
     capture = None
     calibration = None
+    calibrated = False
     device = None
     debug = False
     mirror = False
@@ -236,11 +47,190 @@ class Camera:
         elif args.preview:
             self.show_preview(self.device)
         else:
-            # run calibration
-            self.calibrate_cam(args.cal_filename)
+            self.load_calibration()
+
+    def load_calibration(self):
+        device = self.device
+        path = 'resources/calibration/'
+        if os.path.isdir(path) and os.path.isfile('{}{}.txt'.format(path, device)):
+            try:
+                calibration = open('{}{}.txt'.format(path, device), 'r').read()
+                self.calibration = eval(calibration)
+                self.calibrated = True
+            except Exception as e:
+                print('camera: error reading calibration file', e)
+        return self.calibrated
+
+    def save_calibration(self):
+        filename = self.device
+        replace = ':./'
+        for r in replace:
+            filename = filename.replace(r, '_')
+        path = 'resources/calibration/'
+        if not os.path.isdir(path):
+            os.makedirs(path)
+        # TODO: if file exists
+        file = open('{}{}.txt'.format(path, filename), 'w')
+        file.write(str(self.calibration))
+        file.close()
+
+    def auto_calibrate(self, beamer, device=None):
+        if device is None:
+            device = self.device
+        old_device = self.device
+        self.prepare_capture(device)
+        # calibration grid definition (chessboard_9x6.png)
+        grid = (9, 6)
+        # load pattern file to display
+        pattern = cv2.imread('resources/chessboard_9x6.png')
+        # scale pattern
+        # pattern width in pixels
+        pattern_size = (int(beamer.width / 2), int(beamer.width / 2 * pattern.shape[0] / pattern.shape[1]))
+        pattern = cv2.resize(pattern, pattern_size)
+
+        cv2.namedWindow('bw', cv2.WINDOW_NORMAL)
+        cv2.namedWindow('cal', cv2.WINDOW_NORMAL)
+        cv2.namedWindow('src', cv2.WINDOW_NORMAL)
+
+        # termination criteria for sub pixel corner detection
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+
+        # new matrix alpha
+        balance = 0.2
+
+        # params for bw threshold
+        block_size = 55
+        constant = 4
+
+        # calibration loop
+        # pattern positions:
+        p_positions = [
+            (int((beamer.width - pattern_size[0])/2), int((beamer.height - pattern_size[1])/2), 0, 1),
+            # center
+            (0, (beamer.height - pattern_size[1]) / 2, 0, 1),  # left
+            (beamer.width - pattern_size[0], (beamer.height - pattern_size[1]) / 2, 0, 1),  # right
+            # (int((beamer.width - pattern_size[0]) / 2), 0, 0, 1),  # top
+            #  (int((beamer.width - pattern_size[0]) / 2), beamer.height - pattern_size[1], 0, 1),  # bottom
+            (beamer.width - pattern_size[0], beamer.height - pattern_size[1] - 80, -10, 1),
+            # right lower corner
+            (0, beamer.height - pattern_size[1] - 80, 15, 1),  # left lower corner
+            (beamer.width - pattern_size[0], -40, -5, 1),  # right upper corner
+            (0, -40, 0, 1),  # left upper corner
+            # (0, 0, 0, 0),  # fullscreen
+            # (0, 40, -20, 1),
+            # (beamer.width - pattern_size[0], 70, 20, 1),
+            # (beamer.width - pattern_size[0], beamer.height - pattern_size[1] - 100, 170, 1),
+            # (-40, beamer.height - pattern_size[1] - 60, -170, 1),
+            # (0, int((beamer.height - pattern_size[1]) / 2), -45, 1)]
+        ]
+        # try twice:
+        # p_positions.extend(p_positions)
+        beamer.window('pattern', cv2.WINDOW_NORMAL)
+        image_points = []
+        for position in p_positions:
+            # print('\nposition={}'.format(position))
+            # rotate the image and recalculate position
+            _s = pattern.shape[:2]
+            pat = rotate_bound(pattern, position[2])
+            if pat.shape[1] > _s[1]:
+                p0 = int(position[0] - (pat.shape[1] - _s[1]) / 2)
+            else:
+                p0 = int(position[0] + (pat.shape[1] - _s[1]) / 2)
+            if pat.shape[0] > _s[0]:
+                p1 = int(position[1] - (pat.shape[0] - _s[0]) / 2)
+            else:
+                p1 = int(position[1] + (pat.shape[0] - _s[0]) / 2)
+            position = (p0, p1, position[2], position[3])
+            beamer.show('pattern', pat, position)
+
+            # count n of rejected position takes
+            rejected = 0
+            while True:
+                if rejected >= 10:
+                    print('\nposition rejected')
+                    break
+                start = now()
+
+                # get frame
+                src = self.pull_frame()
+                if src is None:
+                    print('error in calibration: couldn\'t read src')
+                    return 0
+                t0 = now()
+
+                # find corners
+                gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
+                bw = cv2.adaptiveThreshold(gray, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                           cv2.THRESH_BINARY, block_size, constant)
+                # search in src first, if not finding any, search the processed frames
+                for tmp in [src, gray, bw]:
+                    ret, corners = cv2.findChessboardCorners(tmp, (grid[0], grid[1]), None,
+                                                             flags=cv2.CALIB_CB_FAST_CHECK)
+                    if ret:
+                        break
+                # ret, corners = cv2.findChessboardCorners(bw, grid, None, flags=cv2.CALIB_CB_FAST_CHECK)
+                t1 = now()
+
+                # if corners have been found
+                if ret:
+                    # sub pixel refine corners
+                    corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
+                    src = cv2.drawChessboardCorners(src, grid, corners, ret)
+                t2 = now()
+
+                # display everything
+                # if a calibration is available, output the calibrated frame as well
+                if self.calibration is not None:
+                    cal = self.undistort_image(src)
+                    cv2.imshow('cal', cv2.resize(cal, self.win_size))
+                cv2.imshow('bw', cv2.resize(bw, self.win_size))
+                # marker if corners are found or not
+                cv2.circle(src, (30, 30), 20, (0, 0, 255) if corners is None else (0, 255, 0), -1)
+                cv2.imshow("src", cv2.resize(src, self.win_size))
+                t3 = now()
+
+                if self.debug:
+                    print('\rloop={: 4d}ms - t0={: 4d}ms t1={: 4d}ms t2={: 4d}ms t3={: 4d}ms'
+                          .format(dt(start, now()), dt(start, t0), dt(t0, t1), dt(t1, t2), dt(t2, t3)), end='')
+                if self.n_frames == 1:
+                    # only one frame, show until keypress
+                    key = cv2.waitKey() & 0xFF
+                else:
+                    # more than one or no frame, don't wait until showing next
+                    key = cv2.waitKey(1) & 0xFF
+
+                # this has to be after waitKey
+                if corners is not None:
+                    # show white image so position won't be falsely read twice
+                    white = np.ones(pat.shape, np.uint8) * 255
+                    beamer.show('pattern', white, position)
+                    cv2.waitKey(1)
+                    image_points.append(corners)
+                    # calibrate camera (add new image points to existing calibration
+                    if self.perform_calibration(gray, image_points, grid, balance):
+                        # cv2.waitKey()
+                        # stream delay
+                        wait(800)
+                        break
+                    else:
+                        # error or image rejected
+                        beamer.show('pattern', pat, position)
+                        image_points.pop()
+                        rejected += 1
+                        continue
+                # process key inputs
+                if key == 27 or key == ord('q'):
+                    print('\nbye')
+                    cv2.destroyAllWindows()
+                    self.stop_capture()
+                    exit(0)
+        self.stop_capture()
+        self.device = old_device
+        cv2.destroyAllWindows()
+        self.calibrated = True
 
     # method to calibrate optical parameters
-    def calibrate_cam(self, cal_filename=None, show_help=True, interactive=True, image_points=None):
+    def manual_calibrate(self, beamer, cal_filename=None, show_help=True, interactive=True, image_points=None):
         # save specified device to temporary variable
         old_device = self.device
         if image_points is None:
@@ -249,7 +239,7 @@ class Camera:
         if isinstance(cal_filename, str):
             if ',' in cal_filename:
                 for f in cal_filename.split(','):
-                    self.calibrate_cam(f, False, False, image_points)
+                    self.manual_calibrate(beamer, f, False, False, image_points)
                 return 0
             elif '*' in cal_filename:
                 # select all files with selector
@@ -259,7 +249,9 @@ class Camera:
                 for file in files_list:
                     if re.match(reg_exp, file):
                         found = True
-                        self.calibrate_cam(os.path.dirname(cal_filename) + '/' + file, False, False, image_points)
+                        self.manual_calibrate(beamer,
+                                              os.path.dirname(cal_filename) + '/' + file,
+                                              False, False, image_points)
                 if not found:
                     print('No files found matching {}'.format(cal_filename))
                 return 0
@@ -279,8 +271,8 @@ class Camera:
 
         if interactive:
             # cv2.namedWindow('bw', cv2.WINDOW_NORMAL)
-            cv2.namedWindow('cal', cv2.WINDOW_NORMAL)
-            cv2.namedWindow('src', cv2.WINDOW_NORMAL)
+            beamer.window('cal', cv2.WINDOW_NORMAL)
+            beamer.window('src', cv2.WINDOW_NORMAL)
 
         # termination criteria for sub pixel corner detection
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
@@ -327,16 +319,14 @@ class Camera:
             # display everything if interactive
             # if a calibration is available, output the calibrated frame as well
             if interactive and self.calibration is not None:
-                cal = self.calibrate_image(src)
-                cv2.imshow('cal', cv2.resize(cal, self.win_size))
-                cv2.resizeWindow('cal', self.win_size[0], self.win_size[1])
+                cal = self.undistort_image(src)
+                beamer.show('cal', cv2.resize(cal, self.win_size))
             if interactive:
                 # cv2.imshow('bw', cv2.resize(bw, self.win_size))
                 # cv2.resizeWindow('bw', self.win_size[0], self.win_size[1])
                 # marker if corners are found or not
                 cv2.circle(src, (30, 30), 20, (0, 0, 255) if corners is None else (0, 255, 0), -1)
-                cv2.imshow("src", cv2.resize(src, self.win_size))
-                cv2.resizeWindow('src', self.win_size[0], self.win_size[1])
+                beamer.show("src", cv2.resize(src, self.win_size))
             t3 = now()
 
             # ganz hässlicher hack fürs automatische laden:
@@ -415,6 +405,7 @@ class Camera:
         calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC+cv2.fisheye.CALIB_FIX_SKEW
         k = np.zeros((3, 3))
         d = np.zeros((4, 1))
+
         # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(grid[0],grid[1],0)
         object_points_grid = np.zeros((1, grid[0] * grid[1], 3), np.float32)
         object_points_grid[0, :, :2] = np.mgrid[0:scale * grid[0]:scale, 0:scale * grid[1]:scale].T.reshape(-1, 2)
@@ -423,19 +414,32 @@ class Camera:
         object_points = [object_points_grid] * len(image_points)
 
         # calibrate according to various tutorial sources...
-        rms, k, d, rvecs, tvecs = cv2.fisheye.calibrate(object_points, image_points, gray_image.shape[::-1], k, d,
-                                                        flags=calibration_flags, criteria=(cv2.TERM_CRITERIA_EPS +
-                                                                                           cv2.TERM_CRITERIA_MAX_ITER,
-                                                                                           30, 1e-6))
+        try:
+            rms, k, d, rvecs, tvecs = cv2.fisheye\
+                .calibrate(object_points, image_points, gray_image.shape[::-1], k, d,
+                           flags=calibration_flags, criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
+                                                              50, 0.5))
+        except cv2.error as e:
+            print('\nerror in calibration function:', e)
+            return 0
+        # print('\nrms={}'.format(rms))
+        # if rms too high, reject
+        if rms > 20:
+            print('\nrms too high: {}'.format(rms))
+            return 0
         new_k = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(k, d, gray_image.shape[::-1], np.eye(3),
                                                                        balance=balance)
         map1, map2 = cv2.fisheye.initUndistortRectifyMap(k, d, np.eye(3), new_k, gray_image.shape[::-1], cv2.CV_16SC2)
-        self.calibration = {'k': k, 'd': d, 'map1': map1, 'map2': map2}
+        self.calibration = {'k': k, 'd': d, 'map1': map1, 'map2': map2, 'size': gray_image.shape[::-1]}
+        self.save_calibration()
+        return 1
 
-    def calibrate_image(self, src):
+    def undistort_image(self, src):
         # TODO: cropping ?
+        # also TODO: scaling
+        src = cv2.resize(src, self.calibration['size'])
         out = cv2.remap(src, self.calibration['map1'], self.calibration['map2'],
-                        interpolation=cv2.INTER_LINEAR, borderMode=cv2.BORDER_CONSTANT)
+                        interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
         return out
 
     # method to return calibrated frame
@@ -443,9 +447,9 @@ class Camera:
         # get frame from input
         src = self.pull_frame(src)
         # if no calibration available, return frame
-        if not self.calibration or src is 0:
+        if not self.calibrated or src is 0:
             return src, src
-        return src, self.calibrate_image(src)
+        return src, self.undistort_image(src)
 
     # method to return a frame
     def pull_frame(self, src=None):
@@ -457,9 +461,7 @@ class Camera:
             return None
         # if single frame is source: TODO: handle better
         if 0 < self.n_frames <= self.capture.get(cv2.CAP_PROP_POS_FRAMES):
-            # reopen capture
-            self.stop_capture()
-            self.prepare_capture(quiet=True)
+            self.capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
         if self.mirror:
             src = cv2.flip(src, 1)
         # standard image size during testing
@@ -470,40 +472,45 @@ class Camera:
 
     # method to prepare capture
     def prepare_capture(self, device=None, quiet=False):
+        # device specified? else use default
+        if device is None:
+            device = self.device
+        else:
+            # if filename, try to accept ommitting resources/experimental:
+            if os.path.isfile('resources/experimental/{0}'.format(device)):
+                device = 'resources/experimental/{0}'.format(device)
+            elif os.path.isfile('resources/{0}'.format(device)):
+                device = 'resources/{0}'.format(device)
+            # device specified, save to default
+            self.device = device
         # capture already set?
         if self.capture:
             # capture open?
             if not self.capture.stopped:
                 return
-            # print('capture set but not open, trying to reopen')
-            self.capture.open()
+            # capture set but not open, try to reopen if same device
+            if self.capture.device == device:
+                self.capture.open()
+            else:
+                # create new
+                self.capture.stop_capture()
+                self.capture = InputStream(device, self.src_size[1], self.src_size[0], debug=self.debug)
         # capture not yet set:
         else:
-            # device specified? else use default
-            if device is None:
-                device = self.device
-            else:
-                # if filename, try to accept ommitting resources/experimental:
-                if os.path.isfile('resources/experimental/{0}'.format(device)):
-                    device = 'resources/experimental/{0}'.format(device)
-                elif os.path.isfile('resources/{0}'.format(device)):
-                    device = 'resources/{0}'.format(device)
-                self.device = device
             # open capture queue
             self.capture = InputStream(device, self.src_size[1], self.src_size[0], debug=self.debug)
-        # capture queue is definitely open at this point
-        # replace with better structure if you can
         self.capture.start_capture()
-        # TODO: move first read to open function
+        # TODO: move first read to open function ?
         # wait for first read (blocking call for 5s, None if timed out)
-        if self.capture.read() is None:
+        f = self.capture.read()
+        if f is None:
             print('camera: error, couldn\'t start capture')
-            return 0
+            return
         # get input data
-        self.width = int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH))
-        self.height = int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        self.src_size = (int(self.capture.get(cv2.CAP_PROP_FRAME_WIDTH)),
+                         int(self.capture.get(cv2.CAP_PROP_FRAME_HEIGHT)))
         if self.win_size is None:
-            self.win_size = (self.width, self.height)
+            self.win_size = self.src_size
         self.fps = self.capture.get(cv2.CAP_PROP_FPS)
         if self.fps == 0:
             self.fps = 25
@@ -515,14 +522,16 @@ class Camera:
         if self.n_frames < 0:
             self.n_frames = -1
         if self.debug and not quiet:
-            print('prepare_capture: captured src {}x{}@{}fps n_frames={}'.format(self.width, self.height, self.fps, self.n_frames))
+            print('prepare_capture: captured src {}x{}@{}fps n_frames={}'
+                  .format(self.src_size[0], self.src_size[1], self.fps, self.n_frames))
 
     # method to end capture
     def stop_capture(self):
         self.capture.stop_capture()
 
     # method to display all available resolutions from input
-    def camera_test(self, device):
+    @staticmethod
+    def camera_test(device):
         """ test 1: get available resolutions """
         # better idea: use 'v4l2-ctl --list-formats-ext' (sudo apt-get install v4l-utils" if not installed)
         # clean up device name for saving:

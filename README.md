@@ -8,3 +8,7 @@ OpenCV 4.1.0.25 (3.4.4 @raspberrypi)
 Numpy 1.16.2 (1.12.1 @raspberrypi)
 GitPython 2.1.11
 ```
+
+Make sure to add billardtrainer/software as your
+src root folder in pycharm to prevent 'unresolved reference'-error.
+ 

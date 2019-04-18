@@ -3,10 +3,10 @@
 import argparse
 import cv2
 import numpy as np
-import settings
-from ball import Ball
-from table import Table
-from beamer import Beamer
+import raspy.settings as settings
+from classes.ball import Ball
+from classes.table import Table
+from classes.beamer import Beamer
 
 
 # size of output window

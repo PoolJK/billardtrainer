@@ -2,8 +2,8 @@
 
 import cv2
 import numpy as np
-import settings
-from ball import Ball
+import raspy.settings as settings
+from classes.ball import Ball
 
 
 class Table:

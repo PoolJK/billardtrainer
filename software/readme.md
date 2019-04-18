@@ -1,7 +1,7 @@
 ## Software in the project
 
 Usage in development branch (working folder = `/billardtrainer/software/`):  
-`(python) billardtrainer.py [-h] [-f FILENAME] [-cf CAL_FILENAME] [-sr RES] [-dr RES] [-pc] [-ui] [-d]
+`(python) billardtrainer.py [-h] [-f FILENAME] [-c] [-cf CAL_FILENAME] [-sr RES] [-dr RES] [-pc] [-ui] [-d]
  [-push] [-mir] [-test] [-p]`
 
 optional arguments:  
@@ -9,8 +9,8 @@ optional arguments:
   -h, --help            show this help message and exit
   -f FILENAME, --file FILENAME
                         input (device, file, video, stream)
-  -cf CAL_FILENAME, --calibration-file CAL_FILENAME
-                        input for calibration (device, file, video, stream)
+  -c, --calibrate       perform calibration instead of loading
+  -cf CAL_FILENAME      input for calibration (device, file, video, stream)
   -sr RES               source resolution
   -dr RES               display resolution
   -pc                   for testing on pc
@@ -33,6 +33,9 @@ billardtrainer.py -pc -f http://192.168.0.59:8080/video -pc -d
 billardtrainer.py -f resources/20190405_172601.jpg -cf resources/experimental/20190405_172601.jpg -d -pc  
 billardtrainer.py -f resources/20190405_172601.jpg -cf resources/experimental/cal_1.jpg,resources/experimental/cal_2.jpg,resources/experimental/cal_3.jpg -d -pc -res 800,450  
 ```
+
+To find available resolutions of the camera, use flag -test, to output the resolutions to terminal.  
+On the pi, try 'v4l2-ctl --list-formats-ext' (sudo apt-get install v4l-utils" if not installed).
 
 #### classes/
 Classes for the system parts

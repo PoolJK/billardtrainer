@@ -7,6 +7,7 @@ import numpy as np
 
 from classes.ball import Ball
 from classes.camera import Camera
+from classes.beamer import Beamer
 
 
 class DetectTest:
@@ -14,6 +15,7 @@ class DetectTest:
     x_scale = 0
     y_scale = 0
     camera = None
+    beamer = None
     win_size = None
     src_size = None
     debug = False
@@ -46,15 +48,26 @@ class DetectTest:
             self.src_size = None
         # set up camera (and calibrate)
         self.camera = Camera(args, self.src_size, self.win_size)
+        # offset to other monitor
+        self.beamer = Beamer(args, self.win_size, (-1920, 0))
+        if not args.preview:
+            # run calibration
+            if args.calibrate:
+                self.camera.auto_calibrate(self.beamer, args.cal_filename)
+            else:
+                if not self.camera.load_calibration():
+                    self.camera.manual_calibrate(self.beamer)
 
     def main(self):
-        print('starting main(){}, \'x\' to quit, \'s\' to save output frame'
+        print('\nstarting main(){}, \'x\' to quit, \'s\' to save output frame'
               .format(' in debug mode' if self.debug else ''))
         self.camera.prepare_capture()
         cv2.namedWindow('out', cv2.WINDOW_NORMAL)
+        self.beamer.window('beamer_out', cv2.WINDOW_NORMAL)
         cv2.namedWindow('hsv_mask', cv2.WINDOW_NORMAL)
         cv2.namedWindow('hsv', cv2.WINDOW_NORMAL)
-        cv2.namedWindow('src', cv2.WINDOW_NORMAL)
+        # cv2.namedWindow('src', cv2.WINDOW_NORMAL)
+        # cv2.setMouseCallback('src', self.mouse_callback)
         cv2.createTrackbar('grad_val', 'out', 27, 255, self.nothing)
         cv2.createTrackbar('acc_thr', 'out', 48, 255, self.nothing)
         cv2.createTrackbar('min_dist', 'out', 28, 255, self.nothing)
@@ -79,7 +92,6 @@ class DetectTest:
                 self.win_size = src.shape[:2][::-1]
             t1 = now()
 
-            cv2.setMouseCallback('src', self.mouse_callback)
             gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
             gray = cv2.medianBlur(gray, 5)
             hsv = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
@@ -115,11 +127,12 @@ class DetectTest:
 
             # display (and resize) all windows
             cv2.imshow('xsrc', cv2.resize(xsrc, self.win_size))
-            cv2.imshow('src', cv2.resize(src, self.win_size, cv2.INTER_CUBIC))
+            # cv2.imshow('src', cv2.resize(src, self.win_size, cv2.INTER_CUBIC))
             cv2.imshow('hsv_mask', cv2.resize(mask, self.win_size, cv2.INTER_CUBIC))
             cv2.setMouseCallback('hsv', self.mouse_callback)
             cv2.imshow('hsv', cv2.resize(hsv, self.win_size, cv2.INTER_CUBIC))
             cv2.imshow('out', cv2.resize(out, self.win_size, cv2.INTER_CUBIC))
+            self.beamer.show('beamer_out', cv2.resize(out, (self.beamer.height, self.beamer.width)), fullscreen=True)
             # cv2.resizeWindow('hsv_mask', self.win_size[0], self.win_size[1])
             # cv2.resizeWindow('out', self.win_size[0], self.win_size[1])
             # cv2.resizeWindow('hsv', self.win_size[0], self.win_size[1])

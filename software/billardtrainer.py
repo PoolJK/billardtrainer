@@ -1,27 +1,29 @@
 #!/usr/bin/python3
 import argparse
-import cv2
+import os
 import sys
 
+from classes.utils import *
 from raspy.detect_test import DetectTest
 from test_ui import test_ui
 
 cl_parser = argparse.ArgumentParser()
-cl_parser.add_argument('-f', '--file', dest="filename", help="input (device, file, video, stream)",
+cl_parser.add_argument('-f', '--file', dest='filename', help='input (device, file, video, stream)',
                        required=False)
-cl_parser.add_argument('-cf', '--calibration-file', dest="cal_filename",
-                       help="input for calibration (device, file, video, stream)", required=False)
+cl_parser.add_argument('-c', '--calibrate', dest='calibrate', help='perform calibration', action='store_true',
+                       default=False)
+cl_parser.add_argument('-cf', dest='cal_filename', help='input to use in calibration', required=False)
 cl_parser.add_argument('-sr', '--source-resolution', dest='sres', help='source resolution', required=False)
 cl_parser.add_argument('-dr', '--display-resolution', dest='dres', help='display resolution', required=False)
-cl_parser.add_argument('-pc', dest="pc_test", help="for testing on pc",
-                       action="store_true", default=False)
-cl_parser.add_argument('-ui', dest="use_ui", help="use user interface, assumes -pc",
-                       action="store_true", default=False)
-cl_parser.add_argument('-d', '--debug', dest="debug", help="show more debug output",
-                       action="store_true", default=False)
-cl_parser.add_argument('-push', '--push-to-pi', dest="push_to_pi", help="push sources to pi",
-                       action="store_true", default=False)
-cl_parser.add_argument('-mir', '--mirror', dest="mirror", help="mirror input", action="store_true", required=False)
+cl_parser.add_argument('-pc', dest='pc_test', help='for testing on pc',
+                       action='store_true', default=False)
+cl_parser.add_argument('-ui', dest='use_ui', help='use user interface, assumes -pc',
+                       action='store_true', default=False)
+cl_parser.add_argument('-d', '--debug', dest='debug', help='show more debug output',
+                       action='store_true', default=False)
+cl_parser.add_argument('-push', '--push-to-pi', dest='push_to_pi', help='push sources to pi',
+                       action='store_true', default=False)
+cl_parser.add_argument('-mir', '--mirror', dest='mirror', help='mirror input', action='store_true', required=False)
 cl_parser.add_argument('-test', '--camera-test', dest='camera_test', help='only test specified input',
                        action='store_true', default=False)
 cl_parser.add_argument('-p', '--preview', dest='preview', help='only show preview', action='store_true', default=False)
@@ -32,7 +34,6 @@ if args.push_to_pi:
     sys.argv.remove('-push')
     if '-pc' in sys.argv:
         sys.argv.remove('-pc')
-    import os
     # push to pi
     if os.name == 'nt':
         # push only modified files

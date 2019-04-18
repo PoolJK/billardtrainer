@@ -48,7 +48,7 @@ def correct():
                 new_x = x - half_width
                 new_y = y - half_height
                 distance = math.sqrt(math.pow(new_x, 2) + math.pow(new_y, 2))
-                if r == 0:
+                if distance == 0:
                     theta = 1
                 else:
                     r = distance / correction_radius
@@ -76,5 +76,4 @@ def correct():
     exit(0)
 
 
-if __name__ == '__main__':
-    correct()
+correct()

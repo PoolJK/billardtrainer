@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 
-import cv2
-import numpy as np
+from classes.utils import *
 
 
 class Beamer:
@@ -10,9 +9,30 @@ class Beamer:
     Needs to take offset and distance in account to correct displayed image.
     """
 
-    def __init__(self, width, height):
-        self.width = width
-        self.height = height
+    def __init__(self, args, win_size=None, offset=None):
+        self.debug = args.debug
+        self.win_size = win_size
+        self.width = 1920
+        self.height = 1080
+        if offset is None:
+            offset = (0, 0)
+        self.offset = offset
+
+    @staticmethod
+    def window(name, flags):
+        cv2.namedWindow(name, flags)
+
+    def show(self, winname, image, position=None, fullscreen=False):
+        if position is None:
+            position = (0, 0, 0, 0)
+        cv2.imshow(winname, image)
+        cv2.moveWindow(winname, position[0] + self.offset[0], position[1] + self.offset[1])
+        if position[3] == 1 and not fullscreen:
+            cv2.setWindowProperty(winname, cv2.WND_PROP_FULLSCREEN, 0)
+            cv2.resizeWindow(winname, image.shape[1], image.shape[0])
+        else:
+            cv2.setWindowProperty(winname, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            cv2.imshow(winname, image)
 
     @staticmethod
     def get_image(table, image):
