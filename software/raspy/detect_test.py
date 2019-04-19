@@ -159,7 +159,7 @@ def main(argv):
     #binary = cv2.bitwise_not(gray)
     #cv2.imshow("thresh", thresh)
     #_, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-    _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     for contour in contours:
         (x, y), (w, h), angle = cv2.minAreaRect(contour)

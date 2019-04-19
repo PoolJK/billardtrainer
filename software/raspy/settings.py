@@ -1,7 +1,7 @@
-#!/usr/bin/python3
 """
-Some settings to evaluate on runtime for all modules
+Some settings to evaluate on runtime to be accessed across all modules
 """
-on_raspy = False
-debugging = True
-debug_level = 0
+class Settings:
+    on_raspy= False
+    debugging = True
+    debug_level = 0
