@@ -12,7 +12,7 @@ class Camera:
     n_frames = 0
     capture = None
     calibration = None
-    calibrated = False
+    is_calibrated = False
     device = None
     debug = False
     mirror = False
@@ -41,38 +41,47 @@ class Camera:
         # else open device default (DSHOW on PC, 0 on Pi)
         else:
             self.device = cv2.CAP_DSHOW if args.pc_test else 0
+        self.load_calibration()
         # camera_test flag set?
         if args.camera_test:
             self.camera_test(self.device)
         elif args.preview:
             self.show_preview(self.device)
-        else:
-            self.load_calibration()
 
     def load_calibration(self):
-        device = self.device
-        path = 'resources/calibration/'
-        if os.path.isdir(path) and os.path.isfile('{}{}.txt'.format(path, device)):
-            try:
-                calibration = open('{}{}.txt'.format(path, device), 'r').read()
-                self.calibration = eval(calibration)
-                self.calibrated = True
-            except Exception as e:
-                print('camera: error reading calibration file', e)
-        return self.calibrated
-
-    def save_calibration(self):
-        filename = self.device
+        dirname = self.device
         replace = ':./'
         for r in replace:
-            filename = filename.replace(r, '_')
-        path = 'resources/calibration/'
+            dirname = dirname.replace(r, '_')
+        path = 'resources/calibration/' + dirname
+        if not os.path.isdir(path):
+            return 0
+        self.calibration = {}
+        try:
+            cal = np.load(path + '/cal.npz')
+            for key in cal:
+                self.calibration[key] = cal[key]
+        except Exception as e:
+            print('camera: error reading calibration file', e)
+            self.calibration = None
+            return 0
+        if len(self.calibration) >= 3:
+            self.is_calibrated = True
+        else:
+            self.calibration = None
+        return self.is_calibrated
+
+    def save_calibration(self):
+        if self.calibration is None:
+            return 0
+        dirname = self.device
+        replace = ':./'
+        for r in replace:
+            dirname = dirname.replace(r, '_')
+        path = 'resources/calibration/' + dirname + '/'
         if not os.path.isdir(path):
             os.makedirs(path)
-        # TODO: if file exists
-        file = open('{}{}.txt'.format(path, filename), 'w')
-        file.write(str(self.calibration))
-        file.close()
+        np.savez(path + 'cal', **self.calibration)
 
     def auto_calibrate(self, beamer, device=None):
         if device is None:
@@ -187,6 +196,7 @@ class Camera:
                 # marker if corners are found or not
                 cv2.circle(src, (30, 30), 20, (0, 0, 255) if corners is None else (0, 255, 0), -1)
                 cv2.imshow("src", cv2.resize(src, self.win_size))
+                cv2.resizeWindow('src', self.win_size[0], self.win_size[1])
                 t3 = now()
 
                 if self.debug:
@@ -224,10 +234,11 @@ class Camera:
                     cv2.destroyAllWindows()
                     self.stop_capture()
                     exit(0)
+        self.save_calibration()
         self.stop_capture()
         self.device = old_device
         cv2.destroyAllWindows()
-        self.calibrated = True
+        self.is_calibrated = True
 
     # method to calibrate optical parameters
     def manual_calibrate(self, beamer, cal_filename=None, show_help=True, interactive=True, image_points=None):
@@ -430,14 +441,13 @@ class Camera:
         new_k = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(k, d, gray_image.shape[::-1], np.eye(3),
                                                                        balance=balance)
         map1, map2 = cv2.fisheye.initUndistortRectifyMap(k, d, np.eye(3), new_k, gray_image.shape[::-1], cv2.CV_16SC2)
-        self.calibration = {'k': k, 'd': d, 'map1': map1, 'map2': map2, 'size': gray_image.shape[::-1]}
-        self.save_calibration()
+        self.calibration = {'map1': map1, 'map2': map2, 'size': gray_image.shape[::-1]}
         return 1
 
     def undistort_image(self, src):
         # TODO: cropping ?
         # also TODO: scaling
-        src = cv2.resize(src, self.calibration['size'])
+        src = cv2.resize(src, tuple(self.calibration['size']))
         out = cv2.remap(src, self.calibration['map1'], self.calibration['map2'],
                         interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
         return out
@@ -447,7 +457,7 @@ class Camera:
         # get frame from input
         src = self.pull_frame(src)
         # if no calibration available, return frame
-        if not self.calibrated or src is 0:
+        if not self.is_calibrated or src is 0:
             return src, src
         return src, self.undistort_image(src)
 
@@ -503,6 +513,7 @@ class Camera:
         # TODO: move first read to open function ?
         # wait for first read (blocking call for 5s, None if timed out)
         f = self.capture.read()
+        # cv2.imshow('f', cv2.resize(f, self.win_size))
         if f is None:
             print('camera: error, couldn\'t start capture')
             return
@@ -596,7 +607,8 @@ class Camera:
     def show_preview(self, device):
         self.prepare_capture(device)
         while True:
-            cv2.imshow('preview', self.pull_frame())
+            _, src = self.pull_cal_frame()
+            cv2.imshow('preview', src)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 break

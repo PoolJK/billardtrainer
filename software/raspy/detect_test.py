@@ -16,24 +16,12 @@ class DetectTest:
     y_scale = 0
     camera = None
     beamer = None
-    win_size = None
-    src_size = None
     debug = False
 
     def __init__(self, args):
         if args.debug:
             self.debug = True
-        # get display resolution
-        if args.dres:
-            x, y = 0, 0
-            if ',' in args.dres:
-                x, y = args.dres.split(',')
-            elif 'x' in args.dres:
-                x, y = args.dres.split('x')
-            else:
-                print('bad resolution format, use 1280,720 or 1280x720')
-                exit(0)
-            self.win_size = (int(x), int(y))
+        # get source resolution:
         if args.sres:
             x, y = 0, 0
             if ',' in args.sres:
@@ -46,26 +34,41 @@ class DetectTest:
             self.src_size = (int(x), int(y))
         else:
             self.src_size = None
-        # set up camera (and calibrate)
+        # get display resolution
+        if args.dres:
+            x, y = 0, 0
+            if ',' in args.dres:
+                x, y = args.dres.split(',')
+            elif 'x' in args.dres:
+                x, y = args.dres.split('x')
+            else:
+                print('bad resolution format, use 1280,720 or 1280x720')
+                exit(0)
+            self.win_size = (int(x), int(y))
+        else:
+            self.win_size = self.src_size
+        # set up camera
         self.camera = Camera(args, self.src_size, self.win_size)
         # offset to other monitor
         self.beamer = Beamer(args, self.win_size, (-1920, 0))
+        # preview is started in Camera, so don't start anything afterwards
         if not args.preview:
-            # run calibration
+            # run calibration per flag
             if args.calibrate:
                 self.camera.auto_calibrate(self.beamer, args.cal_filename)
             else:
-                if not self.camera.load_calibration():
+                # run manual if not loaded
+                if not self.camera.is_calibrated:
                     self.camera.manual_calibrate(self.beamer)
 
     def main(self):
-        print('\nstarting main(){}, \'x\' to quit, \'s\' to save output frame'
+        print('\nstarting detection test{}, \'x\' to quit, \'s\' to save output frame'
               .format(' in debug mode' if self.debug else ''))
         self.camera.prepare_capture()
         cv2.namedWindow('out', cv2.WINDOW_NORMAL)
         self.beamer.window('beamer_out', cv2.WINDOW_NORMAL)
-        cv2.namedWindow('hsv_mask', cv2.WINDOW_NORMAL)
-        cv2.namedWindow('hsv', cv2.WINDOW_NORMAL)
+        # cv2.namedWindow('hsv_mask', cv2.WINDOW_NORMAL)
+        # cv2.namedWindow('hsv', cv2.WINDOW_NORMAL)
         # cv2.namedWindow('src', cv2.WINDOW_NORMAL)
         # cv2.setMouseCallback('src', self.mouse_callback)
         cv2.createTrackbar('grad_val', 'out', 27, 255, self.nothing)
@@ -74,12 +77,12 @@ class DetectTest:
         cv2.createTrackbar('dp', 'out', 2, 255, self.nothing)
         cv2.createTrackbar('min_radius', 'out', 11, 255, self.nothing)
         cv2.createTrackbar('max_radius', 'out', 19, 255, self.nothing)
-        cv2.createTrackbar('h_lower', 'hsv_mask', 0, 255, self.nothing)
-        cv2.createTrackbar('s_lower', 'hsv_mask', 0, 255, self.nothing)
-        cv2.createTrackbar('v_lower', 'hsv_mask', 0, 255, self.nothing)
-        cv2.createTrackbar('h_upper', 'hsv_mask', 255, 255, self.nothing)
-        cv2.createTrackbar('s_upper', 'hsv_mask', 255, 255, self.nothing)
-        cv2.createTrackbar('v_upper', 'hsv_mask', 255, 255, self.nothing)
+        #cv2.createTrackbar('h_lower', 'hsv_mask', 0, 255, self.nothing)
+        #cv2.createTrackbar('s_lower', 'hsv_mask', 0, 255, self.nothing)
+        #cv2.createTrackbar('v_lower', 'hsv_mask', 0, 255, self.nothing)
+        #cv2.createTrackbar('h_upper', 'hsv_mask', 255, 255, self.nothing)
+        #cv2.createTrackbar('s_upper', 'hsv_mask', 255, 255, self.nothing)
+        #cv2.createTrackbar('v_upper', 'hsv_mask', 255, 255, self.nothing)
         while True:
             start = now()
 
@@ -88,21 +91,19 @@ class DetectTest:
             if src is None:
                 print('error in main: couldn\'t read from src')
                 return 0
-            if self.win_size is None:
-                self.win_size = src.shape[:2][::-1]
             t1 = now()
 
             gray = cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
             gray = cv2.medianBlur(gray, 5)
-            hsv = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
-            lower = np.array([cv2.getTrackbarPos('h_lower', 'hsv_mask'), cv2.getTrackbarPos('s_lower', 'hsv_mask'),
-                              cv2.getTrackbarPos('v_lower', 'hsv_mask')])
-            upper = np.array([cv2.getTrackbarPos('h_upper', 'hsv_mask'), cv2.getTrackbarPos('s_upper', 'hsv_mask'),
-                              cv2.getTrackbarPos('v_upper', 'hsv_mask')])
+            #hsv = cv2.cvtColor(src, cv2.COLOR_BGR2HSV)
+            #lower = np.array([cv2.getTrackbarPos('h_lower', 'hsv_mask'), cv2.getTrackbarPos('s_lower', 'hsv_mask'),
+            #                  cv2.getTrackbarPos('v_lower', 'hsv_mask')])
+            #upper = np.array([cv2.getTrackbarPos('h_upper', 'hsv_mask'), cv2.getTrackbarPos('s_upper', 'hsv_mask'),
+            #                  cv2.getTrackbarPos('v_upper', 'hsv_mask')])
             # Threshold the HSV image
-            mask = cv2.inRange(hsv, lower, upper)
+            #mask = cv2.inRange(hsv, lower, upper)
             # Bitwise-AND mask and original image
-            gray_masked = cv2.bitwise_and(gray, gray, mask=mask)
+            #gray_masked = cv2.bitwise_and(gray, gray, mask=mask)
             # get parameters for hough_circle detection
             grad_val = max(cv2.getTrackbarPos('grad_val', 'out'), 1)
             acc_thr = max(cv2.getTrackbarPos('acc_thr', 'out'), 1)
@@ -113,7 +114,7 @@ class DetectTest:
             t2 = now()
 
             # run detection
-            found_balls = Ball.find(gray_masked, dp, min_dist, grad_val, acc_thr, min_radius, max_radius)
+            found_balls = Ball.find(gray, dp, min_dist, grad_val, acc_thr, min_radius, max_radius)
             t3 = now()
 
             # create output
@@ -128,9 +129,9 @@ class DetectTest:
             # display (and resize) all windows
             cv2.imshow('xsrc', cv2.resize(xsrc, self.win_size))
             # cv2.imshow('src', cv2.resize(src, self.win_size, cv2.INTER_CUBIC))
-            cv2.imshow('hsv_mask', cv2.resize(mask, self.win_size, cv2.INTER_CUBIC))
-            cv2.setMouseCallback('hsv', self.mouse_callback)
-            cv2.imshow('hsv', cv2.resize(hsv, self.win_size, cv2.INTER_CUBIC))
+            #cv2.imshow('hsv_mask', cv2.resize(mask, self.win_size, cv2.INTER_CUBIC))
+            #cv2.setMouseCallback('hsv', self.mouse_callback)
+            #cv2.imshow('hsv', cv2.resize(hsv, self.win_size, cv2.INTER_CUBIC))
             cv2.imshow('out', cv2.resize(out, self.win_size, cv2.INTER_CUBIC))
             self.beamer.show('beamer_out', cv2.resize(out, (self.beamer.height, self.beamer.width)), fullscreen=True)
             # cv2.resizeWindow('hsv_mask', self.win_size[0], self.win_size[1])

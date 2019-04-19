@@ -59,6 +59,7 @@ class InputStream:
 
     def update(self):
         while True:
+            # print('\nupdate loop start')
             n = now()
             # if the thread indicator variable is set, stop the thread
             if self.stopped:
@@ -88,18 +89,18 @@ class InputStream:
                 else:
                     self.s_fps.append(0)
                 # push one out if full
-                # only when not single frame
                 if self.Q.full():
                     try:
-                        self.Q.get_nowait()
+                        _ = self.Q.get_nowait()
                     except queue.Empty:
                         pass
                 self.Q.put(frame)
-                #print('frame added to queue')
+                # print('frame added to queue')
                 self.last_queued = n
                 self.last = frame
             else:
                 wait(1000)
+            # print('\nupdate loop end')
 
     def set(self, p1, p2):
         # set flags of stream (if exists)
@@ -130,29 +131,29 @@ class InputStream:
 
     def read(self):
         n = now()
-
+        # print('\nread start')
         # check if still running TODO: needed?
         if self.stopped:
             if self.debug:
                 lp('InputStream: failed read: source is stopped')
-            return 0
+            return None
 
         # check source is still sending frames
-        if dt(self.last_received, n) > 10000:
+        if dt(self.last_received, n) > 20000:
             if self.debug:
                 lp('InputStream: source timed out during read(), stopping')
             self.stop_capture()
-            return 0
+            return None
 
         # get frame from Queue, None if timeout
         try:
-            #print('getting from queue')
-            frame = self.Q.get(timeout=5)
+            # print('getting from queue')
+            frame = np.copy(self.Q.get(timeout=20))
         except queue.Empty:
             frame = None
         if frame is None:
             print('InputStream: timeout in read, device={}'.format(self.device))
-            return 0
+            return None
 
         # update fps data
         d_fps = self.get_display_fps()
@@ -165,10 +166,13 @@ class InputStream:
         self.last_read = n
 
         # put queue- and timestamp on it
-        cv2.putText(frame, 'q:{} tsl:{: 3d}ms fps:{:02.1f}(display) {:02.1f}(source)'
-                    .format(self.Q.qsize() + 1, t_s_read, d_fps, s_fps),
+        cv2.putText(frame,
+                    'q:{} tsl:{: 4d}ms fps:{: 3.1f}(display) {: 3.1f}(source)'
+                    .format(self.Q.qsize(), t_s_read, d_fps, s_fps),
+                    # 'some text',
                     (0, frame.shape[0]), cv2.FONT_HERSHEY_COMPLEX, max(.5, frame.shape[0] / 800),
-                    (255, 255, 255))
+                    (255, 255, 255), 2, cv2.LINE_AA)
+        # print('\nread end')
         return frame
 
     def stop_capture(self):
