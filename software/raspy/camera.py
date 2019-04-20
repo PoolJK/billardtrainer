@@ -37,15 +37,15 @@ class Camera:
         :return: corrected image image for output on beamer
         """
 
+        print("found table: x: {}, y: {}, w:{}, h:{}, a:{}".format(table.x, table.y, table.w,
+                                                                   table.h, table.angle))
         box1 = cv2.boxPoints(((table.x, table.y), (table.w, table.h), table.angle))
-        print("found table: x: {}, y: {}, w:{}, h:{}".format(table.x, table.y, table.w, table.h))
         print(box1)
 
+        print("mini table: x: {}, y: {}, w:{}, h:{}, a:{}".format(self.used_table.x,
+                self.used_table.y, self.used_table.w, self.used_table.h, self.used_table.angle))
         box2 = cv2.boxPoints(((self.used_table.x, self.used_table.y),
                               (self.used_table.w, self.used_table.h), self.used_table.angle))
-
-        print("mini table: x: {}, y: {}, w:{}, h:{}".format(self.used_table.x, self.used_table.y,
-                                                            self.used_table.w, self.used_table.h))
         print(box2)
 
         pts_dst = np.array([box2[0], box2[1], box2[2], box2[3]])
