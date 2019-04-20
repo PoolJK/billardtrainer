@@ -228,7 +228,6 @@ class Camera:
                         beamer.show('pattern', pat, position)
                         image_points.pop()
                         rejected += 1
-                        continue
                 # process key inputs
                 if key == 27 or key == ord('q'):
                     print('\nbye')
@@ -414,7 +413,7 @@ class Camera:
     def perform_calibration(self, gray_image, image_points, grid, balance):
         # scale = distance between chessboard corners in mm ?
         scale = 1
-        calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC  + cv2.fisheye.CALIB_FIX_SKEW
+        calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC + cv2.fisheye.CALIB_FIX_SKEW
         k = np.zeros((3, 3))
         d = np.zeros((4, 1))
 
@@ -435,10 +434,13 @@ class Camera:
         except cv2.error as e:
             print('\nerror in calibration function:', e)
             return 0
-        print('\nrms={}'.format(rms))
+        # print('\nrms={}'.format(rms))
         # if rms too high, reject
-        if rms > 20 or (self.calibration is not None and rms > self.calibration['rms']):
+        if rms > 20:
             print('\nrms too high: {}'.format(rms))
+            return 0
+        if self.calibration is not None and rms > self.calibration['rms']:
+            print('\nrms higher than last: is:{} was:{}'.format(rms, self.calibration['rms']))
             return 0
         new_k = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(k, d, gray_image.shape[::-1], np.eye(3),
                                                                        balance=balance)
