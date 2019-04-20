@@ -50,7 +50,7 @@ class DetectTest:
         # set up camera
         self.camera = Camera(args, self.src_size, self.win_size)
         # offset to other monitor
-        self.beamer = Beamer(args, self.win_size, (-1920, 0))
+        self.beamer = Beamer(args, self.win_size, (1920, 0))
         # preview is started in Camera, so don't start anything afterwards
         if not args.preview:
             # run calibration per flag
@@ -62,6 +62,8 @@ class DetectTest:
                     self.camera.manual_calibrate(self.beamer)
 
     def main(self):
+        self.camera.show_preview(self.camera.device)
+        exit(0)
         print('\nstarting detection test{}, \'x\' to quit, \'s\' to save output frame'
               .format(' in debug mode' if self.debug else ''))
         self.camera.prepare_capture()

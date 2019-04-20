@@ -41,7 +41,8 @@ class Camera:
         # else open device default (DSHOW on PC, 0 on Pi)
         else:
             self.device = cv2.CAP_DSHOW if args.pc_test else 0
-        self.load_calibration()
+        if not args.calibrate:
+            self.load_calibration()
         # camera_test flag set?
         if args.camera_test:
             self.camera_test(self.device)
@@ -105,7 +106,7 @@ class Camera:
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
         # new matrix alpha
-        balance = 0.2
+        balance = 0.1
 
         # params for bw threshold
         block_size = 55
@@ -413,7 +414,7 @@ class Camera:
     def perform_calibration(self, gray_image, image_points, grid, balance):
         # scale = distance between chessboard corners in mm ?
         scale = 1
-        calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC+cv2.fisheye.CALIB_FIX_SKEW
+        calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC  + cv2.fisheye.CALIB_FIX_SKEW
         k = np.zeros((3, 3))
         d = np.zeros((4, 1))
 
@@ -424,6 +425,7 @@ class Camera:
         # fill object_points array
         object_points = [object_points_grid] * len(image_points)
 
+        """ method 1: fisheye """
         # calibrate according to various tutorial sources...
         try:
             rms, k, d, rvecs, tvecs = cv2.fisheye\
@@ -433,23 +435,39 @@ class Camera:
         except cv2.error as e:
             print('\nerror in calibration function:', e)
             return 0
-        # print('\nrms={}'.format(rms))
+        print('\nrms={}'.format(rms))
         # if rms too high, reject
-        if rms > 20:
+        if rms > 20 or (self.calibration is not None and rms > self.calibration['rms']):
             print('\nrms too high: {}'.format(rms))
             return 0
         new_k = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(k, d, gray_image.shape[::-1], np.eye(3),
                                                                        balance=balance)
         map1, map2 = cv2.fisheye.initUndistortRectifyMap(k, d, np.eye(3), new_k, gray_image.shape[::-1], cv2.CV_16SC2)
-        self.calibration = {'map1': map1, 'map2': map2, 'size': gray_image.shape[::-1]}
+        """ method 2: normal """
+        r, mtx, dist, rv, tv = cv2.calibrateCamera(object_points, image_points,
+                                                   gray_image.shape[::-1], None, None)
+        self.calibration = {'size': gray_image.shape[::-1],
+                            'map1': map1, 'map2': map2, 'rms': rms,
+                            'mtx': mtx, 'dist': dist}
         return 1
 
     def undistort_image(self, src):
         # TODO: cropping ?
         # also TODO: scaling
         src = cv2.resize(src, tuple(self.calibration['size']))
-        out = cv2.remap(src, self.calibration['map1'], self.calibration['map2'],
-                        interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
+        if self.calibration['rms'] < 2:  # fisheye error low
+            """ method 1: fisheye """
+            out = cv2.remap(src, self.calibration['map1'], self.calibration['map2'],
+                            interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
+        else:  # normal camera better
+            """ method 2: normal """
+            new_mtx, roi = cv2.getOptimalNewCameraMatrix(self.calibration['mtx'], self.calibration['dist'],
+                                                         self.calibration['map1'].shape[:2], 1, src.shape[:2])
+            out = cv2.undistort(src, self.calibration['mtx'], self.calibration['dist'], None, new_mtx)
+            y, x, h, w = roi
+            if w > 0 and h > 0:
+                cropped = out[y:y+h, x:x+w]
+                cv2.imshow('cropped', cropped)
         return out
 
     # method to return calibrated frame
@@ -607,8 +625,10 @@ class Camera:
     def show_preview(self, device):
         self.prepare_capture(device)
         while True:
-            _, src = self.pull_cal_frame()
-            cv2.imshow('preview', src)
+            src, cal = self.pull_cal_frame()
+            cv2.imshow('src', src)
+            if cal is not None:
+                cv2.imshow('cal', cal)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 break
