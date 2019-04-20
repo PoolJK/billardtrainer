@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 from software.raspy.settings import Settings
-from software.raspy.ball import Ball
+#from software.raspy.ball import Ball
 
 
 class Table:
@@ -26,15 +26,15 @@ class Table:
         self.clothColor = color
 
 
-    def is_inside(self, ball: Ball) -> bool:
-        """
-        Check if ball is inside table
-        """
-        if(ball.x > self.x and ball.x < self.x + self.w and
-            ball.y > self.y and ball.y < self.y + self.h):
-            return True
-        else:
-            return False
+    # def is_inside(self, ball: Ball) -> bool:
+    #     """
+    #     Check if ball is inside table
+    #     """
+    #     if(ball.x > self.x and ball.x < self.x + self.w and
+    #         ball.y > self.y and ball.y < self.y + self.h):
+    #         return True
+    #     else:
+    #         return False
 
 
     def draw_self(self, outpict):
@@ -83,8 +83,6 @@ class Table:
                 # convert to integer
                 #box = np.int0(box)
                 return Table(x, y, w, h, angle)
-
-
 
 
 class SnookerTable(Table):

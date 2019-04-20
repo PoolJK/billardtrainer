@@ -3,24 +3,28 @@ import cv2
 import numpy as np
 from software.raspy.table import MiniTable
 
+pict_resolution_x = 1280
+pict_resolution_y = 960
+pict_pix_per_mm = 12.115
+
 class Camera:
     """
     Taking pictures from camera and undistort them
     """
+
     def __init__(self):
         self.picture = []
         self.used_table = MiniTable()
 
-
-    def take_picture(self, resolution_x, resolution_y):
+    def take_picture(self):
         # take picture from camera
         capture = cv2.VideoCapture(0)
         if not capture.isOpened:
             print("Error access camera!")
             return -1
 
-        capture.set(cv2.CAP_PROP_FRAME_WIDTH, resolution_x)
-        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution_y)
+        capture.set(cv2.CAP_PROP_FRAME_WIDTH, pict_resolution_x)
+        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, pict_resolution_y)
 
         has_frame, self.picture = capture.read()
         if not has_frame:

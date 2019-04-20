@@ -1,15 +1,9 @@
 import cv2
 import numpy as np
+from software.raspy.ball import Ball
 from software.raspy.settings import Settings
 
-
-def mouse_callback(event, x, y, flags, param):
-    """
-    print coordinates of mouse on click
-    """
-    if event == cv2.EVENT_LBUTTONDOWN:
-        print("Coord: {} {}".format(x, y))
-
+beam_zoom = 11.8
 
 class Beamer:
     """
@@ -35,8 +29,6 @@ class Beamer:
             cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         else:
             cv2.namedWindow("beamer")
-            # attach mous callback to window for measuring
-            cv2.setMouseCallback("beamer", mouse_callback)
 
 
     def show_objects(self):
@@ -59,4 +51,8 @@ class Beamer:
 
 
     def add_object(self, object):
+        if type(object) is Ball:
+            object.x = object.x * beam_zoom
+            object.y = object.y * beam_zoom
+            object.radius = object.radius * beam_zoom
         self.objects.append(object)

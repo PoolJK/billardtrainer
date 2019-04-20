@@ -62,7 +62,6 @@ def main():
             print('Error taking picture!')
             return -1
 
-
     if Settings.debugging:
         cv2.imshow("Source Image", src)
 
@@ -94,7 +93,7 @@ def main():
     for ball in found_balls:
         #if(found_table.isInside(ball)):
         miniBeamer.add_object(ball)
-        print("ball found")
+        #print("ball found")
 
     miniBeamer.show_objects()
 
