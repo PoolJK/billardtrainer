@@ -1,7 +1,6 @@
-#!/usr/bin/python3
 import cv2
 import numpy as np
-import settings
+from software.raspy.settings import Settings
 
 
 class Ball:
@@ -29,9 +28,9 @@ class Ball:
         self.color = color
 
     
-    def draw(self, outpict):
+    def draw_self(self, outpict):
         # draw mid point for debugging
-        if settings.debugging:
+        if Settings.debugging:
             cv2.drawMarker(outpict, (int(self.x), int(self.y)), (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
         # circle outline
         cv2.circle(outpict, (int(self.x), int(self.y)), int(self.radius) + 5, (255, 255, 255), 3)
@@ -73,17 +72,21 @@ class Ball:
 
 
     @staticmethod
-    def find(grayimage):
+    def find(image):
         """
         Find balls in image
-        :param grayimage: gray image for houghCircles algorithm
+        :param grayimage: Image for houghCircles algorithm
         :return: list with found balls
         """
-        rows = grayimage.shape[0]
+        # create gray image
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        gray = cv2.medianBlur(gray, 5)
+
+        rows = gray.shape[0]
         # print("{} {} {} {}".format(p1, p2, minR, maxR))
 
         # find circles in image
-        circles = cv2.HoughCircles(grayimage, cv2.HOUGH_GRADIENT, 1, rows / 8, param1 = Ball.p1,
+        circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 1, rows / 8, param1 = Ball.p1,
                                    param2 = Ball.p2, minRadius = Ball.minR, maxRadius = Ball.maxR)
 
         balls = []
