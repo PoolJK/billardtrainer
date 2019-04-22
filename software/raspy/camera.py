@@ -1,7 +1,7 @@
 import cv2
 
 import numpy as np
-from software.raspy.table import MiniTable
+from software.raspy.visual_items.table import MiniTable
 
 pict_resolution_x = 1280
 pict_resolution_y = 960
@@ -46,10 +46,12 @@ class Camera:
         box1 = cv2.boxPoints(((table.x, table.y), (table.w, table.h), table.angle))
         print(box1)
 
-        print("mini table: x: {}, y: {}, w:{}, h:{}, a:{}".format(self.used_table.x,
-                self.used_table.y, self.used_table.w, self.used_table.h, self.used_table.angle))
-        box2 = cv2.boxPoints(((self.used_table.x, self.used_table.y),
-                              (self.used_table.w, self.used_table.h), self.used_table.angle))
+        print("mini table: x: {}, y: {}, w:{}, h:{}, a:{}".format(self.used_table.x / pict_pix_per_mm,
+                self.used_table.y / pict_pix_per_mm, self.used_table.w / pict_pix_per_mm,
+                                        self.used_table.h / pict_pix_per_mm, self.used_table.angle))
+        box2 = cv2.boxPoints(((self.used_table.x / pict_pix_per_mm, self.used_table.y / pict_pix_per_mm),
+                              (self.used_table.w / pict_pix_per_mm, self.used_table.h / pict_pix_per_mm),
+                                    self.used_table.angle))
         print(box2)
 
         pts_dst = np.array([box2[0], box2[1], box2[2], box2[3]])

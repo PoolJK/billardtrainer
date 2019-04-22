@@ -1,12 +1,11 @@
 #!/usr/bin/python3
 
 import argparse
-import sys
 import cv2
 import numpy as np
 from software.raspy.settings import Settings
-from software.raspy.ball import Ball
-from software.raspy.table import Table
+from software.raspy.visual_items.ball import Ball
+from software.raspy.visual_items.table import Table
 from software.raspy.beamer import Beamer
 from software.raspy.camera import Camera
 
@@ -38,7 +37,7 @@ def main():
         Settings.on_raspy = True
 
     # create Beamer and Camera for taking picture and showing results
-    miniBeamer = Beamer(1280, 720)
+    miniBeamer = Beamer()
     raspiCam = Camera()
 
     # get image from file or camera
@@ -76,15 +75,17 @@ def main():
         print("no table for correction found")
         return -1
 
-    if Settings.debugging:
-        cv2.imshow("undist", undistorted)
-
     #find table
     found_table = Table.find(undistorted)
     #draw table
+#    found_table = MiniTable()
     if found_table is not None:
         miniBeamer.add_object(found_table)
-        print("table found")
+        if Settings.debugging:
+            found_table.draw_self(undistorted)
+
+    if Settings.debugging:
+        cv2.imshow("undist", undistorted)
 
     #find balls
     found_balls = Ball.find(undistorted)

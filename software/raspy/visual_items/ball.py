@@ -59,6 +59,7 @@ class Ball:
 
         if circles is not None:
             for i in circles[0, :]:
+                #balls.append(Ball(i[0], i[1], i[2]))
                 balls.append(Ball(i[0] / pict_pix_per_mm, i[1] / pict_pix_per_mm, i[2] / pict_pix_per_mm))
 
         return balls

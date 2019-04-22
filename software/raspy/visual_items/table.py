@@ -82,7 +82,7 @@ class Table:
                 #print("Box: {}".format(box))
                 # convert to integer
                 #box = np.int0(box)
-                return Table(x, y, w, h, angle)
+                return Table(x / 12.115, y / 12.115, w / 12.115, h / 12.115, angle)
 
 
 class SnookerTable(Table):
@@ -98,6 +98,6 @@ class MiniTable(Table):
     Mini table used for testing purposes
     """
     def __init__(self):
-        super().__init__(640, 360, 600, 1068, -90.0, [34, 55, 88])
+        super().__init__(640, 480, 600, 1068, -90.0, [34, 55, 88])
 
 
