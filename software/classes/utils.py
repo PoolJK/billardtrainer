@@ -4,28 +4,35 @@ import cv2
 import numpy as np
 
 
+# shorthand sleep
 def wait(ms):
     time.sleep(ms / 1000)
 
 
+# lock protected print in Threads
 def lp(msg):
-    # lock protected print in Threads
     lock = Lock()
     lock.acquire()
     print(msg)
     lock.release()
 
 
+# empty method as callback for Trackbars
+def nothing(*x):
+    pass
+
+
+# time difference as int in [ms]
 def dt(t1, t2):
-    # time difference as int in [ms]
     return int((t2-t1)*1000)
 
 
+# current time
 def now():
-    # current time
     return time.time()
 
 
+# rotate an image keeping the full image (
 def rotate_bound(image, angle):
     # grab the dimensions of the image and then determine the
     # center

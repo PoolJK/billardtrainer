@@ -3,7 +3,7 @@
 import argparse
 import cv2
 import numpy as np
-import raspy.settings as settings
+import classes.settings as settings
 from classes.ball import Ball
 from classes.table import Table
 from classes.beamer import Beamer

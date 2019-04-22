@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import cv2
-import raspy.settings as settings
+import classes.settings as settings
 
 
 class Ball:

@@ -23,7 +23,7 @@ class InputStream:
         self.last = None
         if filter_in is None:
             # default is 3 average
-            self.filter_in = Filter(3, 'avg')
+            self.filter_in = Filter(1, 'avg')
         else:
             self.filter_in = filter_in
         self.stream = self.open(device)
@@ -38,7 +38,7 @@ class InputStream:
                     return 0
                 device = self.device
             self.stream = cv2.VideoCapture(device)
-        # TODO: V4L & Stream workaround
+        # TODO: V4L & Stream workaround for FRAME_COUNT
         self.n_frames = self.stream.get(cv2.CAP_PROP_FRAME_COUNT)
         self.stream.set(cv2.CAP_PROP_FRAME_WIDTH, self.width)
         self.stream.set(cv2.CAP_PROP_FRAME_HEIGHT, self.height)
@@ -70,9 +70,9 @@ class InputStream:
             if self.stopped:
                 return
             # check time since last received image
-            if dt(self.last_received, n) > 10000:
+            if dt(self.last_received, n) > 20000:
                 if self.debug:
-                    lp('InputStream.thread: input timed out after 10s, stopping')
+                    lp('InputStream.thread: input timed out after 20s, stopping')
                 self.stop_capture()
                 return
             # read the next frame
@@ -148,7 +148,7 @@ class InputStream:
         # check source is still sending frames
         if dt(self.last_received, n) > 20000:
             if self.debug:
-                lp('InputStream: source timed out during read(), stopping')
+                lp('InputStream: source timed out during read() (20s), stopping')
             self.stop_capture()
             return None
 

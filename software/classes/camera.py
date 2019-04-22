@@ -42,15 +42,14 @@ class Camera:
         else:
             self.device = cv2.CAP_DSHOW if args.pc_test else 0
         if not args.calibrate:
-            self.load_calibration()
+            if not self.load_calibration():
+                print('Camera: no calibration loaded')
         # camera_test flag set?
         if args.camera_test:
             self.camera_test(self.device)
-        elif args.preview:
-            self.show_preview(self.device)
 
     def load_calibration(self):
-        dirname = self.device
+        dirname = str(self.device)
         replace = ':./'
         for r in replace:
             dirname = dirname.replace(r, '_')
@@ -66,7 +65,7 @@ class Camera:
             print('camera: error reading calibration file', e)
             self.calibration = None
             return 0
-        if len(self.calibration) >= 3:
+        if len(self.calibration) >= 2:
             self.is_calibrated = True
         else:
             self.calibration = None
@@ -75,7 +74,7 @@ class Camera:
     def save_calibration(self):
         if self.calibration is None:
             return 0
-        dirname = self.device
+        dirname = str(self.device)
         replace = ':./'
         for r in replace:
             dirname = dirname.replace(r, '_')
@@ -137,6 +136,7 @@ class Camera:
         # p_positions.extend(p_positions)
         beamer.window('pattern', cv2.WINDOW_NORMAL)
         image_points = []
+        total_error = 0
         for position in p_positions:
             # print('\nposition={}'.format(position))
             # rotate the image and recalculate position
@@ -158,6 +158,7 @@ class Camera:
             while True:
                 if rejected >= 10:
                     print('\nposition rejected')
+                    total_error += 10
                     break
                 start = now()
 
@@ -191,8 +192,7 @@ class Camera:
                 # display everything
                 # if a calibration is available, output the calibrated frame as well
                 if self.calibration is not None:
-                    cal = self.undistort_image(src)
-                    cv2.imshow('cal', cv2.resize(cal, self.win_size))
+                    cv2.imshow('cal', cv2.resize(self.undistort_image(src), self.win_size))
                 cv2.imshow('bw', cv2.resize(bw, self.win_size))
                 # marker if corners are found or not
                 cv2.circle(src, (30, 30), 20, (0, 0, 255) if corners is None else (0, 255, 0), -1)
@@ -234,11 +234,16 @@ class Camera:
                     cv2.destroyAllWindows()
                     self.stop_capture()
                     exit(0)
-        self.save_calibration()
         self.stop_capture()
         self.device = old_device
         cv2.destroyAllWindows()
-        self.is_calibrated = True
+
+        # if at least two positions failed:
+        if total_error > 20:
+            self.manual_calibrate(beamer)
+        else:
+            self.save_calibration()
+            self.is_calibrated = True
 
     # method to calibrate optical parameters
     def manual_calibrate(self, beamer, cal_filename=None, show_help=True, interactive=True, image_points=None):
@@ -330,8 +335,7 @@ class Camera:
             # display everything if interactive
             # if a calibration is available, output the calibrated frame as well
             if interactive and self.calibration is not None:
-                cal = self.undistort_image(src)
-                beamer.show('cal', cv2.resize(cal, self.win_size))
+                beamer.show('cal', cv2.resize(self.undistort_image(src), self.win_size))
             if interactive:
                 # cv2.imshow('bw', cv2.resize(bw, self.win_size))
                 # cv2.resizeWindow('bw', self.win_size[0], self.win_size[1])
@@ -435,21 +439,21 @@ class Camera:
             print('\nerror in calibration function:', e)
             return 0
         # print('\nrms={}'.format(rms))
+        # TODO: better rms handling (use both methods, then decide)
         # if rms too high, reject
         if rms > 20:
             print('\nrms too high: {}'.format(rms))
-            return 0
+            # return 0
         if self.calibration is not None and rms > self.calibration['rms']:
             print('\nrms higher than last: is:{} was:{}'.format(rms, self.calibration['rms']))
-            return 0
+            # return 0
         new_k = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(k, d, gray_image.shape[::-1], np.eye(3),
                                                                        balance=balance)
         map1, map2 = cv2.fisheye.initUndistortRectifyMap(k, d, np.eye(3), new_k, gray_image.shape[::-1], cv2.CV_16SC2)
         """ method 2: normal """
         r, mtx, dist, rv, tv = cv2.calibrateCamera(object_points, image_points,
                                                    gray_image.shape[::-1], None, None)
-        self.calibration = {'size': gray_image.shape[::-1],
-                            'map1': map1, 'map2': map2, 'rms': rms,
+        self.calibration = {'size': gray_image.shape[::-1], 'map1': map1, 'map2': map2, 'rms': rms,
                             'mtx': mtx, 'dist': dist}
         return 1
 
@@ -477,7 +481,7 @@ class Camera:
         # get frame from input
         src = self.pull_frame(src)
         # if no calibration available, return frame
-        if not self.is_calibrated or src is 0:
+        if not self.is_calibrated or src is None:
             return src, src
         return src, self.undistort_image(src)
 
@@ -624,12 +628,21 @@ class Camera:
         self.stop_capture() 
         """
 
-    def show_preview(self, device):
+    def show_preview(self, device=None, fullscreen=False):
+        if device is None and self.device is None:
+            print('Camera: error in preview: no device specified')
+            return 0
+        elif device is None:
+            device = self.device
         self.prepare_capture(device)
+        print('{}camera preview, \'q\' to quit'.format('fullscreen ' if fullscreen else ''))
+        cv2.namedWindow('src', cv2.WINDOW_NORMAL if fullscreen else 0)
         while True:
             src, cal = self.pull_cal_frame()
+            if fullscreen:
+                cv2.setWindowProperty('src', cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow('src', src)
-            if cal is not None:
+            if not np.array_equal(src, cal):
                 cv2.imshow('cal', cal)
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
