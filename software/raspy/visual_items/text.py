@@ -7,8 +7,8 @@ class Text(VisualItem):
         super().__init__(x,y, (255, 255, 255))
         self.text = text
 
-    def draw_self(self, image) -> None:
-        cv2.putText(image, self.text, (int(self.x), int(self.y)), cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8, self.color, 1)
+    def draw_self(self, image, pix_per_mm, offs_x, offs_y) -> None:
+        cv2.putText(image, self.text, (int((self.x + offs_x) * pix_per_mm), int((self.y + offs_y) * pix_per_mm)),
+                                       cv2.FONT_HERSHEY_SIMPLEX, 0.8, self.color, 1)
 
 

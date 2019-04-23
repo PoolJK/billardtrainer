@@ -98,6 +98,6 @@ class MiniTable(Table):
     Mini table used for testing purposes
     """
     def __init__(self):
-        super().__init__(640, 480, 600, 1068, -90.0, [34, 55, 88])
+        super().__init__(0, 0, 442, 840, -90.0, [34, 55, 88])
 
 

@@ -7,6 +7,6 @@ class Cross(VisualItem):
         super().__init__(x,y, (255, 255, 255))
         self.length = length
 
-    def draw_self(self, image) -> None:
-        cv2.drawMarker(image, (int(self.x), int(self.y)), self.color, cv2.MARKER_CROSS,
-                       self.length, 1)
+    def draw_self(self, image, pix_per_mm, offs_x, offs_y) -> None:
+        cv2.drawMarker(image, (int((self.x + offs_x) * pix_per_mm), int((self.y + offs_y) * pix_per_mm)),
+                       self.color, cv2.MARKER_CROSS, int(self.length * pix_per_mm), 1)
