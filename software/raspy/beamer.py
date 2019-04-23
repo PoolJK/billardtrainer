@@ -34,7 +34,7 @@ class Beamer:
         #print(self.hdmiPict.shape)
         # create window for beamer output (height, width, dimension for numpy array)
         if  Settings.on_raspy:
-            cv2.namedWindow("beamer", cv2.WND_PROP_FULLSCREEN)
+            cv2.namedWindow("beamer", cv2.WINDOW_AUTOSIZE + cv2.WINDOW_NORMAL)
             cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         else:
             cv2.namedWindow("beamer")
@@ -43,11 +43,11 @@ class Beamer:
     def show_objects(self):
         for obj in self.objects:
             obj.draw_self(self.outPict, self.pix_pro_mm, self.zero_x, self.zero_y)
-        cv2.imwrite("beamtest.jpg", self.outPict)
+        # cv2.imwrite("beamtest.jpg", self.outPict)
         # self.hdmiPict = cv2.resize(self.outPict, (self.hdmiPict.shape[1], self.hdmiPict.shape[0]),
         #                         1.2, 0, cv2.INTER_AREA)
         # cv2.imwrite("ball2_dect_hdmi.jpg", self.hdmiPict)
-        #cv2.imshow("beamer", self.outPict)
+        cv2.imshow("beamer", self.outPict)
 
 
     def show_image(self, image):
