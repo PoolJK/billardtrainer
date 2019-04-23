@@ -1,18 +1,17 @@
 import cv2
-
 import numpy as np
 from software.raspy.visual_items.table import MiniTable
 
-pict_resolution_x = 1280
-pict_resolution_y = 960
-pict_pix_per_mm = 12.115
 
 class Camera:
     """
     Taking pictures from camera and undistort them
     """
 
-    def __init__(self):
+    def __init__(self, res_x=1280, res_y=960, ppm=12.115):
+        self.pict_resolution_x = res_x
+        self.pict_resolution_y = res_y
+        self.pict_pix_per_mm = ppm
         self.picture = []
         self.used_table = MiniTable()
 
@@ -23,8 +22,8 @@ class Camera:
             print("Error access camera!")
             return -1
 
-        capture.set(cv2.CAP_PROP_FRAME_WIDTH, pict_resolution_x)
-        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, pict_resolution_y)
+        capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.pict_resolution_x)
+        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.pict_resolution_y)
 
         has_frame, self.picture = capture.read()
         if not has_frame:
@@ -33,10 +32,10 @@ class Camera:
         else:
             return self.picture
 
-
     def get_undistorted_image(self, image, table):
         """
         Get deskewed and resized image for beamer output
+        :param image: the image to undistort
         :param table: detected table (rectangle for warp perspective)
         :return: corrected image image for output on beamer
         """
@@ -46,12 +45,14 @@ class Camera:
         box1 = cv2.boxPoints(((table.x, table.y), (table.w, table.h), table.angle))
         print(box1)
 
-        print("mini table: x: {}, y: {}, w:{}, h:{}, a:{}".format(self.used_table.x / pict_pix_per_mm,
-                self.used_table.y / pict_pix_per_mm, self.used_table.w / pict_pix_per_mm,
-                                        self.used_table.h / pict_pix_per_mm, self.used_table.angle))
-        box2 = cv2.boxPoints(((self.used_table.x / pict_pix_per_mm, self.used_table.y / pict_pix_per_mm),
-                              (self.used_table.w / pict_pix_per_mm, self.used_table.h / pict_pix_per_mm),
-                                    self.used_table.angle))
+        print("mini table: x: {}, y: {}, w:{}, h:{}, a:{}".format(self.used_table.x / self.pict_pix_per_mm,
+                                                                  self.used_table.y / self.pict_pix_per_mm,
+                                                                  self.used_table.w / self.pict_pix_per_mm,
+                                                                  self.used_table.h / self.pict_pix_per_mm,
+                                                                  self.used_table.angle))
+        box2 = cv2.boxPoints(((self.used_table.x / self.pict_pix_per_mm, self.used_table.y / self.pict_pix_per_mm),
+                             (self.used_table.w / self.pict_pix_per_mm, self.used_table.h / self.pict_pix_per_mm),
+                             self.used_table.angle))
         print(box2)
 
         pts_dst = np.array([box2[0], box2[1], box2[2], box2[3]])

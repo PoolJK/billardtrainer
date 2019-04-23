@@ -22,6 +22,4 @@ def show_webcam(mirror=False):
 def main():
     show_webcam(mirror=True)
 
-
-if __name__ == '__main__':
     main()
