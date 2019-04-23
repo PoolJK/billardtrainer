@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="-c -f stream -dr 800x450" type="PythonConfigurationType" factoryName="Python">
+  <configuration default="false" name="-d -pc -dr 800x450" type="PythonConfigurationType" factoryName="Python">
     <module name="billardtrainer" />
     <option name="INTERPRETER_OPTIONS" value="" />
     <option name="PARENT_ENVS" value="true" />
@@ -12,7 +12,7 @@
     <option name="ADD_CONTENT_ROOTS" value="true" />
     <option name="ADD_SOURCE_ROOTS" value="true" />
     <option name="SCRIPT_NAME" value="$PROJECT_DIR$/software/billardtrainer.py" />
-    <option name="PARAMETERS" value="-c -f http://192.168.0.59:8080/video -d -dr 800x450" />
+    <option name="PARAMETERS" value="-d -pc -dr 800x450" />
     <option name="SHOW_COMMAND_LINE" value="false" />
     <option name="EMULATE_TERMINAL" value="false" />
     <option name="MODULE_MODE" value="false" />

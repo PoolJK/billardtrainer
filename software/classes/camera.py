@@ -2,8 +2,8 @@
 
 import os
 import re
-from classes.utils import *
-from classes.input_stream import InputStream
+from software.classes.utils import *
+from software.classes.input_stream import InputStream
 
 
 class Camera:
@@ -104,25 +104,21 @@ class Camera:
         # termination criteria for sub pixel corner detection
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
 
-        # new matrix alpha
-        balance = 0.1
-
         # params for bw threshold
         block_size = 55
         constant = 4
 
-        # calibration loop
         # pattern positions:
         p_positions = [
-            (int((beamer.width - pattern_size[0])/2), int((beamer.height - pattern_size[1])/2), 0, 1),
+            ((beamer.width - pattern_size[0]) // 2, (beamer.height - pattern_size[1]) // 2, 0, 1),
             # center
-            (0, (beamer.height - pattern_size[1]) / 2, 0, 1),  # left
-            (beamer.width - pattern_size[0], (beamer.height - pattern_size[1]) / 2, 0, 1),  # right
+            (-40, (beamer.height - pattern_size[1]) // 2, 0, 1),  # left
+            (beamer.width - pattern_size[0], (beamer.height - pattern_size[1]) // 2, 0, 1),  # right
             # (int((beamer.width - pattern_size[0]) / 2), 0, 0, 1),  # top
-            #  (int((beamer.width - pattern_size[0]) / 2), beamer.height - pattern_size[1], 0, 1),  # bottom
-            (beamer.width - pattern_size[0], beamer.height - pattern_size[1] - 80, -10, 1),
+            # (int((beamer.width - pattern_size[0]) / 2), beamer.height - pattern_size[1], 0, 1),  # bottom
+            (beamer.width - pattern_size[0] - 20, beamer.height - pattern_size[1] - 100, -10, 1),
             # right lower corner
-            (0, beamer.height - pattern_size[1] - 80, 15, 1),  # left lower corner
+            (-40, beamer.height - pattern_size[1] - 130, 15, 1),  # left lower corner
             (beamer.width - pattern_size[0], -40, -5, 1),  # right upper corner
             (0, -40, 0, 1),  # left upper corner
             # (0, 0, 0, 0),  # fullscreen
@@ -132,41 +128,45 @@ class Camera:
             # (-40, beamer.height - pattern_size[1] - 60, -170, 1),
             # (0, int((beamer.height - pattern_size[1]) / 2), -45, 1)]
         ]
-        # try twice:
-        # p_positions.extend(p_positions)
         beamer.window('pattern', cv2.WINDOW_NORMAL)
         image_points = []
         total_error = 0
         for position in p_positions:
             # print('\nposition={}'.format(position))
             # rotate the image and recalculate position
-            _s = pattern.shape[:2]
+            # _s = pattern.shape[:2]
             pat = rotate_bound(pattern, position[2])
-            if pat.shape[1] > _s[1]:
-                p0 = int(position[0] - (pat.shape[1] - _s[1]) / 2)
-            else:
-                p0 = int(position[0] + (pat.shape[1] - _s[1]) / 2)
-            if pat.shape[0] > _s[0]:
-                p1 = int(position[1] - (pat.shape[0] - _s[0]) / 2)
-            else:
-                p1 = int(position[1] + (pat.shape[0] - _s[0]) / 2)
-            position = (p0, p1, position[2], position[3])
+            # if pat.shape[1] > _s[1]:
+            #     p0 = int(position[0] - (pat.shape[1] - _s[1]) / 2)
+            # else:
+            #     p0 = int(position[0] + (pat.shape[1] - _s[1]) / 2)
+            # if pat.shape[0] > _s[0]:
+            #     p1 = int(position[1] - (pat.shape[0] - _s[0]) / 2)
+            # else:
+            #     p1 = int(position[1] + (pat.shape[0] - _s[0]) / 2)
+            # position = (p0, p1, position[2], position[3])
             beamer.show('pattern', pat, position)
-
+            cv2.waitKey(1)
             # count n of rejected position takes
             rejected = 0
+            # account for image filter and stream delay
+            delay = now()
             while True:
-                if rejected >= 10:
-                    print('\nposition rejected')
-                    total_error += 10
-                    break
                 start = now()
 
                 # get frame
                 src = self.pull_frame()
-                if src is None:
-                    print('error in calibration: couldn\'t read src')
-                    return 0
+
+                # account for image filter and stream delay
+                if now() - delay < 1:
+                    continue
+
+                # skip pattern position if camera is unable to take good picture
+                if rejected >= 10:
+                    print('\nposition rejected')
+                    total_error += 10
+                    break
+
                 t0 = now()
 
                 # find corners
@@ -175,8 +175,11 @@ class Camera:
                                            cv2.THRESH_BINARY, block_size, constant)
                 # search in src first, if not finding any, search the processed frames
                 for tmp in [src, gray, bw]:
-                    ret, corners = cv2.findChessboardCorners(tmp, (grid[0], grid[1]), None,
-                                                             flags=cv2.CALIB_CB_FAST_CHECK)
+                    flags = cv2.CALIB_CB_FAST_CHECK
+                    ret, corners = cv2.findChessboardCorners(tmp, grid, None,
+                                                             flags)
+                    # flags = cv2.CALIB_CB_NORMALIZE_IMAGE + cv2.CALIB_CB_ACCURACY
+                    # ret, corners = cv2.findChessboardCornersSB(tmp, grid, flags)
                     if ret:
                         break
                 # ret, corners = cv2.findChessboardCorners(bw, grid, None, flags=cv2.CALIB_CB_FAST_CHECK)
@@ -187,6 +190,8 @@ class Camera:
                     # sub pixel refine corners
                     corners = cv2.cornerSubPix(gray, corners, (11, 11), (-1, -1), criteria)
                     src = cv2.drawChessboardCorners(src, grid, corners, ret)
+                else:
+                    corners = None
                 t2 = now()
 
                 # display everything
@@ -218,10 +223,7 @@ class Camera:
                     cv2.waitKey(1)
                     image_points.append(corners)
                     # calibrate camera (add new image points to existing calibration
-                    if self.perform_calibration(gray, image_points, grid, balance):
-                        # cv2.waitKey()
-                        # stream delay
-                        wait(800)
+                    if self.perform_calibration(gray, image_points, grid):
                         break
                     else:
                         # error or image rejected
@@ -414,63 +416,81 @@ class Camera:
         self.device = old_device
         cv2.destroyAllWindows()
 
-    def perform_calibration(self, gray_image, image_points, grid, balance):
-        # scale = distance between chessboard corners in mm ?
-        scale = 1
-        calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC + cv2.fisheye.CALIB_FIX_SKEW
-        k = np.zeros((3, 3))
-        d = np.zeros((4, 1))
-
+    def perform_calibration(self, gray_image, image_points, grid, grid_scale=1, balance=0.1):
+        size = gray_image.shape[::-1]
+        calibration_criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 50, 0.5)
         # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(grid[0],grid[1],0)
         object_points_grid = np.zeros((1, grid[0] * grid[1], 3), np.float32)
-        object_points_grid[0, :, :2] = np.mgrid[0:scale * grid[0]:scale, 0:scale * grid[1]:scale].T.reshape(-1, 2)
-
-        # fill object_points array
+        object_points_grid[0, :, :2] = np.mgrid[0:grid_scale * grid[0]:grid_scale,
+                                                0:grid_scale * grid[1]:grid_scale].T.reshape(-1, 2)
+        # need same number of obj_p as img_p
         object_points = [object_points_grid] * len(image_points)
 
         """ method 1: fisheye """
+        # """
+        if self.calibration is None:
+            k = np.zeros((3, 3))
+            d = np.zeros((4, 1))
+            calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC + cv2.fisheye.CALIB_FIX_SKEW
+        else:
+            k = self.calibration['k']
+            d = self.calibration['d']
+            calibration_flags = cv2.fisheye.CALIB_FIX_SKEW
+        # """
+        # k = np.zeros((3, 3))
+        # d = np.zeros((4, 1))
+        # calibration_flags = cv2.fisheye.CALIB_RECOMPUTE_EXTRINSIC + cv2.fisheye.CALIB_FIX_SKEW
         # calibrate according to various tutorial sources...
-        try:
-            rms, k, d, rvecs, tvecs = cv2.fisheye\
-                .calibrate(object_points, image_points, gray_image.shape[::-1], k, d,
-                           flags=calibration_flags, criteria=(cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
-                                                              50, 0.5))
-        except cv2.error as e:
-            print('\nerror in calibration function:', e)
-            return 0
-        # print('\nrms={}'.format(rms))
-        # TODO: better rms handling (use both methods, then decide)
+        rms, k, d, rvecs, tvecs = cv2.fisheye\
+            .calibrate(object_points, image_points, size, k, d,
+                       flags=calibration_flags, criteria=calibration_criteria)
+        new_k = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(k, d, size,
+                                                                       np.eye(3),
+                                                                       balance=balance)
+        map1, map2 = cv2.fisheye.initUndistortRectifyMap(k, d, np.eye(3), new_k,
+                                                         size, cv2.CV_16SC2)
+
+        """ method 2: no fisheye """
+        # komischerweise muss """NUR""" hier das "size"-tuple (height, width) umgedreht werden
+        # sonst liefert die Funktion seltsame Werte
+        rms_2, mtx, dist, rv, tv = cv2.calibrateCamera(object_points, image_points,
+                                                       size[::-1], None, None,
+                                                       criteria=calibration_criteria)
+        new_mtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, size, 1)
+        map1_2, map2_2 = cv2.initUndistortRectifyMap(mtx, dist, np.eye(3), new_mtx,
+                                                     size, cv2.CV_16SC2)
+
+        # TODO: projection error handling (rms, rms_2)
+        print('\nrms={} rms_2={}'.format(rms, rms_2))
         # if rms too high, reject
         if rms > 20:
-            print('\nrms too high: {}'.format(rms))
-            # return 0
+            # print('\nrms too high: {}'.format(rms))
+            return 0
         if self.calibration is not None and rms > self.calibration['rms']:
-            print('\nrms higher than last: is:{} was:{}'.format(rms, self.calibration['rms']))
-            # return 0
-        new_k = cv2.fisheye.estimateNewCameraMatrixForUndistortRectify(k, d, gray_image.shape[::-1], np.eye(3),
-                                                                       balance=balance)
-        map1, map2 = cv2.fisheye.initUndistortRectifyMap(k, d, np.eye(3), new_k, gray_image.shape[::-1], cv2.CV_16SC2)
-        """ method 2: normal """
-        r, mtx, dist, rv, tv = cv2.calibrateCamera(object_points, image_points,
-                                                   gray_image.shape[::-1], None, None)
-        self.calibration = {'size': gray_image.shape[::-1], 'map1': map1, 'map2': map2, 'rms': rms,
-                            'mtx': mtx, 'dist': dist}
+            # print('\nrms higher than last: is:{} was:{}'.format(rms, self.calibration['rms']))
+            return 0
+        method = 1 if rms < 2 else 2
+        self.calibration = {'size': size, 'method': method,
+                            'rms': rms, 'map1': map1, 'map2': map2, 'k': k, 'd': d,
+                            'mtx': mtx, 'new_mtx': new_mtx, 'roi': roi, 'dist': dist,
+                            'rms_2': rms_2, 'map1_2': map1_2, 'map2_2': map2_2}
         return 1
 
-    def undistort_image(self, src):
-        # TODO: cropping ?
-        # also TODO: scaling
+    # change method to "1" when using fisheye camera
+    def undistort_image(self, src, method=1):
+        # cv2.resize braucht (height, width) anstatt (width, height)
         src = cv2.resize(src, tuple(self.calibration['size']))
-        if self.calibration['rms'] < 2:  # fisheye error low
+        if method == 1:
             """ method 1: fisheye """
             out = cv2.remap(src, self.calibration['map1'], self.calibration['map2'],
-                            interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT, borderValue=(255, 255, 255))
-        else:  # normal camera better
+                            interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT,
+                            borderValue=(0, 0, 255))
+        else:
             """ method 2: normal """
-            new_mtx, roi = cv2.getOptimalNewCameraMatrix(self.calibration['mtx'], self.calibration['dist'],
-                                                         self.calibration['map1'].shape[:2], 1, src.shape[:2])
-            out = cv2.undistort(src, self.calibration['mtx'], self.calibration['dist'], None, new_mtx)
-            y, x, h, w = roi
+            out = cv2.remap(src, self.calibration['map1_2'], self.calibration['map2_2'],
+                            interpolation=cv2.INTER_CUBIC, borderMode=cv2.BORDER_CONSTANT,
+                            borderValue=(0, 0, 255))
+            y, x, h, w = self.calibration['roi']
             if w > 0 and h > 0:
                 cropped = out[y:y+h, x:x+w]
                 cv2.imshow('cropped', cropped)
@@ -635,7 +655,7 @@ class Camera:
         elif device is None:
             device = self.device
         self.prepare_capture(device)
-        print('{}camera preview, \'q\' to quit'.format('fullscreen ' if fullscreen else ''))
+        print('{}camera preview, \'q\' to quit, \'s\' to save'.format('fullscreen ' if fullscreen else ''))
         cv2.namedWindow('src', cv2.WINDOW_NORMAL if fullscreen else 0)
         while True:
             src, cal = self.pull_cal_frame()
@@ -647,4 +667,7 @@ class Camera:
             key = cv2.waitKey(1) & 0xFF
             if key == ord('q'):
                 break
+            if key == ord('s'):
+                cv2.imwrite('preview_out.jpg', src)
+                cv2.imwrite('preview_out_cal.jpg', cal)
         self.stop_capture()

@@ -3,9 +3,9 @@ import argparse
 import os
 import sys
 
-from classes.utils import *
-from raspy.detect_test import DetectTest
-from test_ui import test_ui
+from software.classes.utils import *
+from software.raspy.detect_test import DetectTest
+from software.test_ui import test_ui
 
 cl_parser = argparse.ArgumentParser()
 cl_parser.add_argument('-f', '--file', dest='filename', help='input (device, file, video, stream)',

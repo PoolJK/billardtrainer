@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from classes.utils import *
+from software.classes.utils import *
 
 
 class Beamer:
@@ -29,7 +29,7 @@ class Beamer:
         cv2.moveWindow(winname, position[0] + self.offset[0], position[1] + self.offset[1])
         if position[3] == 1 and not fullscreen:
             cv2.setWindowProperty(winname, cv2.WND_PROP_FULLSCREEN, 0)
-            cv2.resizeWindow(winname, self.win_size[0], self.win_size[1])
+            cv2.resizeWindow(winname, image.shape[1], image.shape[0])
         else:
             cv2.setWindowProperty(winname, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
             cv2.imshow(winname, image)

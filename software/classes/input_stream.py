@@ -2,7 +2,7 @@ from threading import Thread
 import queue
 from queue import Queue
 
-from classes.utils import *
+from software.classes.utils import *
 
 
 class InputStream:
@@ -23,7 +23,7 @@ class InputStream:
         self.last = None
         if filter_in is None:
             # default is 3 average
-            self.filter_in = Filter(1, 'avg')
+            self.filter_in = Filter(3, 'avg')
         else:
             self.filter_in = filter_in
         self.stream = self.open(device)

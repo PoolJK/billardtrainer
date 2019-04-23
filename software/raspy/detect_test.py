@@ -1,11 +1,8 @@
 #!/usr/bin/python3
 
 import cv2
-import numpy as np
-
-from classes.ball import Ball
-from classes.camera import Camera
-from classes.beamer import Beamer
+from software.classes.beamer import Beamer
+from software.classes.camera import Camera
 
 
 class DetectTest:

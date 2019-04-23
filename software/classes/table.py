@@ -2,7 +2,7 @@
 
 import cv2
 import numpy as np
-from classes.ball import Ball
+from software.classes.ball import Ball
 
 
 class Table:

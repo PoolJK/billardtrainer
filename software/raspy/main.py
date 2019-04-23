@@ -3,10 +3,10 @@
 import argparse
 import cv2
 import numpy as np
-import classes.settings as settings
-from classes.ball import Ball
-from classes.table import Table
-from classes.beamer import Beamer
+import software.classes.settings as settings
+from software.classes.ball import Ball
+from software.classes.table import Table
+from software.classes.beamer import Beamer
 
 
 # size of output window
