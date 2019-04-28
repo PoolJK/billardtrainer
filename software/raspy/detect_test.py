@@ -3,6 +3,7 @@
 import cv2
 from software.classes.beamer import Beamer
 from software.classes.camera import Camera
+from software.classes.table_sim import TableSim
 
 
 class DetectTest:
@@ -45,7 +46,7 @@ class DetectTest:
         # set up camera
         self.camera = Camera(args, self.src_size, self.win_size)
         # set up beamer (offset to use monitor on the right)
-        self.beamer = Beamer(args, self.win_size, (1920, 0))
+        self.beamer = Beamer(args, self.win_size, (0, 0))
         if args.calibrate:
             # run calibration per flag
             self.camera.auto_calibrate(self.beamer, args.cal_filename)
@@ -53,7 +54,9 @@ class DetectTest:
             self.camera.show_preview()
 
     def main(self):
-        self.camera.show_preview(fullscreen=True)
+        # self.camera.show_preview(fullscreen=True)
+        table_sim = TableSim()
+        table_sim.start()
         # exit(0)
         # print('\nstarting detection test{}, \'x\' to quit'.format(' in debug mode' if self.debug else ''))
         cv2.destroyAllWindows()

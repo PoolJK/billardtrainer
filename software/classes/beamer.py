@@ -22,17 +22,17 @@ class Beamer:
     def window(name, flags):
         cv2.namedWindow(name, flags)
 
-    def show(self, winname, image, position=None, fullscreen=False):
+    def show(self, win_name, image, position=None, fullscreen=False):
         if position is None:
             position = (0, 0, 0, 0)
-        cv2.imshow(winname, image)
-        cv2.moveWindow(winname, position[0] + self.offset[0], position[1] + self.offset[1])
+        cv2.imshow(win_name, image)
+        cv2.moveWindow(win_name, position[0] + self.offset[0], position[1] + self.offset[1])
         if position[3] == 1 and not fullscreen:
-            cv2.setWindowProperty(winname, cv2.WND_PROP_FULLSCREEN, 0)
-            cv2.resizeWindow(winname, image.shape[1], image.shape[0])
+            cv2.setWindowProperty(win_name, cv2.WND_PROP_FULLSCREEN, 0)
+            cv2.resizeWindow(win_name, image.shape[1], image.shape[0])
         else:
-            cv2.setWindowProperty(winname, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-            cv2.imshow(winname, image)
+            cv2.setWindowProperty(win_name, cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            cv2.imshow(win_name, image)
 
     @staticmethod
     def get_image(table, image):

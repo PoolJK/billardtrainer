@@ -657,6 +657,7 @@ class Camera:
         self.prepare_capture(device)
         print('{}camera preview, \'q\' to quit, \'s\' to save'.format('fullscreen ' if fullscreen else ''))
         cv2.namedWindow('src', cv2.WINDOW_NORMAL if fullscreen else 0)
+        cv2.moveWindow('src', 0, 0)
         while True:
             src, cal = self.pull_cal_frame()
             if fullscreen:
