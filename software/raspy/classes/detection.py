@@ -3,21 +3,18 @@
 
 
 class Detection:
+    """
+    Class holding the detection algorithm(s) and an event queue to be read by the main loop
+    """
 
     # message or message_queue = None
     # data or data_queue = None
 
     def __init__(self, camera):
         """
-        Class holding the detection algorithm(s) and an event queue to be read by the main loop
         :param camera: used as input device
-        :returns: 1 if configuration loaded successfully, 0 if not
         """
-        # if load_last_configuration:
-        #   return 1
-        # else:
-        #   create defaults
-        #   return 0
+        # load_last_configuration or create defaults
         pass
 
     def start(self):

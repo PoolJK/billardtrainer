@@ -13,26 +13,36 @@ def main():
     """
     The main loop. Initializes system parts on start, then runs through detection and bluetooth loops
     """
-    # if not camera.init or not beamer.init:
+    # if not camera.is_calibrated or not beamer.is_calibrated:
     #   calibrate(camera, beamer)
+    #
     # bluetooth.init
     # detection.init(camera)
+    #
     # while True:
+    #
     #   process bluetooth data:
     #   message, data = bluetooth.read
     #   if message is not None:
     #       if message == send_data:
     #           send_data()
     #       elif message == show:
-    #           show(data)
+    #           beamer.show(data)
     #       .
     #       .
     #       .
     #       continue
+    #
     #   process detection data
     #   message, data = detection.read
     #   if message is not None:
     #       do something according to analysis in detection (send data or signal)
+    #       if message == no_movement:
+    #       elif message == no_balls_detected
+    #       .
+    #       .
+    #       .
+    #       continue
     #
     #   if some_exit_condition (shutdown?):
     #       break
@@ -54,27 +64,6 @@ def calibrate(camera, beamer):
     # if not beamer.is_calibrated:
     #   calibrate for camera / beamer displacement
     # calibrate for placement above table
-    pass
-
-
-def send_data(data):
-    """
-    Send something via bluetooth
-    :param data: data or signal to send
-    """
-    # data examples
-    # ball_coordinates=None, colours=None, speeds=None, etc=None
-    # movement_detected=None, all_balls_at_rest=None, no_lights=None, etc=None
-    # bluetooth.send(data)
-    pass
-
-
-def show(data):
-    """
-    Show something sent by bluetooth on the beamer
-    :param data: data to show
-    """
-    # beamer.show(data)
     pass
 
 
