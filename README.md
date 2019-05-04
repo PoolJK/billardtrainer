@@ -17,13 +17,15 @@ imutils 0.5.2
 1. get current branch from origin:  
 `git fetch origin`
 2. create your local copy:  
-`git checkout -b 0.1.1 origin/0.1.0`
+  option 1: new branch  
+  `git checkout -b myfeature origin/0.1.0`  
+  option 2: rebase your current branch onto 0.1.0    
+  `git rebase origin/0.1.0`
 3. make your edits and commit.  
-for commit tips review links.md (for example https://dev.to/2nit/how-to-better-organize-your-git-commits-bkb)
+for commit tips review links.md ([for example](https://dev.to/2nit/how-to-better-organize-your-git-commits-bkb))
 4. push your edits to your new branch in origin:  
 `git push -u origin HEAD`
-5. open pull request for code review, using 0.1.0 as base. I only tested this on github.com.  
-A command line example from https://git-scm.com/docs/git-request-pull:  
-`git request-pull 0.1.0 https://github.com/PoolJK/billardtrainer 0.1.1`  
-didn't do the job...
+5. open pull request for code review, using 0.1.0 as base. 
 6. if changes are discussed and accepted, merge pull request (probieren wir dann mal...)
+7. delete feature branch in repository  
+`git push origin -d myfeature`
