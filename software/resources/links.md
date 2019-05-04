@@ -8,4 +8,8 @@ https://medium.com/front-end-weekly/avoid-80-of-merge-conflicts-with-git-rebase-
 https://medium.com/@kennethjiang/calibrate-fisheye-lens-using-opencv-333b05afa0b0
 https://dev.to/juristr/productive-git-for-developers-3237
 https://dev.to/2nit/how-to-better-organize-your-git-commits-bkb
-https://coderwall.com/p/euwpig/a-better-git-log
+https://coderwall.com/p/euwpig/a-better-git-log  
+### Bluetooth
+https://github.com/pybluez/pybluez/issues/180  
+http://it-in-der-hosentasche.blogspot.com/2014/03/bluetooth-zwischen-raspberry-pi-und.html  
+http://people.csail.mit.edu/albert/bluez-intro/index.html  

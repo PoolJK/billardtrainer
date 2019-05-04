@@ -5,7 +5,6 @@ import sys
 
 from software.classes.utils import *
 from software.raspy.detect_test import DetectTest
-from software.test_ui import test_ui
 
 cl_parser = argparse.ArgumentParser()
 cl_parser.add_argument('-f', '--file', dest='filename', help='input (device, file, video, stream)',
@@ -17,8 +16,6 @@ cl_parser.add_argument('-sr', '--source-resolution', dest='sres', help='source r
 cl_parser.add_argument('-dr', '--display-resolution', dest='dres', help='display resolution', required=False)
 cl_parser.add_argument('-pc', dest='pc_test', help='for testing on pc',
                        action='store_true', default=False)
-cl_parser.add_argument('-ui', dest='use_ui', help='use user interface, assumes -pc',
-                       action='store_true', default=False)
 cl_parser.add_argument('-d', '--debug', dest='debug', help='show more debug output',
                        action='store_true', default=False)
 cl_parser.add_argument('-push', '--push-to-pi', dest='push_to_pi', help='push sources to pi',
@@ -27,6 +24,7 @@ cl_parser.add_argument('-mir', '--mirror', dest='mirror', help='mirror input', a
 cl_parser.add_argument('-test', '--camera-test', dest='camera_test', help='only test specified input',
                        action='store_true', default=False)
 cl_parser.add_argument('-p', '--preview', dest='preview', help='only show preview', action='store_true', default=False)
+cl_parser.add_argument('-bt', dest='bt_test', help='start bluetooth test', action='store_true', default=False)
 args = cl_parser.parse_args()
 
 if args.push_to_pi:
@@ -61,16 +59,21 @@ if args.push_to_pi:
         cmd.write('export DISPLAY=:0 && cd /home/pi/billardtrainer/software && lxterminal --command="python3 '
                   '\'/home/pi/billardtrainer/software/billardtrainer.py\'' + args + '"\n')
         cmd.close()
-        # run the program on the pi
-        os.system('putty -ssh -2 -l pi -pw pi -m c:pi_command raspberrypi')
+        # run the program on the pi (doesn't work :'-/ )
+        # os.system('putty -ssh -2 -l pi -pw pi -m c:pi_command raspberrypi')
     # TODO: elif os.name == unix: ...
     # TODO: elif os.name == osx: ...
     # exit, you're done on PC
     exit(0)
 
+print("shit")
 on_pi = cv2.getVersionMajor() < 4
 # on the pi try to catch all errors
 try:
+    if args.bt_test:
+        from software.raspy import bt_test_bluez
+        bt_test_bluez.run_test()
+        exit(0)
     detect_test = DetectTest(args)
     if not args.camera_test and not args.preview:
         detect_test.main()
@@ -81,8 +84,4 @@ except Exception as e:
         print(e.args)
         cv2.waitKey()
     raise e
-if not on_pi and args.use_ui:
-    args.pc_test = True
-    test_ui.main(args)
-    exit(0)
 exit(0)
