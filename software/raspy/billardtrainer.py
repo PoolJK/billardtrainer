@@ -10,26 +10,39 @@
 
 
 def main():
-    # if not camera.init or not beamer.init:
+    """
+    The main loop. Initializes system parts on start, then runs through detection and bluetooth loops
+    """
+    # if not camera.is_calibrated or not beamer.is_calibrated:
     #   calibrate(camera, beamer)
+    #
     # bluetooth.init
     # detection.init(camera)
+    #
     # while True:
+    #
     #   process bluetooth data:
     #   message, data = bluetooth.read
     #   if message is not None:
     #       if message == send_data:
     #           send_data()
     #       elif message == show:
-    #           show(data)
+    #           beamer.show(data)
     #       .
     #       .
     #       .
     #       continue
+    #
     #   process detection data
     #   message, data = detection.read
     #   if message is not None:
     #       do something according to analysis in detection (send data or signal)
+    #       if message == no_movement:
+    #       elif message == no_balls_detected
+    #       .
+    #       .
+    #       .
+    #       continue
     #
     #   if some_exit_condition (shutdown?):
     #       break
@@ -40,6 +53,11 @@ def main():
 
 
 def calibrate(camera, beamer):
+    """
+    Perform some OpenCV magic here
+    :param camera: the systems camera
+    :param beamer: the systems beamer
+    """
     # perform some magic:
     # if not camera.is_calibrated:
     #   calibrate for camera distortion
@@ -49,23 +67,5 @@ def calibrate(camera, beamer):
     pass
 
 
-def send_data(data):
-    # data examples
-    # ball_coordinates=None, colours=None, speeds=None, etc=None
-    # bluetooth.send(data)
-    pass
-
-
-def send_signal(signal):
-    # signal example:
-    # movement_detected=None, all_balls_at_rest=None, no_lights=None, etc=None
-    # bluetooth.send(signal)
-    pass
-
-
-def show(data):
-    # beamer.show(data)
-    pass
-
-
+# just do it
 main()

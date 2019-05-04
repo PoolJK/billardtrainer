@@ -1,39 +1,48 @@
-from threading import Lock
 import time
 import cv2
 import numpy as np
 
 
-# shorthand sleep
 def wait(ms):
+    """
+    Shorthand for time.sleep
+    :param ms: time in milliseconds
+    """
     time.sleep(ms / 1000)
 
 
-# lock protected print in Threads
-def lp(msg):
-    lock = Lock()
-    lock.acquire()
-    print(msg)
-    lock.release()
-
-
-# empty method as callback for Trackbars
 def nothing(*x):
+    """
+    Empty method as callback for OpenCV-trackbars
+    """
     pass
 
 
-# time difference as int in [ms]
-def dt(t1, t2):
-    return int((t2-t1)*1000)
-
-
-# current time
 def now():
+    """
+    Shorthand for time.time()
+    :returns: current time (in seconds since unix epoch, I think)
+    """
     return time.time()
 
 
-# rotate an image keeping the full image
+def time_diff(t1, t2=now()):
+    """
+    Get time difference between starting time t1 and either t2 or current time
+    :param t1: start of interval
+    :param t2: end of interval or current time if None
+    :returns: time difference in ms
+    """
+    return int((t2 - t1) * 1000)
+
+
 def rotate_bound(image, angle):
+    """
+    Rotate an image without cutting of corners
+    :param image: image to rotate
+    :param angle: angle to rotate to
+    :returns: the rotated image (with padded white)
+    """
     # grab the dimensions of the image and then determine the center
     (h, w) = image.shape[:2]
     (cX, cY) = (w // 2, h // 2)
