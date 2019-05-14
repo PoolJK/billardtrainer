@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Android Billardtrainer</string>
+    <string name="action_settings">Settings</string>
+    <string name="aimMode_move">move</string>
 </resources>

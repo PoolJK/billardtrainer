@@ -6,7 +6,7 @@ from software.classes.utils import *
 
 
 class InputStream:
-    def __init__(self, device, height=None, width=None, queue_size=1, filter_in=None, debug=False):
+    def __init__(self, device, height=None, width=None, queue_size=1, debug=False):
         self.debug = debug
         self.onpi = cv2.getVersionMajor() < 4
         self.device = device
@@ -21,11 +21,6 @@ class InputStream:
         self.n_frames = 0
         self.Q = Queue(queue_size)
         self.last = None
-        if filter_in is None:
-            # default is 3 average
-            self.filter_in = Filter(3, 'avg')
-        else:
-            self.filter_in = filter_in
         self.stream = self.open(device)
 
     def open(self, device=None):
@@ -87,8 +82,6 @@ class InputStream:
                 frame = self.last
                 wait(25)
             if grabbed:
-                # apply filter before timing
-                frame = self.filter_in.filter(frame)
                 t_s_last = dt(self.last_received, n)
                 self.last_received = n
                 if 10 < t_s_last < 2000:
@@ -190,17 +183,3 @@ class InputStream:
             self.stream.release()
         except Exception as e:
             print(e)
-
-
-class Filter:
-    def __init__(self, length, method):
-        self.length = length
-        self.method = method
-        self.frames = []
-
-    def filter(self, img):
-        if len(self.frames) == self.length:
-            # filter array is full
-            self.frames.remove(self.frames[0])
-        self.frames.append(img)
-        return np.asarray(np.average(self.frames, axis=0), np.uint8)

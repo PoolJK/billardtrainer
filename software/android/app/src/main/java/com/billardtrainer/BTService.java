@@ -6,25 +6,51 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
+import java.util.Set;
 import java.util.UUID;
 
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.os.Handler;
+import android.os.Message;
 import android.util.Log;
 
-public class BTService extends Thread {
+class BTService extends Thread {
+    private Main.mHandler mainHandler;
     private final static String TAG="BTService";
     private final static String MY_UUID ="00001101-0000-1000-8000-00805f9b34fb";
     private BluetoothSocket mSocket=null;
     private String mMessage;
+    private BluetoothAdapter mBluetoothAdapter;
+    private BluetoothDevice mDevice;
 
 
-    BTService(BluetoothDevice device) {
+    BTService(Main.mHandler mainHandler) {
+        this.mainHandler = mainHandler;
+        mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+        Log.d(TAG, "Checking Bluetooth...");
+        if (!mBluetoothAdapter.isEnabled()) {
+            Log.d(TAG, "Bluetooth not enabled");
+            mBluetoothAdapter.enable();
+        }
+        else{
+            Log.d(TAG, "Bluetooth enabled");
+        }
         Log.d(TAG,"Setting up connection...");
+        Set<BluetoothDevice> pairedDevices = mBluetoothAdapter
+                .getBondedDevices();
+        for (BluetoothDevice device : pairedDevices) {
+            if(device.getName().equals("raspberrypi"))
+                mDevice=device;
+        }
+        if (mDevice == null) {
+            Log.d("BTService", "mDevice is null");
+            return;
+        }
         try {
             UUID uuid = UUID.fromString(MY_UUID);
-            mSocket = device.createRfcommSocketToServiceRecord(uuid);
+            mSocket = mDevice.createRfcommSocketToServiceRecord(uuid);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -37,11 +63,13 @@ public class BTService extends Thread {
         while (true) {
             data = reader.readLine();
             Log.d(TAG,"Received: " + data);
-            mMessage = data;
+            Message msg = mainHandler.obtainMessage();
+            msg.obj = data;
+            mainHandler.sendMessage(msg);
         }
     }
 
-    public void send(String message){
+    void send(String message){
         try {
             OutputStream os = mSocket.getOutputStream();
             PrintStream sender = new PrintStream(os);
@@ -59,13 +87,15 @@ public class BTService extends Thread {
 
     private class connectThread extends Thread {
         public void run() {
-            BluetoothAdapter.getDefaultAdapter().cancelDiscovery();
+            mBluetoothAdapter.cancelDiscovery();
             try {
                 mSocket.connect();
                 connectedThread cT = new connectedThread();
                 cT.start();
             } catch (IOException e) {
                 Log.d(TAG, "Error in connectThread:");
+                e.printStackTrace();
+            } catch (NullPointerException e) {
                 e.printStackTrace();
             }
         }

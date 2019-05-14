@@ -10,9 +10,9 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.support.v7.app.AppCompatActivity;
 
-public class MainActivity extends AppCompatActivity {
+public class BTTest extends AppCompatActivity {
 
-    private final static String TAG = "MainActivity";
+    private final static String TAG = "BTTest";
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothDevice mDevice;
     private EditText mMessageET;
@@ -55,15 +55,15 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        mMessageET = (EditText) findViewById(R.id.message_et);
-        mSendBN = (Button) findViewById(R.id.send_bn);
+        mMessageET = findViewById(R.id.message_et);
+        mSendBN = findViewById(R.id.send_bn);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
 
         initBluetooth();
         findRaspberry();
         if (mDevice == null)
             mSendBN.setClickable(false);
-        btService = new BTService(mDevice);
+        btService = new BTService(new Main.mHandler());
         btService.start();
     }
 }
