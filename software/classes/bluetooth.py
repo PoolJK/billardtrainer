@@ -5,6 +5,14 @@ from queue import Queue
 
 class BT:
 
+    """
+    add pi to bluetooth group:
+    sudo usermod -G bluetooth -a pi
+    check:
+    cat /etc/group | grep bluetooth
+    change group of sdp:
+    sudo chgrp bluetooth /var/run/sdp
+    """
     def __init__(self):
         self.server = self.init_server()
         self.client = self.get_client_connection(self.server)
@@ -17,7 +25,7 @@ class BT:
         return ret
 
     def send(self, data):
-        self.client.send("Echo from Pi: [%s]\n" % data)
+        self.client.send("Data from Pi: [%s]\n" % data)
 
     @staticmethod
     def init_server():

@@ -12,7 +12,6 @@ import java.util.UUID;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
-import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
 
@@ -29,6 +28,34 @@ class BTService extends Thread {
     BTService(Main.mHandler mainHandler) {
         this.mainHandler = mainHandler;
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
+    }
+
+    private synchronized void read_from_socket(BluetoothSocket socket) throws IOException {
+        InputStream is = socket.getInputStream();
+        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
+        String data;
+        while (true) {
+            data = reader.readLine();
+            Log.d(TAG,"Received: " + data);
+            Message msg = mainHandler.obtainMessage();
+            msg.obj = data;
+            msg.what = Main.TOAST_MESSAGE;
+            mainHandler.sendMessage(msg);
+        }
+    }
+
+    void send(String message){
+        try {
+            OutputStream os = mSocket.getOutputStream();
+            PrintStream sender = new PrintStream(os);
+            sender.print(message);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        Log.d(TAG,"Message sent");
+    }
+
+    public void run() {
         Log.d(TAG, "Checking Bluetooth...");
         if (!mBluetoothAdapter.isEnabled()) {
             Log.d(TAG, "Bluetooth not enabled");
@@ -54,33 +81,6 @@ class BTService extends Thread {
         } catch (IOException e) {
             e.printStackTrace();
         }
-    }
-
-    private synchronized void read_from_socket(BluetoothSocket socket) throws IOException {
-        InputStream is = socket.getInputStream();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(is));
-        String data;
-        while (true) {
-            data = reader.readLine();
-            Log.d(TAG,"Received: " + data);
-            Message msg = mainHandler.obtainMessage();
-            msg.obj = data;
-            mainHandler.sendMessage(msg);
-        }
-    }
-
-    void send(String message){
-        try {
-            OutputStream os = mSocket.getOutputStream();
-            PrintStream sender = new PrintStream(os);
-            sender.print(message);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        Log.d(TAG,"Message sent");
-    }
-
-    public void run() {
         connectThread cT = new connectThread();
         cT.start();
     }

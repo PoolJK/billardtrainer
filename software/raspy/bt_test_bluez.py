@@ -5,6 +5,11 @@ from software.classes.utils import *
 
 def run_test():
     bluetooth = BT()
+    while True:
+        msg = bluetooth.read()
+        print(msg)
+        if msg == "exit":
+            break
     # vs = VideoStream(usePiCamera=True, resolution=(1280, 720), framerate=60).start()
     # vs.camera.iso = 1600
     # print("1280x720@90")

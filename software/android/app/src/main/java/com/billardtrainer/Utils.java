@@ -31,17 +31,17 @@ class Utils {
         }
     }
 
-    static int getIdFromPosition(double x, double y, ArrayList<Ball> ballsOnTable) {
-        int id = -1;
+    static Ball getBallFromPosition(double x, double y, ArrayList<Ball> ballsOnTable) {
+        Ball ret = null;
         double minDistance = 6 * ballRadius;
-        for (int bi = 0; bi < ballsOnTable.size(); bi++) {
-            double distance = ballsOnTable.get(bi).Pos.distanceTo(new Vec3(x, y,
+        for (Ball ball : ballsOnTable) {
+            double distance = ball.Pos.distanceTo(new Vec3(x, y,
                     ballRadius));
             if (distance < 5 * ballRadius && distance < minDistance) {
                 minDistance = distance;
-                id = ballsOnTable.get(bi).id;
+                ret = ball;
             }
         }
-        return id;
+        return ret;
     }
 }

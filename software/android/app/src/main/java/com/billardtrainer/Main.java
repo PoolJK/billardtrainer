@@ -34,10 +34,13 @@ public class Main extends AppCompatActivity {
     // Bluetooth
     private BTService btService;
 
-    private final int TOAST_MESSAGE = 0;
-    private final int DRAW = 1;
+    // Handler Constants
+    static final int TOAST_MESSAGE = 0;
+    static final int DRAW = 1;
+    static final int BT_SEND = 2;
+
     private ArrayList<Ball> ballsOnTable;
-    private int activeBall = 0;
+    private Ball activeBall;
     private int currentShot = -1;
 
     private TextView activeBallView;
@@ -111,6 +114,8 @@ public class Main extends AppCompatActivity {
                     case DRAW:
                         draw();
                         break;
+                    case BT_SEND:
+                        btService.send(msg.obj.toString());
                 }
             }
         };
@@ -124,7 +129,6 @@ public class Main extends AppCompatActivity {
         // Test case to simulate data from bluetooth:
         btService = new BTService(handler);
         btService.start();
-
 
 
         // ATTENTION: This was auto-generated to handle app links.
@@ -531,15 +535,15 @@ public class Main extends AppCompatActivity {
     }
 
     public void removeBall(View view) {
-        if (activeBall == 0)
+        if (activeBall.id == 0)
             return;
         for (Ball b : ballsOnTable)
-            if (b.id == activeBall) {
+            if (b == activeBall) {
                 ballsOnTable.remove(b);
-                if (activeBall == ballOn)
+                if (activeBall.id == ballOn)
                     ballOn = 8;
-                activeBall = 0;
-                activeBallView.setText(ballsOnTable.get(activeBall).toString());
+                activeBall = ballsOnTable.get(0);
+                activeBallView.setText(activeBall.toString());
                 break;
             }
         calc();
@@ -592,7 +596,7 @@ public class Main extends AppCompatActivity {
 
         private float startX, startY, oldX, oldY;
         private double dx, dy;
-        private int newId = -1;
+        private Ball newBall, activeball;
         private boolean moving;
         private Ball ball;
 
@@ -608,7 +612,7 @@ public class Main extends AppCompatActivity {
                 case MotionEvent.ACTION_DOWN:
                     oldX = startX = e.getX();
                     oldY = startY = e.getY();
-                    newId = getIdFromPosition(rX(e.getX()), rY(e.getY()), ballsOnTable);
+                    newBall = getBallFromPosition(rX(e.getX()), rY(e.getY()), ballsOnTable);
                     moving = false;
                     return true;
                 case MotionEvent.ACTION_MOVE:
@@ -629,7 +633,7 @@ public class Main extends AppCompatActivity {
                     if (!aiming) { // moving
                         for (int bi = 0; bi < ballsOnTable.size(); bi++) {
                             ball = ballsOnTable.get(bi);
-                            if (ball.id == activeBall) {
+                            if (ball == activeBall) {
                                 if (ball.Pos.x + dx < tableWidth - ballRadius
                                         && ball.Pos.x + dx > ballRadius)
                                     ball.Pos.x += dx;
@@ -670,19 +674,21 @@ public class Main extends AppCompatActivity {
                     }
                     // "click"-event:
                     // first: no ball clicked:
-                    if (newId == -1)
+                    if (newBall == null)
                         cycleShot();
                     else {
                         // ball clicked
-                        if (newId == activeBall && activeBall != 0) {
-                            ballOn = activeBall;
-                            activeBall = 0;
-                            activeBallView.setText(ballsOnTable.get(activeBall).toString());
+                        if (newBall == activeBall && activeBall.id != 0) {
+                            ballOn = activeBall.id;
                             calc();
                             return false;
                         } else {
-                            activeBall = newId;
-                            activeBallView.setText(ballsOnTable.get(activeBall).toString());
+                            activeBall = newBall;
+                            activeBallView.setText(activeBall.toString());
+                            Message msg = handler.obtainMessage();
+                            msg.obj = activeBall.toString();
+                            msg.what = BT_SEND;
+                            handler.sendMessage(msg);
                             return false;
                         }
                     }
@@ -845,7 +851,7 @@ public class Main extends AppCompatActivity {
 
         ballsOnTable.add(new Ball((brownSpot.x + greenSpot.x) / 2, brownSpot.y,
                 0, 0));
-
+        activeBall = ballsOnTable.get(0);
         // colors
 
         ballsOnTable.add(new Ball(yellowSpot.x, yellowSpot.y, 2, 2));

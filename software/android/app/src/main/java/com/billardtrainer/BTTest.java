@@ -54,7 +54,7 @@ public class BTTest extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_main);
+        setContentView(R.layout.bttest);
         mMessageET = findViewById(R.id.message_et);
         mSendBN = findViewById(R.id.send_bn);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();

@@ -50,23 +50,23 @@ if args.push_to_pi:
                     print('error sending to pi')
                     exit(0)
                 attempts += 1
-        # save args to pi_command file used by putty
+        # save args to pi_command.sh file used by putty
         cmd = open('pi_command', 'w')
         args = ''
         # get string from args
         for a in sys.argv[1:]:
             args += ' ' + a
-        cmd.write('export DISPLAY=:0 && cd /home/pi/billardtrainer/software && lxterminal --command="python3 '
-                  '\'/home/pi/billardtrainer/software/billardtrainer.py\'' + args + '"\n')
+        cmd.write('export DISPLAY=:0 && cd /home/pi/billardtrainer/software && lxterminal --command=\'python3 '
+                  '"/home/pi/billardtrainer/software/billardtrainer.py"' + args + '\'\n')
         cmd.close()
         # run the program on the pi (doesn't work :'-/ )
-        # os.system('putty -ssh -2 -l pi -pw pi -m c:pi_command raspberrypi')
+        os.system('putty -ssh -2 -l pi -pw pi -m c:pi_command raspberrypi')
     # TODO: elif os.name == unix: ...
     # TODO: elif os.name == osx: ...
     # exit, you're done on PC
     exit(0)
 
-print("shit")
+print("billardtrainer.py is running")
 on_pi = cv2.getVersionMajor() < 4
 # on the pi try to catch all errors
 try:
