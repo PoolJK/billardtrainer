@@ -2,7 +2,7 @@ from threading import Thread
 import queue
 from queue import Queue
 
-from software.classes.utils import *
+from .utils import *
 
 
 class InputStream:

@@ -1,4 +1,4 @@
-package com.billardtrainer;
+package com.physnooker;
 
 import android.annotation.SuppressLint;
 import android.app.*;
@@ -14,9 +14,9 @@ import android.view.ViewGroup.*;
 import android.widget.*;
 import java.util.*;
 
-import static com.billardtrainer.Cons.*;
+import static com.physnooker.Cons.*;
 
-public class oldphysnookermain extends Activity {
+public class Main extends Activity {
 
     static boolean first;
 
@@ -360,7 +360,7 @@ public class oldphysnookermain extends Activity {
         canvas.drawRect(sX(0), sY(0), sX(tableWidth), sY(-tableLength), paint);
         // lines
         paint.setColor(Color.WHITE);
-        paint.setStyle(Style.STROKE);
+        paint.setStyle(Paint.Style.STROKE);
         canvas.drawLine(sX(0), sY(-DDistance), sX(tableWidth), sY(-DDistance),
                 paint);
         canvas.drawArc(new RectF(sX(yellowSpot.x), sY(yellowSpot.y + DRadius),
@@ -741,7 +741,7 @@ public class oldphysnookermain extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.main);
 
-        tV = (TextView) findViewById(R.id.active_ball_view);
+        tV = (TextView) findViewById(R.id.textView1);
         tV.setText(Ball.getNameFromId(activeBall));
         setWx = (EditText) findViewById(R.id.setWx);
         setWy = (EditText) findViewById(R.id.setWy);

@@ -34,14 +34,15 @@ class Utils {
     static Ball getBallFromPosition(double x, double y, ArrayList<Ball> ballsOnTable) {
         Ball ret = null;
         double minDistance = 6 * ballRadius;
-        for (Ball ball : ballsOnTable) {
-            double distance = ball.Pos.distanceTo(new Vec3(x, y,
-                    ballRadius));
-            if (distance < 5 * ballRadius && distance < minDistance) {
-                minDistance = distance;
-                ret = ball;
+        if (!ballsOnTable.isEmpty())
+            for (Ball ball : ballsOnTable) {
+                double distance = ball.Pos.distanceTo(new Vec3(x, y,
+                        ballRadius));
+                if (distance < 5 * ballRadius && distance < minDistance) {
+                    minDistance = distance;
+                    ret = ball;
+                }
             }
-        }
         return ret;
     }
 }

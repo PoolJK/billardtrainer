@@ -3,8 +3,8 @@ import argparse
 import os
 import sys
 
-from software.classes.utils import *
-from software.raspy.detect_test import DetectTest
+from raspy.classes.utils import *
+from raspy.detect_test import DetectTest
 
 cl_parser = argparse.ArgumentParser()
 cl_parser.add_argument('-f', '--file', dest='filename', help='input (device, file, video, stream)',
@@ -24,7 +24,6 @@ cl_parser.add_argument('-mir', '--mirror', dest='mirror', help='mirror input', a
 cl_parser.add_argument('-test', '--camera-test', dest='camera_test', help='only test specified input',
                        action='store_true', default=False)
 cl_parser.add_argument('-p', '--preview', dest='preview', help='only show preview', action='store_true', default=False)
-cl_parser.add_argument('-bt', dest='bt_test', help='start bluetooth test', action='store_true', default=False)
 args = cl_parser.parse_args()
 
 if args.push_to_pi:
@@ -59,7 +58,7 @@ if args.push_to_pi:
         cmd.write('export DISPLAY=:0 && cd /home/pi/billardtrainer/software && lxterminal --command=\'python3 '
                   '"/home/pi/billardtrainer/software/billardtrainer.py"' + args + '\'\n')
         cmd.close()
-        # run the program on the pi (doesn't work :'-/ )
+        # run the program on the pi (works again, hooray!)
         os.system('putty -ssh -2 -l pi -pw pi -m c:pi_command raspberrypi')
     # TODO: elif os.name == unix: ...
     # TODO: elif os.name == osx: ...
@@ -70,10 +69,6 @@ print("billardtrainer.py is running")
 on_pi = cv2.getVersionMajor() < 4
 # on the pi try to catch all errors
 try:
-    if args.bt_test:
-        from software.raspy import bt_test_bluez
-        bt_test_bluez.run_test()
-        exit(0)
     detect_test = DetectTest(args)
     if not args.camera_test and not args.preview:
         detect_test.main()

@@ -2,8 +2,8 @@
 
 import os
 import re
-from software.classes.utils import *
-from software.classes.input_stream import InputStream
+from .utils import *
+from .input_stream import InputStream
 
 
 class Camera:

@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
 import cv2
-from software.classes.beamer import Beamer
-from software.classes.camera import Camera
-from software.classes.table_sim import TableSim
+from .classes.dev_beamer import Beamer
+from .classes.camera import Camera
+from .classes.table_sim import TableSim
 
 
 class DetectTest:

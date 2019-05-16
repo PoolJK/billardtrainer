@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 import cv2
-import software.classes.settings as settings
+from . import settings
 
 
 class Ball:

@@ -26,53 +26,60 @@ import android.widget.Button;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
+
 import static com.billardtrainer.Cons.*;
 import static com.billardtrainer.Utils.*;
 
 public class Main extends AppCompatActivity {
+    // Debug
+    private final String TAG = "Main";
 
     // Bluetooth
-    private BTService btService;
+    private static BTService btService;
 
     // Handler Constants
     static final int TOAST_MESSAGE = 0;
     static final int DRAW = 1;
     static final int BT_SEND = 2;
+    static final int BT_RECEIVE = 3;
+    static final int BT_CONNECTED = 4;
+    static final int BT_DISCONNECTED = 5;
 
-    private ArrayList<Ball> ballsOnTable;
-    private Ball activeBall;
-    private int currentShot = -1;
+    private static ArrayList<Ball> ballsOnTable;
+    private static Ball activeBall;
+    private static int currentShot = -1;
 
     private TextView activeBallView;
-    private Button fineSwitchButton;
+    private Button btModeSwitchButton;
     private RelativeLayout linear_layout;
     private customCanvas drawSurface;
     int screenWidth, screenHeight;
     double screenScale, screenOffset;
-    private boolean screenSet = false;
-    private boolean fineMove = false;
+    private boolean screenSet;
+    private static boolean btModeSending = true;
     private static mHandler handler;
-    private int ballOn = 8;
-    private ArrayList<Shot> possibleShots;
-    private boolean simRunning, calcRunning;
+    private static int ballOn = 8;
+    private static ArrayList<Shot> possibleShots;
+    private static boolean simRunning, calcRunning;
     private simThread sThread;
 
     private Bitmap bitmap;
     private Canvas canvas;
-    private final Paint paint = new Paint();
-    private boolean aiming;
+    private static final Paint paint = new Paint();
+    private static boolean aiming;
     private Button aimButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        screenSet = false;
         setContentView(R.layout.main);
 
         activeBallView = findViewById(R.id.active_ball_view);
         activeBallView.setText("Cueball");
         aimButton = findViewById(R.id.button3);
         aimButton.setText(getString(R.string.aimMode_move));
-        fineSwitchButton = findViewById(R.id.button6);
+        btModeSwitchButton = findViewById(R.id.button6);
         linear_layout = findViewById(R.id.linlay);
         ViewTreeObserver vto = linear_layout.getViewTreeObserver();
         vto.addOnPreDrawListener(new ViewTreeObserver.OnPreDrawListener() {
@@ -96,45 +103,87 @@ public class Main extends AppCompatActivity {
                 return true;
             }
         });
-        ballsOnTable = new ArrayList<>();
-        initTable();
-        drawSurface = new customCanvas(this);
-        RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-                LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-        linear_layout.addView(drawSurface, 0, params);
-
-        handler = new mHandler() {
-            @Override
-            public void handleMessage(Message msg) {
-                Log.d("mHandler", msg.toString());
-                switch (msg.what) {
-                    case TOAST_MESSAGE:
-                        toast((String) msg.obj);
-                        break;
-                    case DRAW:
-                        draw();
-                        break;
-                    case BT_SEND:
-                        btService.send(msg.obj.toString());
+        if (ballsOnTable == null) {
+            ballsOnTable = new ArrayList<>();
+            initTable();
+        }
+        if (drawSurface == null)
+            drawSurface = new customCanvas(this, activeBall);
+        //TODO: drawingSurface after screenRotate
+        Log.e(TAG, String.format("childcount = %d", linear_layout.getChildCount()));
+        if (linear_layout.getChildCount() == 7) {
+            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
+                    LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
+            linear_layout.addView(drawSurface, 0, params);
+        }
+        if (handler == null)
+            handler = new mHandler() {
+                @Override
+                public void handleMessage(Message msg) {
+                    Log.v(TAG, String.format("mHandler: %s", msg.toString()));
+                    switch (msg.what) {
+                        case TOAST_MESSAGE:
+                            toast((String) msg.obj);
+                            break;
+                        case DRAW:
+                            draw();
+                            break;
+                        case BT_SEND:
+                            btService.send(msg.obj.toString());
+                            break;
+                        case BT_RECEIVE:
+                            handle_bt_message(msg.obj.toString());
+                            break;
+                        case BT_CONNECTED:
+                            toast("bluetooth connected");
+                            break;
+                        case BT_DISCONNECTED:
+                            toast("bluetooth disconnected");
+                            btService.connect();
+                            break;
+                        default:
+                            super.handleMessage(msg);
+                    }
                 }
-            }
-        };
+            };
+
         sThread = new simThread();
-        possibleShots = new ArrayList<>();
+
+        if (possibleShots == null)
+            possibleShots = new ArrayList<>();
+
         paint.setStrokeWidth(0);
         paint.setAntiAlias(true);
         angle = 180;
         speed = 3;
 
         // Test case to simulate data from bluetooth:
-        btService = new BTService(handler);
-        btService.start();
-
+        if (btService == null) {
+            Log.d(TAG, "btService is null");
+            btService = new BTService(handler);
+            btService.start();
+        }
 
         // ATTENTION: This was auto-generated to handle app links.
         Intent appLinkIntent = getIntent();
         String appLinkAction = appLinkIntent.getAction();
         Uri appLinkData = appLinkIntent.getData();
+    }
+
+    private void handle_bt_message(String message) {
+        switch (message.charAt(0)) {
+            case 'b':
+                message = message.substring(2, message.length() - 1);
+                String[] m = message.split(",");
+                double x = Double.parseDouble(m[0]);
+                double y = Double.parseDouble(m[1]);
+                ballsOnTable.add(new Ball(x, y, 1, ballsOnTable.size()));
+                handler.sendEmptyMessage(DRAW);
+                toast(message);
+                break;
+            default:
+                Log.d(TAG, message);
+        }
     }
 
     static class mHandler extends Handler {
@@ -148,7 +197,7 @@ public class Main extends AppCompatActivity {
     }
 
     float screenY(double y) {
-        return (float) (-y * screenScale + 20);
+        return (float) (y * screenScale + 20);
     }
 
     double rX(float sX) {
@@ -156,7 +205,7 @@ public class Main extends AppCompatActivity {
     }
 
     double rY(float sY) {
-        return (sY - 20) / -screenScale;
+        return (sY - 20) / screenScale;
     }
 
     private int numposs = 0;
@@ -517,9 +566,21 @@ public class Main extends AppCompatActivity {
         }
     }
 
-    public void fineSwitch(View view) {
-        fineMove = !fineMove;
-        fineSwitchButton.setText(fineMove ? "fine" : "norm");
+    public void btModeSwitch(View view) {
+        btModeSending = !btModeSending;
+        btModeSwitchButton.setText(btModeSending ? "sending" : "receiving");
+        if (!btModeSending) {
+            ballsOnTable.clear();
+            activeBall = null;
+            currentShot = -1;
+            handler.sendEmptyMessage(DRAW);
+        } else {
+            ballsOnTable.clear();
+            initTable();
+            drawSurface.activeball = activeBall;
+            handler.sendEmptyMessage(DRAW);
+            sendAllToBluetooth();
+        }
     }
 
     public void aimSwitch(View view) {
@@ -547,6 +608,12 @@ public class Main extends AppCompatActivity {
                 break;
             }
         calc();
+    }
+
+    public void sendAllToBluetooth() {
+        for (Ball ball : ballsOnTable) {
+            handler.obtainMessage(BT_SEND, "b(" + ball.Pos.x + "," + ball.Pos.y + ")\n").sendToTarget();
+        }
     }
 
     public void start(View view) {
@@ -600,8 +667,9 @@ public class Main extends AppCompatActivity {
         private boolean moving;
         private Ball ball;
 
-        public customCanvas(Context context) {
+        public customCanvas(Context context, Ball activeball) {
             super(context);
+            this.activeball = activeball;
         }
 
         @Override
@@ -622,32 +690,26 @@ public class Main extends AppCompatActivity {
                     oldY = e.getY();
                     if (Math.abs(e.getX() - startX) < MIN_MOVEMENT
                             && Math.abs(e.getY() - startY) < MIN_MOVEMENT
-                            && !fineMove
                             && !aiming)
                         return true;
                     else
                         moving = true;
-                    double fact = fineMove ? 0.5 : 1;
+                    double fact = 1;
                     dx *= fact;
                     dy *= fact;
-                    if (!aiming) { // moving
-                        for (int bi = 0; bi < ballsOnTable.size(); bi++) {
-                            ball = ballsOnTable.get(bi);
-                            if (ball == activeBall) {
-                                if (ball.Pos.x + dx < tableWidth - ballRadius
-                                        && ball.Pos.x + dx > ballRadius)
-                                    ball.Pos.x += dx;
-                                if (ball.Pos.y + dy > -tableLength + ballRadius
-                                        && ball.Pos.y + dy < -ballRadius)
-                                    ball.Pos.y += dy;
-                            }
-                        }
+                    if (!aiming && activeball != null) { // moving
+                        if (activeball.Pos.x + dx < tableWidth - ballRadius
+                                && activeball.Pos.x + dx > ballRadius)
+                            activeball.Pos.x += dx;
+                        if (activeball.Pos.y + dy < tableLength - ballRadius
+                                && activeball.Pos.y + dy > ballRadius)
+                            activeball.Pos.y += dy;
                     } else { // aiming
                         //TODO
-                        angle += dx;
-                        speed += dy * 0.1;
-                        setCueballV();
-                        handler.sendEmptyMessage(DRAW);
+//                        angle += dx;
+//                        speed += dy * 0.1;
+//                        setCueballV();
+//                        handler.sendEmptyMessage(DRAW);
                         return true;
                     }
                     if (!simRunning && !calcRunning) {
@@ -655,26 +717,15 @@ public class Main extends AppCompatActivity {
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
-                    Log.d("main", String.format("Cueball position: x=%f y=%f",
-                            ballsOnTable.get(0).Pos.x,
-                            ballsOnTable.get(0).Pos.y));
+                    if (!ballsOnTable.isEmpty())
+                        Log.d("main", String.format("Cueball position: x=%f y=%f",
+                                ballsOnTable.get(0).Pos.x,
+                                ballsOnTable.get(0).Pos.y));
                     if (moving)
                         return false;
-                    // else
-                    //TODO kann glaub ich weg
-                    if (simRunning) {
-                        simRunning = false;
-                        try {
-                            sThread.join();
-                        } catch (InterruptedException ex) {
-                            ex.printStackTrace();
-                        }
-                        calc();
-                        return false;
-                    }
                     // "click"-event:
                     // first: no ball clicked:
-                    if (newBall == null)
+                    if (newBall == null || activeball == null)
                         cycleShot();
                     else {
                         // ball clicked
@@ -684,11 +735,9 @@ public class Main extends AppCompatActivity {
                             return false;
                         } else {
                             activeBall = newBall;
+                            activeball = newBall;
                             activeBallView.setText(activeBall.toString());
-                            Message msg = handler.obtainMessage();
-                            msg.obj = activeBall.toString();
-                            msg.what = BT_SEND;
-                            handler.sendMessage(msg);
+                            handler.obtainMessage(BT_SEND, String.format("n(%s)", activeball.toString())).sendToTarget();
                             return false;
                         }
                     }
@@ -713,14 +762,14 @@ public class Main extends AppCompatActivity {
         paint.setStyle(Style.FILL);
         canvas.drawARGB(255, 0, 0, 0);
         paint.setColor(Color.rgb(0, 140, 20));
-        canvas.drawRect(screenX(0), screenY(0), screenX(tableWidth), screenY(-tableLength), paint);
+        canvas.drawRect(screenX(0), screenY(0), screenX(tableWidth), screenY(tableLength), paint);
         // lines
         paint.setColor(Color.WHITE);
         paint.setStyle(Paint.Style.STROKE);
-        canvas.drawLine(screenX(0), screenY(-DDistance), screenX(tableWidth), screenY(-DDistance),
+        canvas.drawLine(screenX(0), screenY(DDistance), screenX(tableWidth), screenY(DDistance),
                 paint);
-        canvas.drawArc(new RectF(screenX(yellowSpot.x), screenY(yellowSpot.y + DRadius),
-                        screenX(greenSpot.x), screenY(greenSpot.y - DRadius)), 180, 180, false,
+        canvas.drawArc(new RectF(screenX(yellowSpot.x), screenY(yellowSpot.y - DRadius),
+                        screenX(greenSpot.x), screenY(greenSpot.y + DRadius)), 180, 180, false,
                 paint);
         // spots
         canvas.drawLine(screenX(yellowSpot.x), screenY(yellowSpot.y), screenX(yellowSpot.x),
@@ -864,22 +913,22 @@ public class Main extends AppCompatActivity {
         // reds
 
         double yd = Math.sqrt(3 * ballRadius * ballRadius);
-        double yc = pinkSpot.y - 0.001;
-        ballsOnTable.add(new Ball(pinkSpot.x, yc - yd, 1, 8));
-        ballsOnTable.add(new Ball(pinkSpot.x - ballRadius, yc - 2 * yd, 1, 9));
-        ballsOnTable.add(new Ball(pinkSpot.x + ballRadius, yc - 2 * yd, 1, 10));
-        ballsOnTable.add(new Ball(pinkSpot.x - 2 * ballRadius, yc - 3 * yd, 1, 11));
-        ballsOnTable.add(new Ball(pinkSpot.x, yc - 3 * yd, 1, 12));
-        ballsOnTable.add(new Ball(pinkSpot.x + 2 * ballRadius, yc - 3 * yd, 1, 13));
-        ballsOnTable.add(new Ball(pinkSpot.x - 3 * ballRadius, yc - 4 * yd, 1, 14));
-        ballsOnTable.add(new Ball(pinkSpot.x - 1 * ballRadius, yc - 4 * yd, 1, 15));
-        ballsOnTable.add(new Ball(pinkSpot.x + 1 * ballRadius, yc - 4 * yd, 1, 16));
-        ballsOnTable.add(new Ball(pinkSpot.x + 3 * ballRadius, yc - 4 * yd, 1, 17));
-        ballsOnTable.add(new Ball(pinkSpot.x - 4 * ballRadius, yc - 5 * yd, 1, 18));
-        ballsOnTable.add(new Ball(pinkSpot.x - 2 * ballRadius, yc - 5 * yd, 1, 19));
-        ballsOnTable.add(new Ball(pinkSpot.x, yc - 5 * yd, 1, 20));
-        ballsOnTable.add(new Ball(pinkSpot.x + 2 * ballRadius, yc - 5 * yd, 1, 21));
-        ballsOnTable.add(new Ball(pinkSpot.x + 4 * ballRadius, yc - 5 * yd, 1, 22));
+        double yc = pinkSpot.y + 0.001;
+        ballsOnTable.add(new Ball(pinkSpot.x, yc + yd, 1, 8));
+        ballsOnTable.add(new Ball(pinkSpot.x - ballRadius, yc + 2 * yd, 1, 9));
+        ballsOnTable.add(new Ball(pinkSpot.x + ballRadius, yc + 2 * yd, 1, 10));
+        ballsOnTable.add(new Ball(pinkSpot.x - 2 * ballRadius, yc + 3 * yd, 1, 11));
+        ballsOnTable.add(new Ball(pinkSpot.x, yc + 3 * yd, 1, 12));
+        ballsOnTable.add(new Ball(pinkSpot.x + 2 * ballRadius, yc + 3 * yd, 1, 13));
+        ballsOnTable.add(new Ball(pinkSpot.x - 3 * ballRadius, yc + 4 * yd, 1, 14));
+        ballsOnTable.add(new Ball(pinkSpot.x - 1 * ballRadius, yc + 4 * yd, 1, 15));
+        ballsOnTable.add(new Ball(pinkSpot.x + 1 * ballRadius, yc + 4 * yd, 1, 16));
+        ballsOnTable.add(new Ball(pinkSpot.x + 3 * ballRadius, yc + 4 * yd, 1, 17));
+        ballsOnTable.add(new Ball(pinkSpot.x - 4 * ballRadius, yc + 5 * yd, 1, 18));
+        ballsOnTable.add(new Ball(pinkSpot.x - 2 * ballRadius, yc + 5 * yd, 1, 19));
+        ballsOnTable.add(new Ball(pinkSpot.x, yc + 5 * yd, 1, 20));
+        ballsOnTable.add(new Ball(pinkSpot.x + 2 * ballRadius, yc + 5 * yd, 1, 21));
+        ballsOnTable.add(new Ball(pinkSpot.x + 4 * ballRadius, yc + 5 * yd, 1, 22));
     }
 
     private void toast(String msg) {

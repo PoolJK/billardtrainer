@@ -1,6 +1,6 @@
 #!/usr/bin/python3
 
-from software.classes.utils import *
+from .utils import *
 
 
 class Beamer:

@@ -49,8 +49,8 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_above="@id/button5"
-        android:onClick="fineSwitch"
-        android:text="norm" />
+        android:onClick="btModeSwitch"
+        android:text="sending" />
     <!--
     <EditText
         android:id="@+id/Angle"
