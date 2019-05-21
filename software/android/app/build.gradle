@@ -2,12 +2,16 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 28
+    buildToolsVersion '28.0.3'
     defaultConfig {
         applicationId "com.billardtrainer"
         minSdkVersion 16
         targetSdkVersion 28
         versionCode 1
-        versionName "1.0"
+        versionName "0.1.0"
+    }
+    dependencies {
+        implementation 'com.android.support:appcompat-v7:28.0.0'
     }
     sourceSets {
         main {
@@ -21,13 +25,13 @@ android {
         release {
             minifyEnabled true
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            buildConfigField 'boolean', 'TEST', 'true'
         }
         debug {
             minifyEnabled false
         }
     }
 }
-
 dependencies {
     implementation 'com.android.support:appcompat-v7:28.0.0'
 }

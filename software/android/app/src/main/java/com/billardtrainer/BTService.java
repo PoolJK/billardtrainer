@@ -22,17 +22,22 @@ class BTService extends Thread {
 
     // Constants
     private final static String MY_UUID = "00001101-0000-1000-8000-00805f9b34fb";
-    private final static int NULL = 0;
-    private final static int DISCONNECTED = 1;
-    private final static int CONNECTING = 2;
-    private final static int CONNECTED = 3;
+    final static int NULL = 0;
+    final static int DISCONNECTED = 1;
+    final static int CONNECTING = 2;
+    final static int CONNECTED = 3;
 
     // Connection stuff
     private Queue<String> send_queue;
     private BluetoothSocket mSocket = null;
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothDevice mDevice;
-    private int state = NULL;
+
+    int getBTState() {
+        return BTState;
+    }
+
+    private int BTState = NULL;
     private long last_connect_time;
     private connectThread conT;
     private connectedThread connT;
@@ -69,8 +74,8 @@ class BTService extends Thread {
     }
 
     void connect() {
-        if (state > DISCONNECTED) {
-            Log.d(TAG, String.format("connect() called while state = %d", state));
+        if (BTState > DISCONNECTED) {
+            Log.d(TAG, String.format("connect() called while BTState = %d", BTState));
             return;
         }
         try {
@@ -79,7 +84,7 @@ class BTService extends Thread {
             e.printStackTrace();
         }
         last_connect_time = System.currentTimeMillis();
-        state = CONNECTING;
+        BTState = CONNECTING;
         Log.d(TAG, "Checking Bluetooth...");
         if (!mBluetoothAdapter.isEnabled()) {
             Log.d(TAG, "Bluetooth not enabled");
@@ -112,7 +117,7 @@ class BTService extends Thread {
 
     private void runQueue() {
         while (!send_queue.isEmpty()) {
-            if (state != CONNECTED) {
+            if (BTState != CONNECTED) {
                 Log.d(TAG, "waiting for connection");
                 mainHandler.postDelayed(new Runnable() {
                     @Override
@@ -163,7 +168,7 @@ class BTService extends Thread {
             InputStream is = socket.getInputStream();
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
             String data;
-            state = CONNECTED;
+            BTState = CONNECTED;
             while (!this.isInterrupted()) {
                 try {
                     data = reader.readLine();
@@ -196,9 +201,10 @@ class BTService extends Thread {
             conT.interrupt();
         if (connT != null && connT.isAlive())
             connT.interrupt();
-        if (state > DISCONNECTED) {
-            state = DISCONNECTED;
+        if (BTState > DISCONNECTED) {
+            BTState = DISCONNECTED;
             mainHandler.obtainMessage(Main.BT_DISCONNECTED).sendToTarget();
+            mainHandler.sendEmptyMessage(Main.DEVICE_READY);
         }
     }
 }

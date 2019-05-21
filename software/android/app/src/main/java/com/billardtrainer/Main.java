@@ -2,6 +2,7 @@ package com.billardtrainer;
 
 import java.util.ArrayList;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -33,6 +34,7 @@ import static com.billardtrainer.Utils.*;
 public class Main extends AppCompatActivity {
     // Debug
     private final String TAG = "Main";
+    private final boolean debug = BuildConfig.DEBUG;
 
     // Bluetooth
     private static BTService btService;
@@ -44,6 +46,7 @@ public class Main extends AppCompatActivity {
     static final int BT_RECEIVE = 3;
     static final int BT_CONNECTED = 4;
     static final int BT_DISCONNECTED = 5;
+    static final int DEVICE_READY = 6;
 
     private static ArrayList<Ball> ballsOnTable;
     private static Ball activeBall;
@@ -108,7 +111,7 @@ public class Main extends AppCompatActivity {
             initTable();
         }
         if (drawSurface == null)
-            drawSurface = new customCanvas(this, activeBall);
+            drawSurface = new customCanvas(this);
         //TODO: drawingSurface after screenRotate
         Log.e(TAG, String.format("childcount = %d", linear_layout.getChildCount()));
         if (linear_layout.getChildCount() == 7) {
@@ -118,9 +121,11 @@ public class Main extends AppCompatActivity {
         }
         if (handler == null)
             handler = new mHandler() {
+                private boolean device_busy = false;
+
                 @Override
                 public void handleMessage(Message msg) {
-                    Log.v(TAG, String.format("mHandler: %s", msg.toString()));
+                    // Log.v(TAG, String.format("mHandler: %s", msg.toString()));
                     switch (msg.what) {
                         case TOAST_MESSAGE:
                             toast((String) msg.obj);
@@ -128,14 +133,25 @@ public class Main extends AppCompatActivity {
                         case DRAW:
                             draw();
                             break;
+                        case DEVICE_READY:
+                            device_busy = false;
+                            break;
                         case BT_SEND:
-                            btService.send(msg.obj.toString());
+                            if (device_busy) {
+                                Log.d("Handler", "device busy");
+                                break;
+                            }
+                            device_busy = true;
+                            if (btService.getBTState() == BTService.CONNECTED)
+                                btService.send(msg.obj.toString());
                             break;
                         case BT_RECEIVE:
                             handle_bt_message(msg.obj.toString());
                             break;
                         case BT_CONNECTED:
                             toast("bluetooth connected");
+                            device_busy = false;
+                            handler.obtainMessage(BT_SEND, String.format("%s", getTableAsJSONString())).sendToTarget();
                             break;
                         case BT_DISCONNECTED:
                             toast("bluetooth disconnected");
@@ -171,6 +187,10 @@ public class Main extends AppCompatActivity {
     }
 
     private void handle_bt_message(String message) {
+        if (message.equals("done")) {
+            handler.sendEmptyMessage(DEVICE_READY);
+            return;
+        }
         switch (message.charAt(0)) {
             case 'b':
                 message = message.substring(2, message.length() - 1);
@@ -182,6 +202,7 @@ public class Main extends AppCompatActivity {
                 toast(message);
                 break;
             default:
+                toast(message);
                 Log.d(TAG, message);
         }
     }
@@ -252,11 +273,11 @@ public class Main extends AppCompatActivity {
             // all pockets
             for (Vec3 pocket : pockets) {
                 if (b.id == 7)
-                    Log.d("main", String.format("pocket: %s", pocket));
+                    Log.d("calc", String.format("pocket: %s", pocket));
                 // if obstructed check next
                 if (b.hasNoLineTo(pocket, ballsOnTable, null)) {
                     if (b.id == 7)
-                        Log.d("main", "no line");
+                        Log.d("calc", "no line");
                     continue;
                 }
                 numposs += 1;
@@ -272,18 +293,21 @@ public class Main extends AppCompatActivity {
                 if (deltaAngle > 88)
                     continue;
                 numreach += 1;
-                possibleShots.add(new Shot(ballsOnTable, contactPoint, pocket, b.id,
-                        possibleShots.size() + 1));
+                possibleShots.add(new Shot(ballsOnTable, contactPoint, pocket, b.id));
                 // try to select similar shot
                 if (b.id == btp && pocket == pock)
                     currentShot = possibleShots.size() - 1;
             }
         }
-
-        if (!possibleShots.isEmpty() && currentShot == -1)
-            currentShot = 0;
         calcRunning = false;
+        if (!possibleShots.isEmpty()) {
+            if (currentShot < 0)
+                currentShot = 0;
+        } else {
+            currentShot = -1;
+        }
         handler.sendEmptyMessage(DRAW);
+        handler.obtainMessage(BT_SEND, String.format("%s", getTableAsJSONString())).sendToTarget();
     }
 
     private void calcPos() {
@@ -312,10 +336,10 @@ public class Main extends AppCompatActivity {
                 continue;
             // all pockets
             for (Vec3 pocket : pockets) {
-                Log.d("main", String.format("pocket: %s", pocket));
+                Log.v("main", String.format("pocket: %s", pocket));
                 // if obstructed check next
                 if (ball.hasNoLineTo(pocket, ballsOnTable, null)) {
-                    Log.d("main", "no line");
+                    Log.v("main", "no line");
                     continue;
                 }
                 numposs += 1;
@@ -577,9 +601,7 @@ public class Main extends AppCompatActivity {
         } else {
             ballsOnTable.clear();
             initTable();
-            drawSurface.activeball = activeBall;
             handler.sendEmptyMessage(DRAW);
-            sendAllToBluetooth();
         }
     }
 
@@ -608,12 +630,6 @@ public class Main extends AppCompatActivity {
                 break;
             }
         calc();
-    }
-
-    public void sendAllToBluetooth() {
-        for (Ball ball : ballsOnTable) {
-            handler.obtainMessage(BT_SEND, "b(" + ball.Pos.x + "," + ball.Pos.y + ")\n").sendToTarget();
-        }
     }
 
     public void start(View view) {
@@ -663,24 +679,23 @@ public class Main extends AppCompatActivity {
 
         private float startX, startY, oldX, oldY;
         private double dx, dy;
-        private Ball newBall, activeball;
+        private Ball newBall;
         private boolean moving;
-        private Ball ball;
 
-        public customCanvas(Context context, Ball activeball) {
+        public customCanvas(Context context) {
             super(context);
-            this.activeball = activeball;
         }
 
+        @SuppressLint("ClickableViewAccessibility")
         @Override
         public boolean onTouchEvent(MotionEvent e) {
             int MIN_MOVEMENT = 4;
             aiming = false;
+            moving = false;
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     oldX = startX = e.getX();
                     oldY = startY = e.getY();
-                    newBall = getBallFromPosition(rX(e.getX()), rY(e.getY()), ballsOnTable);
                     moving = false;
                     return true;
                 case MotionEvent.ACTION_MOVE:
@@ -697,19 +712,16 @@ public class Main extends AppCompatActivity {
                     double fact = 1;
                     dx *= fact;
                     dy *= fact;
-                    if (!aiming && activeball != null) { // moving
-                        if (activeball.Pos.x + dx < tableWidth - ballRadius
-                                && activeball.Pos.x + dx > ballRadius)
-                            activeball.Pos.x += dx;
-                        if (activeball.Pos.y + dy < tableLength - ballRadius
-                                && activeball.Pos.y + dy > ballRadius)
-                            activeball.Pos.y += dy;
-                    } else { // aiming
-                        //TODO
-//                        angle += dx;
-//                        speed += dy * 0.1;
-//                        setCueballV();
-//                        handler.sendEmptyMessage(DRAW);
+                    if (activeBall != null) { // moving
+                        if (activeBall.Pos.x + dx < tableWidth - ballRadius
+                                && activeBall.Pos.x + dx > ballRadius)
+                            activeBall.Pos.x += dx;
+                        if (activeBall.Pos.y + dy < tableLength - ballRadius
+                                && activeBall.Pos.y + dy > ballRadius)
+                            activeBall.Pos.y += dy;
+                    } else {
+                        // activeBall = null, return
+                        moving = false;
                         return true;
                     }
                     if (!simRunning && !calcRunning) {
@@ -717,40 +729,52 @@ public class Main extends AppCompatActivity {
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
-                    if (!ballsOnTable.isEmpty())
-                        Log.d("main", String.format("Cueball position: x=%f y=%f",
-                                ballsOnTable.get(0).Pos.x,
-                                ballsOnTable.get(0).Pos.y));
-                    if (moving)
-                        return false;
-                    // "click"-event:
-                    // first: no ball clicked:
-                    if (newBall == null || activeball == null)
-                        cycleShot();
-                    else {
-                        // ball clicked
-                        if (newBall == activeBall && activeBall.id != 0) {
-                            ballOn = activeBall.id;
-                            calc();
+                    if (!moving) {
+                        // not moving, "click"-event:
+                        newBall = getBallFromPosition(rX(e.getX()), rY(e.getY()), ballsOnTable);
+                        if (newBall == null) {
+                            cycleShot();
                             return false;
                         } else {
-                            activeBall = newBall;
-                            activeball = newBall;
-                            activeBallView.setText(activeBall.toString());
-                            handler.obtainMessage(BT_SEND, String.format("n(%s)", activeball.toString())).sendToTarget();
-                            return false;
+                            // ball clicked
+                            if (newBall == activeBall) {
+                                ballOn = activeBall.id;
+                                calc();
+                            } else {
+                                activeBall = newBall;
+                                activeBallView.setText(activeBall.toString());
+                                return false;
+                            }
                         }
-                    }
+                    } else
+                        // movement ended
+                        handler.obtainMessage(BT_SEND, String.format("%s", getTableAsJSONString())).sendToTarget();
+                    moving = false;
                     return false;
             }
             return true;
         }
+    }
 
-        @Override
-        public boolean performClick() {
-            Log.w("click", "click");
-            return super.performClick();
+    @SuppressLint("DefaultLocale")
+    private String getTableAsJSONString() {
+        StringBuilder res = new StringBuilder("{\"balls\":{");
+        boolean first = true;
+        for (Ball ball : ballsOnTable) {
+            res.append(first ? "" : ",").append(ball.getJSONString());
+            if (first)
+                first = false;
         }
+        res.append("}");
+        if (currentShot >= 0) {
+            res.append(",\"lines\":{");
+            res.append(possibleShots.get(currentShot).getJSONString());
+            res.append("}}");
+        } else {
+            res.append("}");
+        }
+        Log.d("main", "res = " + res.toString());
+        return res.toString();
     }
 
     private void draw() {
@@ -897,12 +921,11 @@ public class Main extends AppCompatActivity {
 
     private void initTable() {
         // cueball
-
         ballsOnTable.add(new Ball((brownSpot.x + greenSpot.x) / 2, brownSpot.y,
-                0, 0));
+                0, 1));
         activeBall = ballsOnTable.get(0);
-        // colors
 
+        // colors
         ballsOnTable.add(new Ball(yellowSpot.x, yellowSpot.y, 2, 2));
         ballsOnTable.add(new Ball(greenSpot.x, greenSpot.y, 3, 3));
         ballsOnTable.add(new Ball(brownSpot.x, brownSpot.y, 4, 4));
@@ -911,24 +934,23 @@ public class Main extends AppCompatActivity {
         ballsOnTable.add(new Ball(blackSpot.x, blackSpot.y, 7, 7));
 
         // reds
-
-        double yd = Math.sqrt(3 * ballRadius * ballRadius);
-        double yc = pinkSpot.y + 0.001;
-        ballsOnTable.add(new Ball(pinkSpot.x, yc + yd, 1, 8));
-        ballsOnTable.add(new Ball(pinkSpot.x - ballRadius, yc + 2 * yd, 1, 9));
-        ballsOnTable.add(new Ball(pinkSpot.x + ballRadius, yc + 2 * yd, 1, 10));
-        ballsOnTable.add(new Ball(pinkSpot.x - 2 * ballRadius, yc + 3 * yd, 1, 11));
-        ballsOnTable.add(new Ball(pinkSpot.x, yc + 3 * yd, 1, 12));
-        ballsOnTable.add(new Ball(pinkSpot.x + 2 * ballRadius, yc + 3 * yd, 1, 13));
-        ballsOnTable.add(new Ball(pinkSpot.x - 3 * ballRadius, yc + 4 * yd, 1, 14));
-        ballsOnTable.add(new Ball(pinkSpot.x - 1 * ballRadius, yc + 4 * yd, 1, 15));
-        ballsOnTable.add(new Ball(pinkSpot.x + 1 * ballRadius, yc + 4 * yd, 1, 16));
-        ballsOnTable.add(new Ball(pinkSpot.x + 3 * ballRadius, yc + 4 * yd, 1, 17));
-        ballsOnTable.add(new Ball(pinkSpot.x - 4 * ballRadius, yc + 5 * yd, 1, 18));
-        ballsOnTable.add(new Ball(pinkSpot.x - 2 * ballRadius, yc + 5 * yd, 1, 19));
-        ballsOnTable.add(new Ball(pinkSpot.x, yc + 5 * yd, 1, 20));
-        ballsOnTable.add(new Ball(pinkSpot.x + 2 * ballRadius, yc + 5 * yd, 1, 21));
-        ballsOnTable.add(new Ball(pinkSpot.x + 4 * ballRadius, yc + 5 * yd, 1, 22));
+        double red_row_dist = Math.sqrt(2 * ballRadius * ballRadius);
+        double first_red = pinkSpot.y + 0.00 + 2 * ballRadius;
+        ballsOnTable.add(new Ball(pinkSpot.x, first_red, 1, 8));
+        ballsOnTable.add(new Ball(pinkSpot.x - ballRadius, first_red + red_row_dist, 1, 9));
+        ballsOnTable.add(new Ball(pinkSpot.x + ballRadius, first_red + red_row_dist, 1, 10));
+        ballsOnTable.add(new Ball(pinkSpot.x - 2 * ballRadius, first_red + 2 * red_row_dist, 1, 11));
+        ballsOnTable.add(new Ball(pinkSpot.x, first_red + 2 * red_row_dist, 1, 12));
+        ballsOnTable.add(new Ball(pinkSpot.x + 2 * ballRadius, first_red + 2 * red_row_dist, 1, 13));
+        ballsOnTable.add(new Ball(pinkSpot.x - 3 * ballRadius, first_red + 3 * red_row_dist, 1, 14));
+        ballsOnTable.add(new Ball(pinkSpot.x - 1 * ballRadius, first_red + 3 * red_row_dist, 1, 15));
+        ballsOnTable.add(new Ball(pinkSpot.x + 1 * ballRadius, first_red + 3 * red_row_dist, 1, 16));
+        ballsOnTable.add(new Ball(pinkSpot.x + 3 * ballRadius, first_red + 3 * red_row_dist, 1, 17));
+        ballsOnTable.add(new Ball(pinkSpot.x - 4 * ballRadius, first_red + 4 * red_row_dist, 1, 18));
+        ballsOnTable.add(new Ball(pinkSpot.x - 2 * ballRadius, first_red + 4 * red_row_dist, 1, 19));
+        ballsOnTable.add(new Ball(pinkSpot.x, first_red + 4 * red_row_dist, 1, 20));
+        ballsOnTable.add(new Ball(pinkSpot.x + 2 * ballRadius, first_red + 4 * red_row_dist, 1, 21));
+        ballsOnTable.add(new Ball(pinkSpot.x + 4 * ballRadius, first_red + 4 * red_row_dist, 1, 22));
     }
 
     private void toast(String msg) {

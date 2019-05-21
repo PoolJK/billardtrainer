@@ -1,11 +1,15 @@
 package com.billardtrainer;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 import android.graphics.Canvas;
 import android.graphics.Paint;
 import android.support.annotation.NonNull;
 import android.util.Log;
+
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import static com.billardtrainer.Cons.*;
 import static com.billardtrainer.Utils.*;
@@ -28,29 +32,29 @@ class Ball {
         this.id = id;
     }
 
-    Vec3 getPos(double t){
+    Vec3 getPos(double t) {
         double f = 0.5 * uBallCloth * g * t * t;
         return new Vec3(Pos.x + V0.x * t - f * Vc0.x, Pos.y + V0.y * t - f * Vc0.y, 0, t);
     }
 
-    Vec3 getVel(double t){
+    Vec3 getVel(double t) {
         double f = uBallCloth * g * t;
         return new Vec3(V0.x - f * Vc0.x, V0.y - f * Vc0.y, 0);
     }
 
-    Vec3 getW(double t){
-        double f = -5 * uBallCloth * g  * t / (2 * ballRadius);
+    Vec3 getW(double t) {
+        double f = -5 * uBallCloth * g * t / (2 * ballRadius);
         return new Vec3(W0.x - f * Vc0.y, W0.y + f * Vc0.x, W0.z - uBallCloth * g * t / ballRadius);
     }
 
-    void setW0(Vec3 in){
+    void setW0(Vec3 in) {
         W0.x = in.x;
         W0.y = in.y;
         W0.z = in.z;
         W0.time = in.time;
     }
 
-    void setV0(Vec3 in){
+    void setV0(Vec3 in) {
         V0.x = in.x;
         V0.y = in.y;
         V0.z = in.z;
@@ -88,7 +92,7 @@ class Ball {
         // friction
         V.x -= frictionCoeff * V.x / V.length() * tFactor;
         V.y -= frictionCoeff * V.y / V.length() * tFactor;
-        if (Math.abs(V.x) < 0.001 && Math.abs(V.y) < 0.001){
+        if (Math.abs(V.x) < 0.001 && Math.abs(V.y) < 0.001) {
             state = 0;
             V.x = 0;
             V.y = 0;
@@ -125,7 +129,7 @@ class Ball {
             if (ball.equals(this) || ball.equals(ballOn))
                 continue;
             if (id == 7 && target == blackRPocket)
-                Log.d("main", String.format("distancePointToLine = %f", distancePointToLine(ball.Pos, Pos, new Vec3(target.x - Pos.x,
+                Log.d("calc", String.format("ball: distancePointToLine = %f", distancePointToLine(ball.Pos, Pos, new Vec3(target.x - Pos.x,
                         target.y - Pos.y, target.z - Pos.z))));
             // if ball away from targetline
             if (distancePointToLine(ball.Pos, Pos, new Vec3(target.x - Pos.x,
@@ -184,7 +188,7 @@ class Ball {
     @Override
     @NonNull
     public String toString() {
-        switch (id) {
+        switch (value) {
             case -1:
                 return "none";
             case 0:
@@ -204,5 +208,18 @@ class Ball {
             default:
                 return "red";
         }
+    }
+
+    String getJSONString() {
+        JSONObject j = new JSONObject();
+        try {
+            j.put("x", (int) Pos.x);
+            j.put("y", (int) Pos.y);
+            j.put("v", value);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return "";
+        }
+        return String.format(Locale.ROOT, "\"%d\":%s", id, j.toString());
     }
 }

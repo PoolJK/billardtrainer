@@ -7,7 +7,6 @@ from .utils import *
 
 
 class BT:
-
     """
     Class for bluetooth hardware handling.
     Provides read() and send() with queues
@@ -20,6 +19,7 @@ class BT:
     change group of sdp:
     sudo chgrp bluetooth /var/run/sdp
     """
+
     def __init__(self):
         self.server = None
         self.client = None
@@ -33,10 +33,9 @@ class BT:
 
     def read(self):
         try:
-            ret = self.message_queue.get(timeout=0.04)
+            return self.message_queue.get_nowait()
         except queue.Empty:
-            ret = None
-        return ret
+            return None
 
     def send(self, data):
         self.send_queue.put(data)
@@ -69,10 +68,16 @@ class BT:
         return client_sock
 
     def manage_connection(self):
+        # TODO: https://stackoverflow.com/questions/8386679/why-am-i-receiving-a-
+        #  string-from-the-socket-until-the-n-newline-escape-sequence
         connection_attempts = 0
         while True:
             connection_attempts += 1
-            self.server = self.init_server()
+            try:
+                self.server = self.init_server()
+            except OSError:
+                print('no bluetooth on your pc')
+                return
             self.client = self.get_client_connection(self.server)
             try:
                 data = self.client.recv(1024)
@@ -85,7 +90,7 @@ class BT:
                     for line in data:
                         if line != '':
                             self.message_queue.put(line)
-                            self.send('Echo from Pi: {}'.format(line))
+                            # self.send('size={}'.format(len(line)))
                     data = self.client.recv(1024)
             except IOError as e:
                 print('IOError in manage_connection', e)

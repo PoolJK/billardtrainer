@@ -4,6 +4,7 @@ import os
 import sys
 
 from raspy.classes.utils import *
+from raspy.classes import settings
 from raspy.detect_test import DetectTest
 
 cl_parser = argparse.ArgumentParser()
@@ -66,7 +67,7 @@ if args.push_to_pi:
     exit(0)
 
 print("billardtrainer.py is running")
-on_pi = cv2.getVersionMajor() < 4
+settings.on_pi = cv2.getVersionMajor() < 4
 # on the pi try to catch all errors
 try:
     detect_test = DetectTest(args)
@@ -74,9 +75,8 @@ try:
         detect_test.main()
 except Exception as e:
     # wait to be able to read console output on raspberry pi before closing terminal on error:
-    if on_pi:
+    if settings.on_pi:
         print('\nsome error occurred: {}'.format(sys.exc_info()[0]))
         print(e.args)
-        cv2.waitKey()
     raise e
 exit(0)

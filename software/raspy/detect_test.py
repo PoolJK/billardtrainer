@@ -1,13 +1,12 @@
 #!/usr/bin/python3
 
-import cv2
+from .classes.utils import *
 from .classes.dev_beamer import Beamer
 from .classes.camera import Camera
 from .classes.table_sim import TableSim
 
 
 class DetectTest:
-
     x_scale = 0
     y_scale = 0
     camera = None
@@ -53,7 +52,8 @@ class DetectTest:
         if args.preview:
             self.camera.show_preview()
 
-    def main(self):
+    @staticmethod
+    def main():
         # self.camera.show_preview(fullscreen=True)
         table_sim = TableSim()
         table_sim.start()

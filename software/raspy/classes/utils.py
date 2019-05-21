@@ -18,13 +18,13 @@ def lp(msg):
 
 
 # empty method as callback for Trackbars
-def nothing(*x):
+def nothing(_):
     pass
 
 
 # time difference as int in [ms]
 def dt(t1, t2):
-    return int((t2-t1)*1000)
+    return int((t2 - t1) * 1000)
 
 
 # current time
@@ -55,3 +55,31 @@ def rotate_bound(image, angle):
 
     # perform the actual rotation and return the image
     return cv2.warpAffine(image, m, (n_w, n_h), borderValue=(255, 255, 255))
+
+
+# ball color from value
+def ball_color(value):
+    # RGB
+    # colors = {
+    #     0: [255, 255, 255],
+    #     1: [200, 20, 10],
+    #     2: [240, 240, 20],
+    #     3: [10, 120, 40],
+    #     4: [100, 60, 55],
+    #     5: [0, 20, 230],
+    #     6: [200, 20, 200],
+    #     7: [10, 10, 10]
+    # }
+
+    # BGR
+    colors = {
+        0: [255, 255, 255],
+        1: [10, 20, 200],
+        2: [20, 240, 240],
+        3: [40, 120, 10],
+        4: [55, 60, 100],
+        5: [230, 20, 0],
+        6: [200, 20, 200],
+        7: [10, 10, 10]
+    }
+    return colors.get(value, None)
