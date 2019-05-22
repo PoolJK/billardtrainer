@@ -13,7 +13,7 @@ class Line(VisualItem):
     def draw_self(self, image, offset_x, offset_y, ppm_x, ppm_y):
         screen_p1 = (int((self.x1 - offset_x) * ppm_x), int((self.y1 - offset_y) * ppm_y))
         screen_p2 = (int((self.x2 - offset_x) * ppm_x), int((self.y2 - offset_y) * ppm_y))
-        cv2.line(image, screen_p1, screen_p2, self.color)
+        cv2.line(image, screen_p1, screen_p2, self.color, 5)
         pass
 
     @staticmethod

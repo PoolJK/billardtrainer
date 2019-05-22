@@ -7,6 +7,7 @@ from .bluetooth import BT
 from .beamer import Beamer
 from .visual_items.ball import Ball
 from .visual_items.line import Line
+from .visual_items.ghost import Ghost
 from .utils import *
 
 
@@ -123,8 +124,7 @@ class TableSim:
         i_w = int(r_w * self.ppm)  # beamer in table_image
         i_h = int(r_h * self.ppm)
         beamer_image = cv2.resize(self.beamer.get_image(),
-                                  (int(i_w), int(i_h))
-                                  )
+                                  (int(i_w), int(i_h)))
         # make outline
         beamer_image[:, 0:2] = (0, 0, 255)
         beamer_image[:, i_w - 3:i_w - 1] = (0, 0, 255)
@@ -160,8 +160,11 @@ class TableSim:
                 ball['y'],
                 color=ball_color(ball['v'])))
         if 'lines' in message:
-            for line in message["lines"].items():
+            for _, line in message["lines"].items():
                 self.beamer.add_visual_item(Line(line['x1'], line['y1'], line['x2'], line['y2']))
+        if 'ghost' in message:
+            ghost = message["ghost"]
+            self.beamer.add_visual_item(Ghost(ghost['x'], ghost['y']))
         self.beamer.show_objects()
         self.beamer.resize_window()
         # self.beamer.hide()

@@ -72,6 +72,7 @@ public class Main extends AppCompatActivity {
     private static boolean aiming;
     private Button aimButton;
 
+    @SuppressLint("HandlerLeak")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -151,7 +152,7 @@ public class Main extends AppCompatActivity {
                         case BT_CONNECTED:
                             toast("bluetooth connected");
                             device_busy = false;
-                            handler.obtainMessage(BT_SEND, String.format("%s", getTableAsJSONString())).sendToTarget();
+                            handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
                             break;
                         case BT_DISCONNECTED:
                             toast("bluetooth disconnected");
@@ -187,7 +188,8 @@ public class Main extends AppCompatActivity {
     }
 
     private void handle_bt_message(String message) {
-        if (message.equals("done")) {
+        if (message.contains("done")) {
+            Log.d("main", "device ready");
             handler.sendEmptyMessage(DEVICE_READY);
             return;
         }
@@ -236,14 +238,13 @@ public class Main extends AppCompatActivity {
 
     private void calc() {
         Vec3 pock;
-        int btp;
-        Ball b;
+        Ball b, btp;
         Vec3 contactPoint, a;
         numposs = 0;
         numreach = 0;
         ballspread = 0;
         pock = null;
-        btp = -1;
+        btp = null;
         calcRunning = true;
         if (currentShot > -1) {
             pock = possibleShots.get(currentShot).pocket;
@@ -293,9 +294,9 @@ public class Main extends AppCompatActivity {
                 if (deltaAngle > 88)
                     continue;
                 numreach += 1;
-                possibleShots.add(new Shot(ballsOnTable, contactPoint, pocket, b.id));
+                possibleShots.add(new Shot(ballsOnTable, contactPoint, pocket, b));
                 // try to select similar shot
-                if (b.id == btp && pocket == pock)
+                if (b == btp && pocket == pock)
                     currentShot = possibleShots.size() - 1;
             }
         }
@@ -307,7 +308,8 @@ public class Main extends AppCompatActivity {
             currentShot = -1;
         }
         handler.sendEmptyMessage(DRAW);
-        handler.obtainMessage(BT_SEND, String.format("%s", getTableAsJSONString())).sendToTarget();
+        if (btService != null && btService.getBTState() == BTService.CONNECTED)
+            handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
     }
 
     private void calcPos() {
@@ -632,6 +634,11 @@ public class Main extends AppCompatActivity {
         calc();
     }
 
+    public void device_ready(View view) {
+        handler.sendEmptyMessage(DEVICE_READY);
+        handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
+    }
+
     public void start(View view) {
         if (simRunning) {
             simRunning = false;
@@ -664,6 +671,7 @@ public class Main extends AppCompatActivity {
             currentShot = currentShot < possibleShots.size() - 1 ? currentShot + 1
                     : 0;
             handler.sendEmptyMessage(DRAW);
+            handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
         }
     }
 
@@ -748,7 +756,7 @@ public class Main extends AppCompatActivity {
                         }
                     } else
                         // movement ended
-                        handler.obtainMessage(BT_SEND, String.format("%s", getTableAsJSONString())).sendToTarget();
+                        handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
                     moving = false;
                     return false;
             }
@@ -767,9 +775,8 @@ public class Main extends AppCompatActivity {
         }
         res.append("}");
         if (currentShot >= 0) {
-            res.append(",\"lines\":{");
+            res.append(",");
             res.append(possibleShots.get(currentShot).getJSONString());
-            res.append("}}");
         } else {
             res.append("}");
         }
@@ -824,10 +831,10 @@ public class Main extends AppCompatActivity {
         }
         if (currentShot > -1 && !possibleShots.isEmpty()) {
             Shot s = possibleShots.get(currentShot);
-            int btp = s.getBallToPot();
-            double da1 = ballsOnTable.get(btp).getTargetAngle(s.pocket);
+            Ball btp = s.ballToPot;
+            double da1 = btp.getTargetAngle(s.pocket);
             double da2 = ballsOnTable.get(0).getTargetAngle(
-                    ballsOnTable.get(btp).contactPoint(s.pocket));
+                    btp.contactPoint(s.pocket));
             if (!simRunning) {
                 // draw aim line
                 paint.setStyle(Style.STROKE);
@@ -839,21 +846,21 @@ public class Main extends AppCompatActivity {
                 canvas.drawCircle(screenX(s.target.x), screenY(s.target.y),
                         (float) (ballRadius * screenScale), paint);
                 // draw pocket line
-                paint.setColor(getBallColor(ballsOnTable.get(btp).value));
-                canvas.drawLine(screenX(ballsOnTable.get(btp).Pos.x),
-                        screenY(ballsOnTable.get(btp).Pos.y), screenX(s.pocket.x),
+                paint.setColor(getBallColor(btp.value));
+                canvas.drawLine(screenX(btp.Pos.x),
+                        screenY(btp.Pos.y), screenX(s.pocket.x),
                         screenY(s.pocket.y), paint);
                 // draw Stats
                 // object ball
                 paint.setColor(Color.WHITE);
                 paint.setStyle(Style.STROKE);
-                double dist = s.pocket.distanceTo(ballsOnTable.get(btp).Pos);
+                double dist = s.pocket.distanceTo(btp.Pos);
                 double totdist = dist;
-                double dx = screenX(s.pocket.x) - screenX(ballsOnTable.get(btp).Pos.x);
-                double dy = screenY(s.pocket.y) - screenY(ballsOnTable.get(btp).Pos.y);
+                double dx = screenX(s.pocket.x) - screenX(btp.Pos.x);
+                double dy = screenY(s.pocket.y) - screenY(btp.Pos.y);
                 double dl = Math.sqrt(dx * dx + dy * dy);
-                Vec3 normal = new Vec3(screenX(ballsOnTable.get(btp).Pos.x) + dx / 2
-                        - 25 * dy / dl, screenY(ballsOnTable.get(btp).Pos.y) + dy
+                Vec3 normal = new Vec3(screenX(btp.Pos.x) + dx / 2
+                        - 25 * dy / dl, screenY(btp.Pos.y) + dy
                         / 2 - 25 * dx / dl, 0);
                 canvas.drawText("d = " + d(dist * 100, 1) + " cm",
                         (float) normal.x, (float) normal.y, paint);
@@ -868,7 +875,7 @@ public class Main extends AppCompatActivity {
                         * dx / dl, 0);
                 double da = Math.toDegrees(s.target.subtract(ballsOnTable.get(0).Pos)
                         .deltaAngle(
-                                s.pocket.subtract(ballsOnTable.get(btp).Pos)));
+                                s.pocket.subtract(btp.Pos)));
                 paint.setTextSize(15);
                 canvas.drawText("ang = " + d(da, 2) + " deg", (float) normal.x,
                         (float) normal.y, paint);
@@ -879,12 +886,12 @@ public class Main extends AppCompatActivity {
             }
             // draw helper ballOn
             paint.setStyle(Style.FILL);
-            paint.setColor(getBallColor(ballsOnTable.get(btp).value));
+            paint.setColor(getBallColor(btp.value));
             float scale = (float) (30 / ballRadius / screenScale);
             canvas.drawCircle(230, screenHeight
                             - (float) (scale * ballRadius * screenScale),
                     (float) (scale * ballRadius * screenScale), paint);
-            if (ballsOnTable.get(btp).value == 7) {
+            if (btp.value == 7) {
                 paint.setStyle(Style.STROKE);
                 paint.setColor(Color.WHITE);
                 canvas.drawCircle(230, screenHeight

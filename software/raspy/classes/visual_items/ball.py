@@ -41,7 +41,7 @@ class Ball(VisualItem):
                            (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
 
     @staticmethod
-    def find_self(image, offs_x, offs_y, pix_per_mm):
+    def find_self(image, offs_x=0, offs_y=0, pix_per_mm=1):
         # create gray image
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = cv2.medianBlur(gray, 5)

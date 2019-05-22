@@ -60,7 +60,7 @@ if args.push_to_pi:
                   '"/home/pi/billardtrainer/software/billardtrainer.py"' + args + '\'\n')
         cmd.close()
         # run the program on the pi (works again, hooray!)
-        os.system('putty -ssh -2 -l pi -pw pi -m c:pi_command raspberrypi')
+        # os.system('putty -ssh -2 -l pi -pw pi -m c:pi_command raspberrypi')
     # TODO: elif os.name == unix: ...
     # TODO: elif os.name == osx: ...
     # exit, you're done on PC
