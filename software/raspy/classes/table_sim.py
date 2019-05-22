@@ -3,11 +3,10 @@ from json import JSONDecodeError
 from queue import Queue
 import queue
 
-import math
-
 from .bluetooth import BT
 from .beamer import Beamer
 from .visual_items.ball import Ball
+from .visual_items.line import Line
 from .utils import *
 
 
@@ -148,10 +147,10 @@ class TableSim:
         # writing beamer class: add balls to beamer
         try:
             message = json.loads(message)
-        except JSONDecodeError:
+        except JSONDecodeError as e:
             print('\njson error.')
             print(message)
-            return
+            raise e
         self.beamer.clear_image()
         res = ""
         for ball_id, ball in message["balls"].items():
@@ -161,7 +160,8 @@ class TableSim:
                 ball['y'],
                 color=ball_color(ball['v'])))
         if 'lines' in message:
-            print("lines present")
+            for line in message["lines"].items():
+                self.beamer.add_visual_item(Line(line['x1'], line['y1'], line['x2'], line['y2']))
         self.beamer.show_objects()
         self.beamer.resize_window()
         # self.beamer.hide()

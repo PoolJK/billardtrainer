@@ -9,7 +9,7 @@ class VisualItem:
         :param color: color of item
         """
         if color is None:
-            color = [33, 55, 77]
+            color = [255, 255, 255]
         self.x = x
         self.y = y
         self.color = color
@@ -26,13 +26,9 @@ class VisualItem:
         raise NotImplementedError
 
     @staticmethod
-    def find_self(image, offs_x, offs_y, pix_per_mm):
+    def find_self(**kwargs):
         """
         Find own contour in existing table image
-        :param image: image of table
-        :param pix_per_mm:
-        :param offs_x: camera x position offset relative to table mid point in mm
-        :param offs_y: camera y position offset relative to table mid point in mm
         :return: Found items of self
         """
         raise NotImplementedError

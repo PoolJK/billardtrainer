@@ -25,14 +25,14 @@ class Ball(VisualItem):
         super().__init__(x, y, color)
         self.radius = radius
 
-    def draw_self(self, image, offset_x, offset_y, ppmx, ppmy) -> None:
+    def draw_self(self, image, offset_x, offset_y, ppm_x, ppm_y) -> None:
         # print(image.shape)
-        screen_x = int((self.x - offset_x) * ppmx)
-        screen_y = int((self.y - offset_y) * ppmy)
+        screen_x = int((self.x - offset_x) * ppm_x)
+        screen_y = int((self.y - offset_y) * ppm_y)
         # print('radius={} ppm={} x={} y={}'.format(self.radius, pix_per_mm, screen_x, screen_y))
         # circle outline
         cv2.circle(image, (screen_x, screen_y),
-                   int(self.radius * ppmx), self.color, -1)
+                   int(self.radius * ppm_x), self.color, -1)
         # if settings.debugging:
         #     print("ball drawn at: x:{}px y:{}px".format(screen_x, screen_y))
         # draw mid point for debugging
