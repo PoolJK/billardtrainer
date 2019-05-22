@@ -5,7 +5,8 @@
     android:layout_height="match_parent"
     android:background="#000000"
     android:orientation="vertical"
-    tools:context=".Main" >
+    tools:context=".Main"
+    tools:ignore="RtlHardcoded,HardcodedText" >
 
     <Button
         android:id="@+id/button2"

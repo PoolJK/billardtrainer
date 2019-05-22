@@ -17,7 +17,8 @@ import static com.billardtrainer.Utils.*;
 class Ball {
     final int value, id;
     int state = 0;
-    Vec3 Pos, Rot, V, W, V0, W0, Vc0;
+    Vec3 Pos, V, V0, Vc0;
+    private Vec3 Rot, W, W0;
 
     Ball(double x_position, double y_position, int value, int id) {
         // place on table
@@ -32,27 +33,27 @@ class Ball {
         this.id = id;
     }
 
-    Vec3 getPos(double t) {
-        double f = 0.5 * uBallCloth * g * t * t;
-        return new Vec3(Pos.x + V0.x * t - f * Vc0.x, Pos.y + V0.y * t - f * Vc0.y, 0, t);
-    }
-
-    Vec3 getVel(double t) {
-        double f = uBallCloth * g * t;
-        return new Vec3(V0.x - f * Vc0.x, V0.y - f * Vc0.y, 0);
-    }
-
-    Vec3 getW(double t) {
-        double f = -5 * uBallCloth * g * t / (2 * ballRadius);
-        return new Vec3(W0.x - f * Vc0.y, W0.y + f * Vc0.x, W0.z - uBallCloth * g * t / ballRadius);
-    }
-
-    void setW0(Vec3 in) {
-        W0.x = in.x;
-        W0.y = in.y;
-        W0.z = in.z;
-        W0.time = in.time;
-    }
+//    Vec3 getPos(double t) {
+//        double f = 0.5 * uBallCloth * g * t * t;
+//        return new Vec3(Pos.x + V0.x * t - f * Vc0.x, Pos.y + V0.y * t - f * Vc0.y, 0, t);
+//    }
+//
+//    Vec3 getVel(double t) {
+//        double f = uBallCloth * g * t;
+//        return new Vec3(V0.x - f * Vc0.x, V0.y - f * Vc0.y, 0);
+//    }
+//
+//    Vec3 getW(double t) {
+//        double f = -5 * uBallCloth * g * t / (2 * ballRadius);
+//        return new Vec3(W0.x - f * Vc0.y, W0.y + f * Vc0.x, W0.z - uBallCloth * g * t / ballRadius);
+//    }
+//
+//    void setW0(Vec3 in) {
+//        W0.x = in.x;
+//        W0.y = in.y;
+//        W0.z = in.z;
+//        W0.time = in.time;
+//    }
 
     void setV0(Vec3 in) {
         V0.x = in.x;
@@ -159,6 +160,7 @@ class Ball {
                 / a.length();
     }
 
+    @SuppressWarnings("SameParameterValue")
     void draw(Main app, Paint paint, Canvas canvas) {
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(getBallColor(value));

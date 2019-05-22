@@ -6,11 +6,9 @@ class Cons {
     static final int STATE_STILL = 0;
     static final int STATE_ROLLING = 1;
     static final int STATE_SPINNING = 2;
-    static final int quadSimSteps = 10;
 
     // Sim params
     static final double precision = 0.001;
-    static final double dprecision = 0.000001;
 
     // Table Params
 
@@ -18,14 +16,14 @@ class Cons {
     static final double tableWidth = 1778; // x+ (0 = tl)
     final static double DDistance = 737;
     final static double DRadius = 292;
-    final static double blackDistance = 324;
+    private final static double blackDistance = 324;
 
     // Ball Params
 
     final static double ballRadius = 26.25;
-    final static double ballWeight = 0.140; // kg ?
+    //final static double ballWeight = 0.140; // kg ?
     final static double uBallCloth = 0.01; // TODO: check units. originally written in [m], now [mm]
-    final static double uBallBall = 0.06;
+    //final static double uBallBall = 0.06;
     final static double g = 9813; // mm/s^2
     final static double frictionCoeff = uBallCloth * g;
 

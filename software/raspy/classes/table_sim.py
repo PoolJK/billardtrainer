@@ -88,24 +88,6 @@ class TableSim:
     def start(self):
         self.run_table_sim()
 
-    def mouse_callback(self, event, x, y, flags, param):
-        # print('flags: {} param: {}'.format(flags, param))
-        if flags:
-            print('flags={}'.format(flags))
-        if param:
-            print('param={}'.format(param))
-        if event == cv2.EVENT_LBUTTONDOWN:
-            # TODO: check if ball at click position (for moving)
-            pass
-        elif event == cv2.EVENT_LBUTTONUP:
-            pass
-        elif event == cv2.EVENT_RBUTTONDOWN:
-            # TODO: else create ball here
-            # send to message_queue (simulating detection.read)
-            # calculate table pos from pixel:
-            x, y = self.real_pos(x, y)
-            self.message_queue.put('b{}'.format((x, y)))
-
     def fake_detection_read(self):
         # TODO: outside of table_sim this will be detection.read()
         try:
@@ -173,7 +155,8 @@ class TableSim:
         cv2.resizeWindow('table_sim', 540, 960)
         # self.bluetooth.send(res)
 
-    def handle_bt_message(self, message):
+    @staticmethod
+    def handle_bt_message(message):
         """
         Process a message read from bluetooth class
         :param message: the message read by the bluetooth class
@@ -190,42 +173,19 @@ class TableSim:
             y = float(y)
             # create ball at screen_pos(x, y)
             print("x={} y={}".format(x, y))
-            self.balls_on_table.append(self.screen_pos(y - self.b_size[0] // 2, x - self.b_size[1] // 2))
 
     @staticmethod
-    def screen_pos(x, y):
-        """
-        Function for conversion of real mm and screen pix
-        :param x: realX
-        :param y: realY
-        :return: screenx, screeny
-        """
-        w = 1778
-        h = 3556
-        x0 = 100
-        x1 = 1000
-        y0 = 100
-        y1 = 1860
-        return int(x / w * (x1 - x0) + x0), int(y / h * (y1 - y0) + y0)
-
-    @staticmethod
-    def real_pos(x, y):
-        """
-        Function for conversion of real mm and screen pix
-        :param x: screenX
-        :param y: screenY
-        :return: realx, realy
-        """
-        # top left
-        # x0, y0 = 100, 100
-        # top right
-        # x1, y1 = 1000, 100
-        # bottom right
-        # x3, y3 = 1000, 1860
-        w = 1778
-        h = 3556
-        x0 = 100
-        x1 = 1000
-        y0 = 100
-        y1 = 1860
-        return min(max((x - x0), 0) / (x1 - x0), 1) * w, min(max((y - y0), 0) / (y1 - y0), 1) * h
+    def mouse_callback(event, x, y, flags, param):
+        # print('flags: {} param: {}'.format(flags, param))
+        if flags or param or x or y:
+            pass
+        if event == cv2.EVENT_LBUTTONDOWN:
+            # TODO: check if ball at click position (for moving)
+            pass
+        elif event == cv2.EVENT_LBUTTONUP:
+            pass
+        elif event == cv2.EVENT_RBUTTONDOWN:
+            # TODO: else create ball here
+            # send to message_queue (simulating detection.read)
+            # calculate table pos from pixel:
+            pass

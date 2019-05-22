@@ -6,8 +6,6 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.PrintStream;
-import java.util.LinkedList;
-import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
 
@@ -22,32 +20,30 @@ class BTService extends Thread {
 
     // Constants
     private final static String MY_UUID = "00001101-0000-1000-8000-00805f9b34fb";
-    final static int NULL = 0;
-    final static int DISCONNECTED = 1;
-    final static int CONNECTING = 2;
-    final static int CONNECTED = 3;
+    private final static int EXITING = -1;
+    private final static int NULL = 0;
+    private final static int DISCONNECTED = 1;
+    private final static int CONNECTING = 2;
+    private final static int CONNECTED = 3;
 
     // Connection stuff
-    private Queue<String> send_queue;
+    private int BTState = NULL;
     private BluetoothSocket mSocket = null;
     private BluetoothAdapter mBluetoothAdapter;
     private BluetoothDevice mDevice;
 
-    int getBTState() {
-        return BTState;
-    }
-
-    private int BTState = NULL;
     private long last_connect_time;
     private connectThread conT;
     private connectedThread connT;
 
     private Main.mHandler mainHandler;
 
+    boolean isConnected() {
+        return BTState == CONNECTED;
+    }
 
     BTService(Main.mHandler mainHandler) {
-        last_connect_time = System.currentTimeMillis();
-        send_queue = new LinkedList<>();
+        last_connect_time = System.currentTimeMillis() - 5000;
         this.mainHandler = mainHandler;
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
     }
@@ -78,6 +74,7 @@ class BTService extends Thread {
             Log.d(TAG, String.format("connect() called while BTState = %d", BTState));
             return;
         }
+        Log.v(TAG, "connecting");
         try {
             Thread.sleep(Math.max(last_connect_time + 5000 - System.currentTimeMillis(), 0));
         } catch (InterruptedException e) {
@@ -85,14 +82,9 @@ class BTService extends Thread {
         }
         last_connect_time = System.currentTimeMillis();
         BTState = CONNECTING;
-        Log.d(TAG, "Checking Bluetooth...");
         if (!mBluetoothAdapter.isEnabled()) {
-            Log.d(TAG, "Bluetooth not enabled");
             mBluetoothAdapter.enable();
-        } else {
-            Log.d(TAG, "Bluetooth enabled");
         }
-        Log.d(TAG, "Setting up connection...");
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter
                 .getBondedDevices();
         for (BluetoothDevice device : pairedDevices) {
@@ -103,6 +95,7 @@ class BTService extends Thread {
         }
         if (mDevice == null) {
             Log.d("BTService", "mDevice is null");
+            BTState = DISCONNECTED;
             return;
         }
         try {
@@ -115,33 +108,6 @@ class BTService extends Thread {
         conT.start();
     }
 
-    private void runQueue() {
-        while (!send_queue.isEmpty()) {
-            if (BTState != CONNECTED) {
-                Log.d(TAG, "waiting for connection");
-                mainHandler.postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        runQueue();
-                    }
-                }, 5000);
-                return;
-            }
-            String data = send_queue.poll();
-            try {
-                OutputStream os = mSocket.getOutputStream();
-                PrintStream sender = new PrintStream(os);
-                sender.print(data);
-            } catch (IOException e) {
-                e.printStackTrace();
-            } catch (NullPointerException e) {
-                e.printStackTrace();
-                Log.e(TAG, "send called with null Socket");
-            }
-            Log.d(TAG, "Message sent");
-        }
-    }
-
     private class connectThread extends Thread {
         public void run() {
             mBluetoothAdapter.cancelDiscovery();
@@ -150,14 +116,12 @@ class BTService extends Thread {
                 connT = new connectedThread();
                 connT.start();
             } catch (IOException e) {
-                Log.e(TAG, "Error in connectThread:");
-                e.printStackTrace();
-                disconnect();
+                Log.d(TAG, "Connection failed");
+                if (!this.isInterrupted())
+                    disconnect();
             } catch (NullPointerException e) {
                 e.printStackTrace();
-                disconnect();
             }
-            Log.d(TAG, "conT exiting");
         }
     }
 
@@ -168,36 +132,33 @@ class BTService extends Thread {
             InputStream is = socket.getInputStream();
             BufferedReader reader = new BufferedReader(new InputStreamReader(is));
             String data;
-            BTState = CONNECTED;
             while (!this.isInterrupted()) {
-                try {
-                    data = reader.readLine();
-                    Log.v(TAG, String.format("Received: \"%s\"", data));
-                    mainHandler.obtainMessage(Main.BT_RECEIVE, data).sendToTarget();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    break;
-                }
+                data = reader.readLine();
+                Log.v(TAG, String.format("Received: \"%s\"", data));
+                mainHandler.obtainMessage(Main.BT_RECEIVE, data).sendToTarget();
             }
         }
 
         public void run() {
             Log.d(TAG, "Connection successful");
+            BTState = CONNECTED;
             mainHandler.obtainMessage(Main.BT_CONNECTED).sendToTarget();
             try {
                 read_from_socket(mSocket);
                 mSocket.close();
             } catch (IOException e) {
-                Log.e(TAG, "Error in connectedThread:");
-                e.printStackTrace();
+                Log.d(TAG, "Connection lost");
+            } catch (NullPointerException e) {
+                Log.v(TAG, "Socket null");
             }
-            disconnect();
+            if (BTState != EXITING)
+                disconnect();
         }
     }
 
     private void disconnect() {
-        Log.d(TAG, "disconnecting");
-        if (conT.isAlive())
+        Log.v(TAG, "disconnecting");
+        if (conT != null && conT.isAlive())
             conT.interrupt();
         if (connT != null && connT.isAlive())
             connT.interrupt();
@@ -206,5 +167,34 @@ class BTService extends Thread {
             mainHandler.obtainMessage(Main.BT_DISCONNECTED).sendToTarget();
             mainHandler.sendEmptyMessage(Main.DEVICE_READY);
         }
+    }
+
+    void stopAll() {
+        Log.d(TAG, "stopping Threads");
+        BTState = EXITING;
+        disconnect();
+        try {
+            mSocket.close();
+            mSocket = null;
+            if (conT != null) {
+                if (conT.isAlive()) {
+                    conT.interrupt();
+                    conT.join();
+                }
+                conT = null;
+            }
+            if (connT != null) {
+                if (connT.isAlive()) {
+                    connT.interrupt();
+                    connT.join();
+                }
+                connT = null;
+            }
+        } catch (InterruptedException e) {
+            Log.d(TAG, "Thread already interrupted");
+        } catch (IOException e) {
+            Log.d(TAG, "IOException closing socket");
+        }
+        Log.v(TAG, "stopped all, bye");
     }
 }
