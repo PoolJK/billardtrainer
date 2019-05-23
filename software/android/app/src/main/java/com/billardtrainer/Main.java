@@ -16,6 +16,7 @@ import android.graphics.RectF;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.SystemClock;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
@@ -128,7 +129,6 @@ public class Main extends AppCompatActivity {
                     switch (msg.what) {
                         case SIM_RESULT:
                             ballsOnTable = (ArrayList<Ball>) msg.obj;
-                            getTableAsJSONString();
                             sim_running = false;
                             this.sendEmptyMessage(DRAW);
                             break;
@@ -193,8 +193,8 @@ public class Main extends AppCompatActivity {
         if (btService == null) {
             Log.d(TAG, "btService is null");
             btService = new BTService(handler);
-            // btService.start();
         }
+        btService.start();
     }
 
     @Override
@@ -251,8 +251,8 @@ public class Main extends AppCompatActivity {
     private int numreach;
     private double ballspread;
 
-    private double angle = 90; // [deg]
-    private double speed = 500; // [mm/s]
+    private double angle = 95; // [deg]
+    private double speed = 1000; // [mm/s]
 
     @SuppressLint("SetTextI18n")
     private void setCueBallV0() {
@@ -378,8 +378,6 @@ public class Main extends AppCompatActivity {
             currentShot = -1;
         }
         handler.sendEmptyMessage(DRAW);
-        if (btService != null && btService.isConnected())
-            handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
     }
 
     private void calcPos() {
@@ -558,7 +556,7 @@ public class Main extends AppCompatActivity {
 
     public void device_ready(View view) {
         handler.sendEmptyMessage(DEVICE_READY);
-        handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
+        handler.sendEmptyMessage(DRAW);
     }
 
     private void cycleShot() {
@@ -567,7 +565,6 @@ public class Main extends AppCompatActivity {
         else {
             currentShot = currentShot < possibleShots.size() - 1 ? currentShot + 1 : 0;
             handler.sendEmptyMessage(DRAW);
-            handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
         }
     }
 
@@ -657,7 +654,7 @@ public class Main extends AppCompatActivity {
                         }
                     } else {
                         // movement ended
-                        handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
+                        startSim(null);
                         moving = false;
                     }
                     return false;
@@ -668,6 +665,7 @@ public class Main extends AppCompatActivity {
 
     @SuppressLint("DefaultLocale")
     private String getTableAsJSONString() {
+        double t0 = now();
         JSONObject balls = new JSONObject();
         JSONObject lines = new JSONObject();
         JSONObject ghosts = new JSONObject();
@@ -682,12 +680,14 @@ public class Main extends AppCompatActivity {
             e.printStackTrace();
             return "";
         }
-        Log.v("main", "res = " + all.toString());
+        Log.v("main", String.format(Locale.ROOT, "JSON took %.0fms to generate",
+                (SystemClock.currentThreadTimeMillis() - t0)));
         return all.toString();
     }
 
     private void draw() {
-        Log.d(TAG, "draw()");
+        Log.v(TAG, "draw()");
+        double t0 = now();
         // draw Table
         // cloth
         paint.setStyle(Style.FILL);
@@ -725,8 +725,10 @@ public class Main extends AppCompatActivity {
         if (ballsOnTable == null || ballsOnTable.isEmpty()) {
             return;
         }
+        double t1 = now();
         for (Ball ball : ballsOnTable)
             ball.draw(this, paint, canvas);
+        Log.v(TAG, String.format(Locale.ROOT, "draw balls took %.0fms", now() - t1));
         if (currentShot > -1 && !possibleShots.isEmpty()) {
             Shot s = possibleShots.get(currentShot);
             Ball btp = s.ballToPot;
@@ -819,10 +821,22 @@ public class Main extends AppCompatActivity {
 //                        (float) (ballRadius * screenScale), paint);
 //            }
 //        }
-        Canvas mCanvas = holder.lockCanvas();
-        mCanvas.drawBitmap(bitmap, new Matrix(), null);
-        holder.unlockCanvasAndPost(mCanvas);
+        Log.v(TAG, String.format(Locale.ROOT, "draw before lockCanvas = %.0fms", now() - t0));
+        Canvas mCanvas;
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+            mCanvas = holder.lockHardwareCanvas();
+        } else {
+            mCanvas = holder.lockCanvas();
+        }
+        if (mCanvas != null) {
+            mCanvas.drawBitmap(bitmap, new Matrix(), null);
+            holder.unlockCanvasAndPost(mCanvas);
+        } else
+            holder.unlockCanvasAndPost(canvas);
         drawing = false;
+        Log.v(TAG, String.format(Locale.ROOT, "draw() took %.0fms", now() - t0));
+        if (btService != null && btService.isConnected())
+            handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
     }
 
     @SuppressWarnings("SameParameterValue")
@@ -833,8 +847,7 @@ public class Main extends AppCompatActivity {
             ballsOnTable.add(new Ball(yellowSpot.x, blackSpot.y, 0, 1));
             ballsOnTable.add(new Ball(blackSpot.x, blackSpot.y, 7, 2));
             activeBall = ballsOnTable.get(0);
-            activeBall.getNode().setV0(new Vec3(500, 0, 0),
-                    new Vec3(0, 0, 0)); // [mm/s]
+            setCueBallV0();
             return;
         }
         // cueball

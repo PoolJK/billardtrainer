@@ -130,9 +130,9 @@ class TableSim:
         try:
             message = json.loads(message)
         except JSONDecodeError as e:
-            print('\njson error.')
-            print(message)
-            raise e
+            print('\n' + message)
+            print('json error.')
+            exit(0)
         self.beamer.clear_image()
         res = ""
         for ball_id, ball in message["balls"].items():
@@ -142,11 +142,11 @@ class TableSim:
                 ball['y'],
                 color=ball_color(ball['v'])))
         if 'lines' in message:
-            for _, line in message["lines"].items():
+            for line_id, line in message["lines"].items():
                 self.beamer.add_visual_item(Line(line['x1'], line['y1'], line['x2'], line['y2']))
-        if 'ghost' in message:
-            ghost = message["ghost"]
-            self.beamer.add_visual_item(Ghost(ghost['x'], ghost['y']))
+        if 'ghosts' in message:
+            for ghost_id, ghost in message["ghosts"].items():
+                self.beamer.add_visual_item(Ghost(ghost['x'], ghost['y']))
         self.beamer.show_objects()
         self.beamer.resize_window()
         # self.beamer.hide()

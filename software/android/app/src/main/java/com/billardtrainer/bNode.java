@@ -36,10 +36,12 @@ class bNode {
     }
 
     /**
-     * set initial speeds
+     * Sets initial speeds.
+     * Calculates relative speed of contact point between ball and table Vc0.
+     * Sets state based on V - R x W
      *
-     * @param v0 velocity
-     * @param w0 angular velocity
+     * @param v0 Initial velocity
+     * @param w0 Initial angular velocity
      */
     void setV0(Vec3 v0, Vec3 w0) {
         V0 = v0;
@@ -58,6 +60,12 @@ class bNode {
                     V0.length(), W0.length(), V0.length() - ballRadius * W0.length(), getState()));
     }
 
+    /**
+     * Get a new bNode at time t
+     *
+     * @param t Time [ms]
+     * @return New bNode at time t
+     */
     bNode nextNode(double t) {
         if (state == STATE_STILL)
             return new bNode(P0, V0, W0, t, ballId, this);
@@ -67,10 +75,9 @@ class bNode {
     }
 
     /**
-     * Get the next state change t, excluding collisions
-     * reference: https://billiards.colostate.edu/technical_proofs/TP_4-1.pdf
+     * Get the next motion inherent state change t, excluding collisions.
      *
-     * @return double t = next state change [s]
+     * @return Next state change or time of this node if state == STILL [s]
      */
     double getNextInherentT() {
         switch (state) {
@@ -104,8 +111,8 @@ class bNode {
     /**
      * Get time of next collision if any
      *
-     * @param ballsOnTable balls on table
-     * @return time [s]
+     * @param ballsOnTable Balls on table
+     * @return Time of collision or arbitrarily high number [s]
      */
     double getNextCollisionT(ArrayList<Ball> ballsOnTable) {
         switch (state) {
@@ -128,11 +135,23 @@ class bNode {
         return collisionTime;
     }
 
+    /**
+     * Calculate the actual collision time via the Solver class
+     *
+     * @param node The node to check against
+     * @return Collision time [s] or -1
+     */
     private double getCollisionTime(bNode node) {
         collisionTime = Solver.getCollisionTime(this, node);
         return collisionTime;
     }
 
+    /**
+     * Get position after time t, calculated from this node base
+     *
+     * @param t Time [s]
+     * @return Position at time t
+     */
     private Vec3 getPos(double t) {
         double vc0 = Vc0.length();
         double v0 = V0.length();
@@ -153,6 +172,12 @@ class bNode {
         }
     }
 
+    /**
+     * Get velocity after time t, calculated from this node base
+     *
+     * @param t Time [s]
+     * @return Velocity at time t
+     */
     private Vec3 getVel(double t) {
         double v0 = V0.length();
         double vc0 = Vc0.length();
@@ -171,6 +196,12 @@ class bNode {
         }
     }
 
+    /**
+     * Get angular velocity after time t, calculated from this node base
+     *
+     * @param t Time [s]
+     * @return Angular velocity at time t
+     */
     private Vec3 getW(double t) {
         // https://billiards.colostate.edu/technical_proofs/new/TP_A-4.pdf
         double w0 = W0.length();
@@ -191,6 +222,12 @@ class bNode {
         }
     }
 
+    /**
+     * Calculate angle between (0, 1, 0) and the Vec3 to the target.
+     *
+     * @param target Vec3 to project to
+     * @return Angle in radians (I think)
+     */
     double getTargetAngle(Vec3 target) {
         double a = new Vec3(0, 1, 0).deltaAngle(new Vec3(target.x - P0.x,
                 target.y - P0.y, target.z - P0.z));
@@ -199,6 +236,12 @@ class bNode {
         return a;
     }
 
+    /**
+     * Calculate the contact point for a given pocket
+     *
+     * @param pocket Pocket to calculate for
+     * @return The contact point as Vec3
+     */
     Vec3 contactPoint(Vec3 pocket) {
         Vec3 targetVector = new Vec3(pocket.x - P0.x, pocket.y - P0.y,
                 pocket.z - P0.z);
@@ -207,6 +250,14 @@ class bNode {
                 * ballRadius * targetVector.y, ballRadius);
     }
 
+    /**
+     * Reachable check for simulation.
+     *
+     * @param target       The ghost ball target
+     * @param ballsOnTable Balls on table to check blocks
+     * @param ballOn       The ball on
+     * @return True if some ball blocks the path to target or target is behind ballon, False otherwise
+     */
     boolean hasNoLineTo(Vec3 target, ArrayList<Ball> ballsOnTable, Ball ballOn) {
         // target behind ballOn
         if (ballOn != null && P0.distanceTo(ballOn.Pos) < P0.distanceTo(target))
@@ -239,6 +290,14 @@ class bNode {
         return !result;
     }
 
+    /**
+     * Calculate the orthogonal distance of a point from a given line vector.
+     *
+     * @param P weiß nicht
+     * @param Q so genau
+     * @param a was hier passiert
+     * @return denn irgendwas stimmt nicht
+     */
     private double distancePointToLine(Vec3 P, Vec3 Q, Vec3 a) {
         //TODO: returns strange value.
         // in current usage, a is used as difference between two points, check on that first
@@ -248,6 +307,11 @@ class bNode {
                 / a.length();
     }
 
+    /**
+     * Return a String equivalent of the current ball state
+     *
+     * @return State as String
+     */
     private String getState() {
         switch (state) {
             case STATE_STILL:
@@ -263,6 +327,13 @@ class bNode {
         }
     }
 
+    /**
+     * Draws this bNode as ghost with a line from the previous node, if it is not null
+     *
+     * @param app    Reference to main app to be able to draw in UI
+     * @param paint  Paint to use
+     * @param canvas Canvas to draw on
+     */
     void draw(Main app, Paint paint, Canvas canvas) {
         // ghost outline
         paint.setStyle(Paint.Style.STROKE);
@@ -288,6 +359,12 @@ class bNode {
         }
     }
 
+    /**
+     * Add this node with its ghosts and lines to the JSONObjects
+     *
+     * @param ghosts Ghosts-JSONObject
+     * @param lines  Lines-JSONObject
+     */
     void addJSON(JSONObject ghosts, JSONObject lines) {
         JSONObject n = new JSONObject();
         try {
@@ -308,6 +385,11 @@ class bNode {
         }
     }
 
+    /**
+     * String representation of this bNode.
+     *
+     * @return String representation of this bNode
+     */
     @NonNull
     @Override
     public String toString() {

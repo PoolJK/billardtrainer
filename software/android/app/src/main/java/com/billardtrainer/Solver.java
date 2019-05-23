@@ -3,7 +3,16 @@ package com.billardtrainer;
 import static com.billardtrainer.Cons.*;
 
 class Solver {
-
+    /**
+     * Supposed to return the collision time for any two nodes (in any states...)
+     * Needs some Solver like Runge-Kutta etc.
+     * check https://introcs.cs.princeton.edu/java/94diffeq/
+     * https://softmath.com/tutorials2/java-solve-second-order-differential-equations.html
+     *
+     * @param node_a First node
+     * @param node_b Second node
+     * @return The time of collision or arbitrarily high number [s]
+     */
     static double getCollisionTime(bNode node_a, bNode node_b) {
         double fax, fbx, fay, fby;
         double v0a = node_a.V0.length();

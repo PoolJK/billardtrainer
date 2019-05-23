@@ -1,12 +1,17 @@
 package com.billardtrainer;
 
 import android.graphics.Color;
+import android.os.SystemClock;
 
 import java.util.ArrayList;
 
 import static com.billardtrainer.Cons.*;
 
 class Utils {
+
+    static double now() {
+        return SystemClock.currentThreadTimeMillis();
+    }
 
     static int getBallColor(int value) {
         switch (value) {

@@ -7,6 +7,7 @@ class Cons {
     static final int STATE_ROLLING = 1;
     static final int STATE_STUN = 2;
     static final int STATE_SLIDING = 3;
+    static final int STATE_COLLISION = 4;
     static final int quadSimSteps = 10;
 
     // Sim params

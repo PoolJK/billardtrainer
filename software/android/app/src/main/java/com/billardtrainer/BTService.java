@@ -94,7 +94,7 @@ class BTService extends Thread {
             }
         }
         if (mDevice == null) {
-            Log.d("BTService", "mDevice is null");
+            Log.e("BTService", "mDevice is null");
             BTState = DISCONNECTED;
             return;
         }
@@ -116,7 +116,7 @@ class BTService extends Thread {
                 connT = new connectedThread();
                 connT.start();
             } catch (IOException e) {
-                Log.d(TAG, "Connection failed");
+                Log.e(TAG, "Connection failed, IOException");
                 if (!this.isInterrupted())
                     disconnect();
             } catch (NullPointerException e) {
@@ -149,7 +149,7 @@ class BTService extends Thread {
             } catch (IOException e) {
                 Log.d(TAG, "Connection lost");
             } catch (NullPointerException e) {
-                Log.v(TAG, "Socket null");
+                Log.e(TAG, "Socket null");
             }
             if (BTState != EXITING)
                 disconnect();
@@ -163,9 +163,9 @@ class BTService extends Thread {
         if (connT != null && connT.isAlive())
             connT.interrupt();
         if (BTState > DISCONNECTED) {
+            if (BTState > CONNECTING)
+                mainHandler.obtainMessage(Main.BT_DISCONNECTED).sendToTarget();
             BTState = DISCONNECTED;
-            mainHandler.obtainMessage(Main.BT_DISCONNECTED).sendToTarget();
-            mainHandler.sendEmptyMessage(Main.DEVICE_READY);
         }
     }
 
@@ -194,7 +194,7 @@ class BTService extends Thread {
         } catch (IOException e) {
             Log.d(TAG, "IOException closing socket");
         } catch (NullPointerException e) {
-            Log.e(TAG, "socket was null you asshole!");
+            Log.d(TAG, "socket was null you asshole!");
         }
         Log.v(TAG, "stopped all, bye");
     }

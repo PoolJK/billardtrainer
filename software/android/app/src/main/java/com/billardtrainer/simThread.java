@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Locale;
 
 import static com.billardtrainer.Cons.*;
+import static com.billardtrainer.Utils.*;
 
 class simThread extends Thread {
 
@@ -14,15 +15,23 @@ class simThread extends Thread {
     private ArrayList<Ball> ballsOnTable;
     private ArrayList<Double> timeSteps;
 
+    /**
+     * Initialize a new simThread
+     * @param ballsOnTable balls on table
+     */
     simThread(ArrayList<Ball> ballsOnTable) {
         this.ballsOnTable = ballsOnTable;
         timeSteps = new ArrayList<>();
         timeSteps.add(0d);
     }
 
+    /**
+     * The actual simulation runnable
+     */
     @Override
     public void run() {
-        Log.d(TAG, "simThread started");
+        Log.v(TAG, "simThread started");
+        double t0 = now();
         // first timeStep is [0]->"0.0"
         int timestep = 0;
         double t, new_t, coll_t;
@@ -47,7 +56,7 @@ class simThread extends Thread {
                         // TODO: add collision something...
                         collision = true;
                     }
-                    Log.d(TAG, String.format(Locale.ROOT, "new_t: %.2f", new_t));
+                    Log.v(TAG, String.format(Locale.ROOT, "new_t: %.2f", new_t));
                 }
             }
             if (collision)
@@ -64,7 +73,7 @@ class simThread extends Thread {
             }
         } while (timestep < 4 && t < timeSteps.get(timeSteps.size() - 1));
         Main.handler.obtainMessage(Main.SIM_RESULT, ballsOnTable).sendToTarget();
-        Log.d(TAG, "simThread finished");
+        Log.v(TAG, String.format(Locale.ROOT, "simThread took %.0fms", now() - t0));
     }
 
     /**
@@ -77,7 +86,7 @@ class simThread extends Thread {
     private void solveCollisions(ArrayList<Ball> ballsOnTable, double t, double new_t) {
         for (Ball ball : ballsOnTable)
             if (ball.getNode(t).collisionTime >= t && ball.getNode(t).collisionTime <= new_t) {
-                Log.d(TAG, String.format(Locale.ROOT, "Ball %d is colliding: coll_t=%.2f", ball.id, ball.getNode(t).collisionTime));
+                Log.v(TAG, String.format(Locale.ROOT, "Ball %d is colliding: coll_t=%.2f", ball.id, ball.getNode(t).collisionTime));
                 ball.addNode(ball.getNode(t).nextNode(new_t));
             }
     }

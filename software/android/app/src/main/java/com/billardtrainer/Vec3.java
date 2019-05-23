@@ -6,13 +6,12 @@ import java.util.Locale;
 
 import static com.billardtrainer.Cons.*;
 
+/**
+ * A 3D-vector class. Mainly data storage, some basic functions.
+ */
 class Vec3 {
 
     double x, y, z;
-
-    Vec3() {
-        x = y = z = 0;
-    }
 
     Vec3(double x, double y, double z) {
         this.x = x;
@@ -20,10 +19,21 @@ class Vec3 {
         this.z = z;
     }
 
+    /**
+     * Get the length of the vector
+     *
+     * @return Length of Vec3
+     */
     double length() {
         return Math.sqrt(x * x + y * y + z * z);
     }
 
+    /**
+     * Get the distance to the given vector
+     *
+     * @param P Second vector
+     * @return The distance to P
+     */
     double distanceTo(Vec3 P) {
         return Math.sqrt(Math.pow(P.x - x, 2) + Math.pow(P.y - y, 2)
                 + Math.pow(P.z - z, 2));
@@ -46,6 +56,9 @@ class Vec3 {
         return Math.acos(this.scalar(in) / (this.length() * in.length()));
     }
 
+    /**
+     * Make this vector have length() = 1
+     */
     void normalize() {
         double l = 1 / length();
         x *= l;
