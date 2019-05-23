@@ -1,4 +1,6 @@
-package com.billardtrainer;
+package com.billardtrainer.physnooker;
+
+import com.billardtrainer.Vec3;
 
 import static com.billardtrainer.Cons.*;
 

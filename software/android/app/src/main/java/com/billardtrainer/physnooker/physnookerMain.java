@@ -1,4 +1,4 @@
-package com.physnooker;
+package com.billardtrainer.physnooker;
 
 import android.annotation.SuppressLint;
 import android.app.*;

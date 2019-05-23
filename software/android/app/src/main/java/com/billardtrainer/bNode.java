@@ -7,26 +7,30 @@ import android.graphics.Path;
 import android.support.annotation.NonNull;
 import android.util.Log;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Locale;
 
 import static com.billardtrainer.Cons.*;
 
-
 class bNode {
 
     private static final String TAG = "bNode";
 
-    private Vec3 P0, V0, W0, Vc0;
+    Vec3 P0, V0, Vc0;
+    private Vec3 W0;
     private bNode previousNode;
     private int ballId;
     int state;
-    double t;
+    double t, collisionTime, inherentTime;
 
     bNode(Vec3 p, Vec3 v, Vec3 w, double t, int ballId, bNode previousNode) {
         this.previousNode = previousNode;
         this.ballId = ballId;
         this.t = t;
+        collisionTime = -1;
         P0 = p;
         setV0(v, w);
     }
@@ -49,7 +53,7 @@ class bNode {
         state = Math.abs(V0.length() - ballRadius * W0.length()) > precision ? STATE_SLIDING
                 : V0.length() > precision ? STATE_ROLLING : STATE_STILL;
         // log for cueball
-        if (ballId == 1 && Main.simrunning)
+        if (ballId == 1 && Main.sim_running)
             Log.v(TAG, String.format(Locale.ROOT, "V0=%.1f W0=%.1f V0-R*W0=%.1f state=%s",
                     V0.length(), W0.length(), V0.length() - ballRadius * W0.length(), getState()));
     }
@@ -73,7 +77,8 @@ class bNode {
             case STATE_ROLLING:
                 // return t when ball comes to rest
                 // roll shot: w = v / R
-                return V0.length() / (frictionClothRoll);
+                inherentTime = V0.length() / (frictionClothRoll);
+                break;
             case STATE_STUN:
                 // return t when ball starts to roll
                 // TODO: stun shot ts: check if w0 <= 0 (stun will develop)
@@ -87,11 +92,45 @@ class bNode {
                 // return t when starting to roll TODO: stun
                 // TODO: test: can be positive or negative (large W0)?
                 // 2 * vc / (7*u*g)
-                return 2 * Vc0.length() / (7 * frictionClothSpin);
+                inherentTime = 2 * Vc0.length() / (7 * frictionClothSpin);
+                break;
             default:
                 // state_still
-                return t;
+                inherentTime = t;
         }
+        return inherentTime;
+    }
+
+    /**
+     * Get time of next collision if any
+     *
+     * @param ballsOnTable balls on table
+     * @return time [s]
+     */
+    double getNextCollisionT(ArrayList<Ball> ballsOnTable) {
+        switch (state) {
+            case STATE_ROLLING:
+                for (Ball ball : ballsOnTable) {
+                    if (ball.getNode(t).equals(this))
+                        continue;
+                    double cT = ball.getNode(t).getCollisionTime(this);
+                    if (cT > 0) {
+                        collisionTime = cT;
+                        Log.v("bNode", String.format(Locale.ROOT, "balls collide: id1=%d id2=%d coll_t=%.2f", this.ballId, ball.id, collisionTime));
+                    }
+                }
+                break;
+            case STATE_STUN:
+            case STATE_SLIDING:
+            default:
+                return t + 10000;
+        }
+        return collisionTime;
+    }
+
+    private double getCollisionTime(bNode node) {
+        collisionTime = Solver.getCollisionTime(this, node);
+        return collisionTime;
     }
 
     private Vec3 getPos(double t) {
@@ -99,8 +138,6 @@ class bNode {
         double v0 = V0.length();
         double f;
         switch (state) {
-            case STATE_STILL:
-                return P0;
             case STATE_ROLLING:
                 f = v0 == 0 ? 0 : 0.5 * frictionClothRoll * t * t / v0;
                 return new Vec3(P0.x + V0.x * t - f * V0.x,
@@ -111,8 +148,9 @@ class bNode {
                 f = vc0 == 0 ? 0 : 0.5 * frictionClothSpin * t * t / vc0;
                 return new Vec3(P0.x + V0.x * t - f * Vc0.x,
                         P0.y + V0.y * t - f * Vc0.y, P0.z);
+            default:
+                return P0;
         }
-        return null;
     }
 
     private Vec3 getVel(double t) {
@@ -120,8 +158,6 @@ class bNode {
         double vc0 = Vc0.length();
         double f;
         switch (state) {
-            case STATE_STILL:
-                return V0;
             case STATE_ROLLING:
                 f = v0 == 0 ? 0 : frictionClothRoll * t / v0;
                 return new Vec3(V0.x - f * V0.x, V0.y - f * V0.y, 0);
@@ -130,8 +166,9 @@ class bNode {
             case STATE_SLIDING:
                 f = vc0 == 0 ? 0 : frictionClothSpin * t / vc0; // [mm/s^2*s/(mm/s)] = []
                 return new Vec3(V0.x - f * Vc0.x, V0.y - f * Vc0.y, 0);
+            default:
+                return V0;
         }
-        return null;
     }
 
     private Vec3 getW(double t) {
@@ -140,8 +177,6 @@ class bNode {
         double vc0 = Vc0.length();
         double f;
         switch (state) {
-            case STATE_STILL:
-                return W0;
             case STATE_ROLLING:
                 f = frictionClothRoll * t / (w0 * ballRadius);
                 return new Vec3(W0.x - f * W0.x, W0.y - f * W0.y, W0.z - f * W0.z);
@@ -151,8 +186,9 @@ class bNode {
                 f = vc0 == 0 ? 0 : -5f / 2f * frictionClothSpin * t / (ballRadius * vc0);
                 // TODO: W.z?!?
                 return new Vec3(W0.x - f * Vc0.y, W0.y - f * Vc0.x, W0.z - f * W0.z);
+            default:
+                return W0;
         }
-        return null;
     }
 
     double getTargetAngle(Vec3 target) {
@@ -238,17 +274,37 @@ class bNode {
             if (previousNode.state == STATE_ROLLING)
                 canvas.drawLine(app.screenX(previousNode.P0.x), app.screenY(previousNode.P0.y),
                         app.screenX(P0.x), app.screenY(P0.y), paint);
-            else if (previousNode.state == STATE_SLIDING){
+            else if (previousNode.state == STATE_SLIDING) {
                 Path path = new Path();
-                Vec3 in;
-                path.moveTo(app.screenX(previousNode.P0.x), app.screenY(previousNode.P0.y));
+                Vec3 simStep = previousNode.P0;
+                path.moveTo(app.screenX(simStep.x), app.screenY(simStep.y));
                 for (int i = 0; i < quadSimSteps; i++) {
-                    in = getPos((t - previousNode.t) / quadSimSteps * i);
-                    path.lineTo(app.screenX(in.x), app.screenY(in.y));
+                    simStep = previousNode.getPos((t - previousNode.t) / quadSimSteps * i);
+                    path.lineTo(app.screenX(simStep.x), app.screenY(simStep.y));
                 }
                 path.lineTo(app.screenX(P0.x), app.screenY(P0.y));
                 canvas.drawPath(path, paint);
             }
+        }
+    }
+
+    void addJSON(JSONObject ghosts, JSONObject lines) {
+        JSONObject n = new JSONObject();
+        try {
+            n.put("x", (int) P0.x);
+            n.put("y", (int) P0.y);
+            ghosts.put(String.format(Locale.ROOT, "%d", ghosts.length()), n);
+            if (previousNode != null) {
+                //TODO: curveball
+                JSONObject l = new JSONObject();
+                l.put("x1", (int) previousNode.P0.x);
+                l.put("y1", (int) previousNode.P0.y);
+                l.put("x2", (int) P0.x);
+                l.put("y2", (int) P0.y);
+                lines.put(String.format(Locale.ROOT, "%d", lines.length()), l);
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
     }
 

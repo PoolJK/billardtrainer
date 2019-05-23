@@ -32,7 +32,7 @@ class Ball {
         addNode();
     }
 
-    void addNode() {
+    private void addNode() {
         addNode(new bNode(Pos, V, W, 0, id, null));
     }
 
@@ -107,16 +107,16 @@ class Ball {
         }
     }
 
-    String getJSONString() {
+    void addJSON(JSONObject balls, JSONObject lines, JSONObject ghosts) throws JSONException {
         JSONObject j = new JSONObject();
-        try {
-            j.put("x", (int) Pos.x);
-            j.put("y", (int) Pos.y);
-            j.put("v", value);
-        } catch (JSONException e) {
-            e.printStackTrace();
-            return "";
+        j.put("x", (int) Pos.x);
+        j.put("y", (int) Pos.y);
+        j.put("v", value);
+        balls.put(String.format(Locale.ROOT, "%d", id), j);
+        for (bNode node : nodes) {
+            if (node == getNode(0))
+                continue;
+            node.addJSON(ghosts, lines);
         }
-        return String.format(Locale.ROOT, "\"%d\":%s", id, j.toString());
     }
 }

@@ -8,7 +8,8 @@
     <EditText
         android:id="@+id/message_et"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content" />
+        android:layout_height="wrap_content"
+        tools:ignore="Autofill,LabelFor,TextFields" />
 
     <Button
         android:id="@+id/send_bn"
@@ -18,5 +19,6 @@
         android:layout_below="@+id/message_et"
         android:layout_marginTop="22dp"
         android:onClick="onSend"
-        android:text="Send To Pi" />
+        android:text="Send To Pi"
+        tools:ignore="HardcodedText,RtlHardcoded" />
 </RelativeLayout>

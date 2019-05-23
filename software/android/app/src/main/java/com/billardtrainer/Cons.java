@@ -26,6 +26,7 @@ class Cons {
     final static double ballRadius = 26.25;
     //final static double ballWeight = 0.140; // kg ?
     //final static double uBallBall = 0.06;
+    @SuppressWarnings("unused")
     final static double g = 9807; // [mm/s^2]
     final static double frictionClothSpin = 2000; // [mm/s^2]
     final static double frictionClothRoll = 125; // [mm/s^2]

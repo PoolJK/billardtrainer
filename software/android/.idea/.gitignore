@@ -1,0 +1,10 @@
+/caches
+/libraries
+/asset*
+/encodings*
+/gradle*
+/misc*
+/modules*
+/vcs*
+/workspace*
+/runConfigurations.xml

@@ -29,12 +29,16 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 import static com.billardtrainer.Cons.*;
 import static com.billardtrainer.Utils.*;
 
 public class Main extends AppCompatActivity {
     // Debug
     private final String TAG = "Main";
+    private final boolean debug = BuildConfig.DEBUG;
 
     // Bluetooth
     private static BTService btService;
@@ -48,7 +52,6 @@ public class Main extends AppCompatActivity {
     static final int BT_DISCONNECTED = 5;
     static final int DEVICE_READY = 6;
     static final int SIM_RESULT = 7;
-    static final int DONE_DRAWING = 8;
 
     private static ArrayList<Ball> ballsOnTable;
     private static Ball activeBall;
@@ -62,16 +65,14 @@ public class Main extends AppCompatActivity {
     static mHandler handler;
     private static int ballOn = 8;
     private static ArrayList<Shot> possibleShots;
-    static boolean simrunning;
+    static boolean sim_running = false, drawing = false;
 
     private Canvas canvas;
     private Bitmap bitmap;
-    private SurfaceView surfaceView;
     private SurfaceHolder holder;
     private static final Paint paint = new Paint();
     private static boolean aiming;
     private Button aimButton;
-    private simThread sThread;
 
     @SuppressLint({"HandlerLeak", "SetTextI18n", "ClickableViewAccessibility"})
     @Override
@@ -80,7 +81,7 @@ public class Main extends AppCompatActivity {
         screenSet = false;
         setContentView(R.layout.main);
 
-        surfaceView = findViewById(R.id.surface_view);
+        SurfaceView surfaceView = findViewById(R.id.surface_view);
         holder = surfaceView.getHolder();
         surfaceView.setOnTouchListener(new canvasOnTouchListener());
 
@@ -107,7 +108,7 @@ public class Main extends AppCompatActivity {
                     canvas.setBitmap(bitmap);
                     screenSet = true;
                     Log.v(TAG, String.format(Locale.ROOT, "screenW=%d screenH=%d", screenWidth, screenHeight));
-                    calc();
+                    // calc();
                 }
                 return true;
             }
@@ -127,14 +128,15 @@ public class Main extends AppCompatActivity {
                     switch (msg.what) {
                         case SIM_RESULT:
                             ballsOnTable = (ArrayList<Ball>) msg.obj;
-                            simrunning = false;
+                            getTableAsJSONString();
+                            sim_running = false;
                             this.sendEmptyMessage(DRAW);
                             break;
                         case TOAST_MESSAGE:
                             toast((String) msg.obj);
                             break;
                         case DRAW:
-                            if(!simrunning)
+                            if (!sim_running)
                                 draw();
                             break;
                         case DEVICE_READY:
@@ -149,7 +151,7 @@ public class Main extends AppCompatActivity {
                             if (btService != null && btService.isConnected())
                                 btService.send(msg.obj.toString());
                             else
-                                toast("bluetooth not ready");
+                                Log.d(TAG, "bluetooth not ready");
                             break;
                         case BT_RECEIVE:
                             handle_bt_message(msg.obj.toString());
@@ -188,11 +190,11 @@ public class Main extends AppCompatActivity {
         // Test case for physics sim
         startSim(null);
         // Test case to simulate data from bluetooth:
-//        if (btService == null) {
-//            Log.d(TAG, "btService is null");
-//            btService = new BTService(handler);
-//            btService.start();
-//        }
+        if (btService == null) {
+            Log.d(TAG, "btService is null");
+            btService = new BTService(handler);
+            // btService.start();
+        }
     }
 
     @Override
@@ -245,9 +247,9 @@ public class Main extends AppCompatActivity {
         return (sY - 20) / screenScale;
     }
 
-    private int numposs = 0;
-    private int numreach = 0;
-    private double ballspread = 0;
+    private int numposs;
+    private int numreach;
+    private double ballspread;
 
     private double angle = 90; // [deg]
     private double speed = 500; // [mm/s]
@@ -262,8 +264,8 @@ public class Main extends AppCompatActivity {
             y = 0;
         ballsOnTable.get(0).getNode().setV0(new Vec3(x, y, 0),
                 new Vec3(0, 0, 0)); // [mm/s]
-        ((TextView) findViewById(R.id.Angle)).setText(String.format(Locale.ROOT, "%.0f", angle));
-        ((TextView) findViewById(R.id.Speed)).setText(String.format(Locale.ROOT, "%.0f", speed));
+        ((TextView) findViewById(R.id.Angle)).setText(String.format(Locale.ROOT, "%.0f°", angle));
+        ((TextView) findViewById(R.id.Speed)).setText(String.format(Locale.ROOT, "%.0f mm/s\u00b2", speed));
     }
 
     public void resetSim(View view) {
@@ -273,16 +275,13 @@ public class Main extends AppCompatActivity {
     }
 
     public void startSim(View view) {
-        resetSim(view);
-        if (sThread != null && sThread.isAlive()) {
-            try {
-                sThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        if (sim_running) {
+            Log.v(TAG, "sim running, sim start cancelled");
+            return;
         }
-        sThread = new simThread(ballsOnTable);
-        simrunning = true;
+        resetSim(view);
+        simThread sThread = new simThread(ballsOnTable);
+        sim_running = true;
         handler.post(sThread);
     }
 
@@ -527,8 +526,13 @@ public class Main extends AppCompatActivity {
         //drawSurface.setBackground(new BitmapDrawable(getResources(), bitmap));
         cue.Pos.x = oldcuex;
         cue.Pos.y = oldcuey;
-
+        Log.d(TAG, "" + numposs + numreach + ballspread);
         toast("old way: " + (double) t1 / 1000 + "new way: " + (double) (System.currentTimeMillis() - t0) / 1000 + "s");
+    }
+
+    public void resetBalls(View view) {
+        initTable(debug);
+        startSim(view);
     }
 
     public void aimSwitch(View view) {
@@ -549,6 +553,7 @@ public class Main extends AppCompatActivity {
                 break;
             }
         calc();
+        calcPos();
     }
 
     public void device_ready(View view) {
@@ -560,8 +565,7 @@ public class Main extends AppCompatActivity {
         if (possibleShots.isEmpty())
             currentShot = -1;
         else {
-            currentShot = currentShot < possibleShots.size() - 1 ? currentShot + 1
-                    : 0;
+            currentShot = currentShot < possibleShots.size() - 1 ? currentShot + 1 : 0;
             handler.sendEmptyMessage(DRAW);
             handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
         }
@@ -664,22 +668,22 @@ public class Main extends AppCompatActivity {
 
     @SuppressLint("DefaultLocale")
     private String getTableAsJSONString() {
-        StringBuilder res = new StringBuilder("{\"balls\":{");
-        boolean first = true;
-        for (Ball ball : ballsOnTable) {
-            res.append(first ? "" : ",").append(ball.getJSONString());
-            if (first)
-                first = false;
+        JSONObject balls = new JSONObject();
+        JSONObject lines = new JSONObject();
+        JSONObject ghosts = new JSONObject();
+        JSONObject all = new JSONObject();
+        try {
+            for (Ball ball : ballsOnTable)
+                ball.addJSON(balls, lines, ghosts);
+            all.put("balls", balls);
+            all.put("lines", lines);
+            all.put("ghosts", ghosts);
+        } catch (JSONException e) {
+            e.printStackTrace();
+            return "";
         }
-        res.append("}");
-        if (currentShot >= 0) {
-            res.append(",");
-            res.append(possibleShots.get(currentShot).getJSONString());
-        } else {
-            res.append("}");
-        }
-        // Log.v("main", "res = " + res.toString());
-        return res.toString();
+        Log.v("main", "res = " + all.toString());
+        return all.toString();
     }
 
     private void draw() {
@@ -818,7 +822,7 @@ public class Main extends AppCompatActivity {
         Canvas mCanvas = holder.lockCanvas();
         mCanvas.drawBitmap(bitmap, new Matrix(), null);
         holder.unlockCanvasAndPost(mCanvas);
-        handler.sendEmptyMessage(DONE_DRAWING);
+        drawing = false;
     }
 
     @SuppressWarnings("SameParameterValue")

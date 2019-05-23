@@ -1,4 +1,4 @@
-package com.physnooker;
+package com.billardtrainer.physnooker;
 
 public class physnookerCons {
 	// prog constants

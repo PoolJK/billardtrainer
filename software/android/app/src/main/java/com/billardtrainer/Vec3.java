@@ -8,24 +8,16 @@ import static com.billardtrainer.Cons.*;
 
 class Vec3 {
 
-    double x, y, z, t;
+    double x, y, z;
 
     Vec3() {
-        x = y = z = t = 0;
+        x = y = z = 0;
     }
 
     Vec3(double x, double y, double z) {
         this.x = x;
         this.y = y;
         this.z = z;
-        t = 0;
-    }
-
-    Vec3(double x, double y, double z, double t) {
-        this.x = x;
-        this.y = y;
-        this.z = z;
-        this.t = t;
     }
 
     double length() {
@@ -37,6 +29,7 @@ class Vec3 {
                 + Math.pow(P.z - z, 2));
     }
 
+    @SuppressWarnings("unused")
     Vec3 add(Vec3 in) {
         return new Vec3(x + in.x, y + in.y, z + in.z);
     }
@@ -45,7 +38,7 @@ class Vec3 {
         return new Vec3(x - in.x, y - in.y, z - in.z);
     }
 
-    double scalar(Vec3 in) {
+    private double scalar(Vec3 in) {
         return x * in.x + y * in.y + z * in.z;
     }
 
@@ -53,20 +46,11 @@ class Vec3 {
         return Math.acos(this.scalar(in) / (this.length() * in.length()));
     }
 
-    Vec3 normalize() {
+    void normalize() {
         double l = 1 / length();
         x *= l;
         y *= l;
         z *= l;
-        return this;
-    }
-
-    private double round(double in) {
-        return ((double) Math.round(in * 1000)) / 1000;
-    }
-
-    Vec3 cloneVec3() {
-        return new Vec3(x, y, z, t);
     }
 
     @NonNull
@@ -83,6 +67,6 @@ class Vec3 {
             return ("blackLPocket");
         if (this == blackRPocket)
             return ("blackRPocket");
-        return String.format(Locale.ROOT, "{x:%.1f,y:%.1f,z:%.1f}", x, y, z);
+        return String.format(Locale.ROOT, "{x:%.0f,y:%.0f,z:%.0f}", x, y, z);
     }
 }

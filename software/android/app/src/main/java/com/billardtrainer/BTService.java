@@ -170,7 +170,6 @@ class BTService extends Thread {
     }
 
     void stopAll() {
-        Log.d(TAG, "stopping Threads");
         BTState = EXITING;
         disconnect();
         try {
@@ -194,6 +193,8 @@ class BTService extends Thread {
             Log.d(TAG, "Thread already interrupted");
         } catch (IOException e) {
             Log.d(TAG, "IOException closing socket");
+        } catch (NullPointerException e) {
+            Log.e(TAG, "socket was null you asshole!");
         }
         Log.v(TAG, "stopped all, bye");
     }

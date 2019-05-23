@@ -1,4 +1,4 @@
-package com.physnooker;
+package com.billardtrainer.physnooker;
 
 import java.util.*;
 

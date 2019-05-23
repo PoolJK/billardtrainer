@@ -3,7 +3,6 @@
     android:id="@+id/linlay"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000"
     android:orientation="vertical"
     tools:context=".Main"
     tools:ignore="RtlHardcoded,HardcodedText" >
@@ -37,10 +36,8 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_above="@id/button3"
-        android:onClick="resetSim"
-        android:text="reset"
-        android:visibility="invisible"
-        tools:visibility="visible" />
+        android:onClick="resetBalls"
+        android:text="reset" />
 		
     <Button
         android:id="@+id/button5"
