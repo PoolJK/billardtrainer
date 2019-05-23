@@ -5,7 +5,9 @@ class Cons {
     // prog constants
     static final int STATE_STILL = 0;
     static final int STATE_ROLLING = 1;
-    static final int STATE_SPINNING = 2;
+    static final int STATE_STUN = 2;
+    static final int STATE_SLIDING = 3;
+    static final int quadSimSteps = 10;
 
     // Sim params
     static final double precision = 0.001;
@@ -20,12 +22,13 @@ class Cons {
 
     // Ball Params
 
+    // https://www.researchgate.net/publication/228372702_Application_of_high-speed_imaging_to_determine_the_dynamics_of_billiards/download
     final static double ballRadius = 26.25;
     //final static double ballWeight = 0.140; // kg ?
-    final static double uBallCloth = 0.01; // TODO: check units. originally written in [m], now [mm]
     //final static double uBallBall = 0.06;
-    final static double g = 9813; // mm/s^2
-    final static double frictionCoeff = uBallCloth * g;
+    final static double g = 9807; // [mm/s^2]
+    final static double frictionClothSpin = 2000; // [mm/s^2]
+    final static double frictionClothRoll = 125; // [mm/s^2]
 
     final static Vec3 yellowSpot = new Vec3(tableWidth / 2 - DRadius,
             DDistance, Cons.ballRadius);

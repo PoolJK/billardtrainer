@@ -4,7 +4,7 @@ import java.util.*;
 
 import static com.physnooker.Cons.*;
 
-public class Ball {
+public class physnookerBall {
 	int value, id;
 	int state = 0;
 	boolean onTable = false;
@@ -138,11 +138,11 @@ public class Ball {
 		double factor;
 		switch (state) {
 			case STATE_ROLLING:
-				factor = 0.5 * fCR * t * t / length(V0);
+				factor = 0.5 * friction_cloth_roll * t * t / length(V0);
 				return new Vec3(Pos.x + V0.x * t - factor * V0.x, Pos.y + V0.y * t
 						- factor * V0.y, Pos.z);
 			case STATE_SPINNING:
-				factor = 0.5 * fC * t * t / length(Vc0);
+				factor = 0.5 * friction_cloth * t * t / length(Vc0);
 				return new Vec3(Pos.x + V0.x * t - factor * Vc0.x, Pos.y + V0.y * t
 						- factor * Vc0.y, Pos.z);
 			default:
@@ -154,10 +154,10 @@ public class Ball {
 		double factor;
 		switch (state) {
 			case STATE_ROLLING:
-				factor = fCR * t / length(V0);
+				factor = friction_cloth_roll * t / length(V0);
 				return new Vec3(V0.x - factor * V0.x, V0.y - factor * V0.y, 0);
 			case STATE_SPINNING:
-				factor = fC * t / length(Vc0);
+				factor = friction_cloth * t / length(Vc0);
 				return new Vec3(V0.x - factor * Vc0.x, V0.y - factor * Vc0.y, 0);
 			default:
 				return new Vec3(0, 0, 0);
@@ -168,10 +168,10 @@ public class Ball {
 		double factor;
 		switch (state) {
 			case STATE_ROLLING:
-				factor = fCR * t / (length(W0) * ballRadius);
+				factor = friction_cloth_roll * t / (length(W0) * ballRadius);
 				return new Vec3(W0.x - factor * W0.x, W0.y - factor * W0.y, 0);
 			case STATE_SPINNING:
-				factor = (-5.0 / 2.0) * fC * t / (length(Vc0) * ballRadius);
+				factor = (-5.0 / 2.0) * friction_cloth * t / (length(Vc0) * ballRadius);
 				return new Vec3(W0.x - factor * Vc0.y, W0.y - factor * Vc0.x, 0);
 			default:
 				return new Vec3(0, 0, 0);

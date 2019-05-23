@@ -16,7 +16,7 @@ android {
     sourceSets {
         main {
             java {
-                exclude '**/physnooker*.java'
+                exclude '**/physnooker*'
             }
         }
 

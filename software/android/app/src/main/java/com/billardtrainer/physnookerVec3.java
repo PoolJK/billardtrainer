@@ -2,7 +2,7 @@ package com.physnooker;
 
 import static com.physnooker.Cons.*;
 
-public class Vec3
+public class physnookerVec3
 {
 
 	double x, y, z;

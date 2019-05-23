@@ -2,12 +2,12 @@ package com.billardtrainer;
 
 import static com.billardtrainer.Cons.*;
 
-public class bNode {
+public class physnookerbNode {
 	Vec3 P0, V0, W0, Vc0;
 	int state;
 	double time;
 
-	public bNode(Vec3 p, Vec3 v, Vec3 w, double t) {
+	public physnookerbNode(Vec3 p, Vec3 v, Vec3 w, double t) {
 		P0 = p;
 		V0 = v;
 		W0 = w;
@@ -18,7 +18,7 @@ public class bNode {
 			Vc0.x = 0;
 		if (Math.abs(Vc0.y) < precision)
 			Vc0.y = 0;
-		state = length(Vc0) > precision ? STATE_SPINNING
+		state = length(Vc0) > precision ? STATE_SLIDING
 				: length(V0) > precision ? STATE_ROLLING : STATE_STILL;
 		time = t;
 	}

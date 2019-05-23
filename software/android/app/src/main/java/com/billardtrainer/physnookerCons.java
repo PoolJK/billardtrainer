@@ -1,6 +1,6 @@
 package com.physnooker;
 
-public class Cons {
+public class physnookerCons {
 	// prog constants
 	static final int STATE_STILL = 0;
 	static final int STATE_ROLLING = 1;
@@ -22,11 +22,11 @@ public class Cons {
 	final static double ballRadius = 0.02625;
 	final static double ballWeight = 0.140;
 	final static double uBallCloth = 0.2;
-	final static double uBallClothR = 0.01;
+	final static double uBallClothRoll = 0.01;
 	final static double uBallBall = 0.06;
 	final static double g = 9.81; // m/s^2
-	final static double fC = uBallCloth * g;
-	final static double fCR = uBallClothR * g;
+	final static double friction_cloth = uBallCloth * g;
+	final static double friction_cloth_roll = uBallClothRoll * g;
 
 	final static Vec3 yellowSpot = new Vec3(tableWidth / 2 - DRadius,
 			-DDistance, Cons.ballRadius);

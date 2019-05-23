@@ -1,16 +1,18 @@
 package com.billardtrainer;
 
+// https://billiards.colostate.edu/technical-proof/
+
 import java.util.ArrayList;
+import java.util.Locale;
 
 import android.annotation.SuppressLint;
-import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.Matrix;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
-import android.graphics.drawable.BitmapDrawable;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
@@ -18,8 +20,9 @@ import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MotionEvent;
+import android.view.SurfaceHolder;
+import android.view.SurfaceView;
 import android.view.View;
-import android.view.ViewGroup.LayoutParams;
 import android.view.ViewTreeObserver;
 import android.widget.Button;
 import android.widget.RelativeLayout;
@@ -44,6 +47,8 @@ public class Main extends AppCompatActivity {
     static final int BT_CONNECTED = 4;
     static final int BT_DISCONNECTED = 5;
     static final int DEVICE_READY = 6;
+    static final int SIM_RESULT = 7;
+    static final int DONE_DRAWING = 8;
 
     private static ArrayList<Ball> ballsOnTable;
     private static Ball activeBall;
@@ -51,28 +56,33 @@ public class Main extends AppCompatActivity {
 
     private TextView activeBallView;
     private RelativeLayout linear_layout;
-    private customCanvas drawSurface;
     int screenWidth, screenHeight;
     double screenScale, screenOffset;
     private boolean screenSet;
-    private static mHandler handler;
+    static mHandler handler;
     private static int ballOn = 8;
     private static ArrayList<Shot> possibleShots;
-    private static boolean simRunning, calcRunning;
-    private simThread sThread;
+    static boolean simrunning;
 
-    private Bitmap bitmap;
     private Canvas canvas;
+    private Bitmap bitmap;
+    private SurfaceView surfaceView;
+    private SurfaceHolder holder;
     private static final Paint paint = new Paint();
     private static boolean aiming;
     private Button aimButton;
+    private simThread sThread;
 
-    @SuppressLint({"HandlerLeak", "SetTextI18n"})
+    @SuppressLint({"HandlerLeak", "SetTextI18n", "ClickableViewAccessibility"})
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         screenSet = false;
         setContentView(R.layout.main);
+
+        surfaceView = findViewById(R.id.surface_view);
+        holder = surfaceView.getHolder();
+        surfaceView.setOnTouchListener(new canvasOnTouchListener());
 
         activeBallView = findViewById(R.id.active_ball_view);
         activeBallView.setText("Cueball");
@@ -92,10 +102,11 @@ public class Main extends AppCompatActivity {
                     screenScale = Math.min((screenWidth - 40) / tableWidth,
                             (screenHeight - 100) / tableLength);
                     screenOffset = (screenWidth - tableWidth * screenScale) / 2;
+                    bitmap = Bitmap.createBitmap(screenWidth, screenHeight, Bitmap.Config.ARGB_8888);
+                    canvas = new Canvas();
+                    canvas.setBitmap(bitmap);
                     screenSet = true;
-                    bitmap = Bitmap.createBitmap(screenWidth, screenHeight,
-                            Bitmap.Config.ARGB_8888);
-                    canvas = new Canvas(bitmap);
+                    Log.v(TAG, String.format(Locale.ROOT, "screenW=%d screenH=%d", screenWidth, screenHeight));
                     calc();
                 }
                 return true;
@@ -103,30 +114,28 @@ public class Main extends AppCompatActivity {
         });
         if (ballsOnTable == null) {
             ballsOnTable = new ArrayList<>();
-            initTable();
+            initTable(true);
         }
-        if (drawSurface == null)
-            drawSurface = new customCanvas(this);
-        //TODO: drawingSurface after screenRotate
-        Log.e(TAG, String.format("childcount = %d", linear_layout.getChildCount()));
-        if (linear_layout.getChildCount() == 7) {
-            RelativeLayout.LayoutParams params = new RelativeLayout.LayoutParams(
-                    LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT);
-            linear_layout.addView(drawSurface, 0, params);
-        }
-        if (handler == null)
+        if (handler == null) {
             handler = new mHandler() {
                 private boolean device_busy = false;
 
+                @SuppressWarnings("unchecked")
                 @Override
                 public void handleMessage(Message msg) {
                     // Log.v(TAG, String.format("mHandler: %s", msg.toString()));
                     switch (msg.what) {
+                        case SIM_RESULT:
+                            ballsOnTable = (ArrayList<Ball>) msg.obj;
+                            simrunning = false;
+                            this.sendEmptyMessage(DRAW);
+                            break;
                         case TOAST_MESSAGE:
                             toast((String) msg.obj);
                             break;
                         case DRAW:
-                            draw();
+                            if(!simrunning)
+                                draw();
                             break;
                         case DEVICE_READY:
                             device_busy = false;
@@ -159,8 +168,7 @@ public class Main extends AppCompatActivity {
                     }
                 }
             };
-
-        sThread = new simThread();
+        }
 
         if (possibleShots == null)
             possibleShots = new ArrayList<>();
@@ -177,12 +185,14 @@ public class Main extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
+        // Test case for physics sim
+        startSim(null);
         // Test case to simulate data from bluetooth:
-        if (btService == null) {
-            Log.d(TAG, "btService is null");
-            btService = new BTService(handler);
-            btService.start();
-        }
+//        if (btService == null) {
+//            Log.d(TAG, "btService is null");
+//            btService = new BTService(handler);
+//            btService.start();
+//        }
     }
 
     @Override
@@ -239,6 +249,68 @@ public class Main extends AppCompatActivity {
     private int numreach = 0;
     private double ballspread = 0;
 
+    private double angle = 90; // [deg]
+    private double speed = 500; // [mm/s]
+
+    @SuppressLint("SetTextI18n")
+    private void setCueBallV0() {
+        double x = speed * Math.sin(Math.toRadians(angle));
+        double y = speed * Math.cos(Math.toRadians(angle));
+        if (Math.abs(x) < precision)
+            x = 0;
+        if (Math.abs(y) < precision)
+            y = 0;
+        ballsOnTable.get(0).getNode().setV0(new Vec3(x, y, 0),
+                new Vec3(0, 0, 0)); // [mm/s]
+        ((TextView) findViewById(R.id.Angle)).setText(String.format(Locale.ROOT, "%.0f", angle));
+        ((TextView) findViewById(R.id.Speed)).setText(String.format(Locale.ROOT, "%.0f", speed));
+    }
+
+    public void resetSim(View view) {
+        for (Ball ball : ballsOnTable)
+            ball.clearNodes();
+        setCueBallV0();
+    }
+
+    public void startSim(View view) {
+        resetSim(view);
+        if (sThread != null && sThread.isAlive()) {
+            try {
+                sThread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        sThread = new simThread(ballsOnTable);
+        simrunning = true;
+        handler.post(sThread);
+    }
+
+//    public void start(View view) {
+//        if (simRunning) {
+//            simRunning = false;
+//            try {
+//                sThread.join();
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//        sThread = new simThread(ballsOnTable);
+//        if (simRunning || currentShot == -1)
+//            return;
+//        calc();
+//        Shot s = possibleShots.get(currentShot);
+//        double vx, vy;
+//        Ball c = s.sBalls.get(0);
+//        vx = (s.target.x - c.Pos.x);
+//        vy = (s.target.y - c.Pos.y);
+//        double l = 0.8 * Math.sqrt(vx * vx + vy * vy);
+//        c.state = 1;
+//        c.V.x = vx / l;
+//        c.V.y = vy / l;
+//        sThread.start();
+//    }
+
     private void calc() {
         Vec3 pock;
         Ball b, btp;
@@ -248,7 +320,6 @@ public class Main extends AppCompatActivity {
         ballspread = 0;
         pock = null;
         btp = null;
-        calcRunning = true;
         if (currentShot > -1) {
             pock = possibleShots.get(currentShot).pocket;
             btp = possibleShots.get(currentShot).ballToPot;
@@ -256,7 +327,6 @@ public class Main extends AppCompatActivity {
         possibleShots.clear();
         currentShot = -1;
         if (ballsOnTable.isEmpty()) {
-            calcRunning = false;
             return;
         }
         int bspreadcount = 0;
@@ -278,16 +348,16 @@ public class Main extends AppCompatActivity {
                 if (b.id == 7)
                     Log.d("calc", String.format("pocket: %s", pocket));
                 // if obstructed check next
-                if (b.hasNoLineTo(pocket, ballsOnTable, null)) {
+                if (b.getNode().hasNoLineTo(pocket, ballsOnTable, null)) {
                     if (b.id == 7)
                         Log.d("calc", "no line");
                     continue;
                 }
                 numposs += 1;
                 // not obstructed get contact
-                contactPoint = b.contactPoint(pocket);
+                contactPoint = b.getNode().contactPoint(pocket);
                 // cueball reaches contact
-                if (ballsOnTable.get(0).hasNoLineTo(contactPoint, ballsOnTable, b))
+                if (ballsOnTable.get(0).getNode().hasNoLineTo(contactPoint, ballsOnTable, b))
                     continue;
                 // angle < 88
                 a = contactPoint.subtract(ballsOnTable.get(0).Pos);
@@ -302,7 +372,6 @@ public class Main extends AppCompatActivity {
                     currentShot = possibleShots.size() - 1;
             }
         }
-        calcRunning = false;
         if (!possibleShots.isEmpty()) {
             if (currentShot < 0)
                 currentShot = 0;
@@ -321,9 +390,7 @@ public class Main extends AppCompatActivity {
         numposs = 0;
         numreach = 0;
         ballspread = 0;
-        calcRunning = true;
         if (ballsOnTable.isEmpty()) {
-            calcRunning = false;
             return;
         }
         cue = ballsOnTable.get(0);
@@ -342,19 +409,19 @@ public class Main extends AppCompatActivity {
             for (Vec3 pocket : pockets) {
                 Log.v("main", String.format("pocket: %s", pocket));
                 // if obstructed check next
-                if (ball.hasNoLineTo(pocket, ballsOnTable, null)) {
+                if (ball.getNode().hasNoLineTo(pocket, ballsOnTable, null)) {
                     Log.v("main", "no line");
                     continue;
                 }
                 numposs += 1;
                 // not obstructed get contact
-                contactPoint = ball.contactPoint(pocket);
+                contactPoint = ball.getNode().contactPoint(pocket);
                 // xy schleife
                 for (int x = 0; x < fact; x++)
                     for (int y = 0; y < 2 * fact; y++) {
                         cue.Pos.x = ballRadius + x * tableWidth / fact;
                         cue.Pos.y = -ballRadius - y * tableLength / (2 * fact);
-                        if (cue.hasNoLineTo(contactPoint, ballsOnTable, ball))
+                        if (cue.getNode().hasNoLineTo(contactPoint, ballsOnTable, ball))
                             continue;
                         // angle < 88
                         a = contactPoint.subtract(ballsOnTable.get(0).Pos);
@@ -391,14 +458,12 @@ public class Main extends AppCompatActivity {
                 //xy schleife
             }
         paint.setAlpha(255);
-        drawSurface.setBackground(new BitmapDrawable(getResources(), bitmap));
+        //drawSurface.setBackground(new BitmapDrawable(getResources(), bitmap));
         cue.Pos.x = oldcuex;
         cue.Pos.y = oldcuey;
-        calcRunning = false;
         long t1 = (System.currentTimeMillis() - t0);
-        drawSurface.invalidate();
+        //drawSurface.invalidate();
         // new way
-        calcRunning = true;
         t0 = System.currentTimeMillis();
         cue = ballsOnTable.get(0);
         //hier startet die x,y schleife
@@ -415,17 +480,17 @@ public class Main extends AppCompatActivity {
             // all pockets
             for (Vec3 pocket : pockets) {
                 // if obstructed check next
-                if (b.hasNoLineTo(pocket, ballsOnTable, null))
+                if (b.getNode().hasNoLineTo(pocket, ballsOnTable, null))
                     continue;
                 numposs += 1;
                 // not obstructed get contact
-                contactPoint = b.contactPoint(pocket);
+                contactPoint = b.getNode().contactPoint(pocket);
                 // xy schleife
                 for (int x = 0; x < fact; x++)
                     for (int y = 0; y < 2 * fact; y++) {
                         cue.Pos.x = ballRadius + x * tableWidth / fact;
                         cue.Pos.y = -ballRadius - y * tableLength / (2 * fact);
-                        if (cue.hasNoLineTo(contactPoint, ballsOnTable, b))
+                        if (cue.getNode().hasNoLineTo(contactPoint, ballsOnTable, b))
                             continue;
                         // angle < 88
                         a = contactPoint.subtract(cue.Pos);
@@ -462,147 +527,13 @@ public class Main extends AppCompatActivity {
         //drawSurface.setBackground(new BitmapDrawable(getResources(), bitmap));
         cue.Pos.x = oldcuex;
         cue.Pos.y = oldcuey;
-        calcRunning = false;
 
         toast("old way: " + (double) t1 / 1000 + "new way: " + (double) (System.currentTimeMillis() - t0) / 1000 + "s");
-
-    }
-
-    class simThread extends Thread {
-        @Override
-        public void run() {
-            if (currentShot == -1)
-                return;
-            simRunning = true;
-            long fps = 25;
-            long time = System.currentTimeMillis();
-            long tStart = time;
-            long showInterval = 1000 / fps;
-            long lastShowTime = tStart;
-            double simcounter = 0;
-            Message msg;
-            Ball b1 = possibleShots.get(currentShot).sBalls.get(0);
-            Ball b2 = possibleShots.get(currentShot).sBalls.get(4);
-//			double f = 0.5 * uBallCloth * g * t * t;
-//			new Vec3(Pos.x + V0.x * t - f * Vc0.x, Pos.y + V0.y * t - f * Vc0.y, 0, t);
-            // x:
-            // (b2.V0x - b1.V0x) * t - 0.5*uBallCloth*g*(b2.Vc0.x - b1.Vc0.x) * t^2 + (b2.Pos.x - b1.Pos.x) - 2 * ballRadius = 0
-            b1.setV0(b1.V);
-            double a = 0.5 * uBallCloth * g * (b2.Vc0.x - b1.Vc0.x);
-            double B = (b2.V0.x - b1.V0.x);
-            double c = b2.Pos.x - b1.Pos.x - 4 * ballRadius * ballRadius;
-            double D = B * B - 4 * a * c;
-            if (D >= 0) {
-                double t1 = 0.5 * (-B + Math.sqrt(D)) / a;
-                double t2 = 0.5 * (-B - Math.sqrt(D)) / a;
-                msg = handler.obtainMessage();
-                msg.obj = "t1 = " + d(t1, 4) + ", t2 = " + d(t2, 4);
-                handler.sendMessage(msg);
-            }
-            while (ballsMoving() && simRunning) {
-                time = System.currentTimeMillis();
-                // sim stuff
-                simcounter++;
-                // move
-                for (Ball b : possibleShots.get(currentShot).sBalls) {
-                    if (b.state == 0)
-                        continue;
-                    // move time simcounter - lastAction
-                    b.move(1);
-                }
-                // check Collision
-                Ball ball1, ball2;
-                for (int index1 = 0; index1 < possibleShots.get(currentShot).sBalls
-                        .size(); index1++) {
-                    ball1 = possibleShots.get(currentShot).sBalls.get(index1);
-                    if (ball1.state == 0)
-                        continue;
-                    for (int index2 = 0; index2 < possibleShots
-                            .get(currentShot).sBalls.size(); index2++) {
-                        // no self collision
-                        if (index1 == index2)
-                            continue;
-                        ball2 = possibleShots.get(currentShot).sBalls
-                                .get(index2);
-                        // check for collision
-                        // movement smaller than distanceTo
-                        double distance = ball1.Pos.distanceTo(ball2.Pos) - 2
-                                * ballRadius;
-                        if (ball1.V.length() / 1000 < distance)
-                            continue;
-                        Vec3 normal = ball1.V.cloneVec3();
-                        normal.normalize();
-                        Vec3 C = ball2.Pos.subtract(ball1.Pos);
-                        D = normal.scalar(C);
-                        // not moving towards
-                        if (D <= 0)
-                            continue;
-                        double lC = C.length();
-                        double F = (lC * lC) - (D * D);
-                        // doesn't get close enough
-                        double sumRadii = Math.pow(2 * ballRadius, 2);
-                        if (F >= sumRadii)
-                            continue;
-                        double T = sumRadii - F;
-                        if (T < 0)
-                            continue;
-                        distance = D - Math.sqrt(T);
-                        if (ball1.V.length() / 1000 < distance)
-                            continue;
-                        // collide
-                        double dx = ball2.Pos.x - ball1.Pos.x;
-                        double dy = ball2.Pos.y - ball1.Pos.y;
-                        D = Math.sqrt(dx * dx + dy * dy);
-                        Vec3 n = new Vec3(dx / D, dy / D, 0);
-                        double dp = (n.scalar(ball1.V) - n.scalar(ball2.V));
-                        dx = dp * n.x;
-                        dy = dp * n.y;
-                        ball2.V.x += dx;
-                        ball2.V.y += dy;
-                        ball1.V.x -= dx;
-                        ball1.V.y -= dy;
-                        ball2.state = 1;
-                        ball1.move(0.5);
-                        ball2.move(0.5);
-                    }
-                }
-                if (simcounter % showInterval == 0) {
-                    if (time - lastShowTime < showInterval)
-                        try {
-                            sleep(Math.max(showInterval
-                                    - (time - lastShowTime + 1), 0));
-                        } catch (InterruptedException e) {
-                            e.printStackTrace();
-                        }
-                    lastShowTime = time;
-                    handler.sendEmptyMessage(DRAW);
-                }
-            }
-            ballsOnTable = possibleShots.get(currentShot).sBalls;
-            simRunning = false;
-            calc();
-        }
-
-        private boolean ballsMoving() {
-            if (currentShot == -1)
-                return false;
-            for (int b = 0; b < possibleShots.get(currentShot).sBalls.size(); b++)
-                if (possibleShots.get(currentShot).sBalls.get(b).state > 0)
-                    return true;
-            return false;
-        }
     }
 
     public void aimSwitch(View view) {
         aiming = !aiming;
         aimButton.setText(!aiming ? "move" : "aim");
-        calcPos();
-    }
-
-    public void resetBalls(View view) {
-        //ballsOnTable = oldBalls;
-        //calc();
-        toast("ballspread = " + d(ballspread * 100, 1) + "cm, numposspock = " + numposs + ", numcuereach = " + numreach);
     }
 
     public void removeBall(View view) {
@@ -625,31 +556,6 @@ public class Main extends AppCompatActivity {
         handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
     }
 
-    public void start(View view) {
-        if (simRunning) {
-            simRunning = false;
-            try {
-                sThread.join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-        }
-        sThread = new simThread();
-        if (simRunning || currentShot == -1)
-            return;
-        calc();
-        Shot s = possibleShots.get(currentShot);
-        double vx, vy;
-        Ball c = s.sBalls.get(0);
-        vx = (s.target.x - c.Pos.x);
-        vy = (s.target.y - c.Pos.y);
-        double l = 0.8 * Math.sqrt(vx * vx + vy * vy);
-        c.state = 1;
-        c.V.x = vx / l;
-        c.V.y = vy / l;
-        sThread.start();
-    }
-
     private void cycleShot() {
         if (possibleShots.isEmpty())
             currentShot = -1;
@@ -661,42 +567,57 @@ public class Main extends AppCompatActivity {
         }
     }
 
-    private class customCanvas extends View {
+    private class canvasOnTouchListener implements View.OnTouchListener {
 
-        private float startX, startY, oldX, oldY;
+        private float startX, startY, oldX, oldY, x, y;
         private double dx, dy;
         private Ball newBall;
         private boolean moving;
 
-        public customCanvas(Context context) {
-            super(context);
-        }
-
         @SuppressLint("ClickableViewAccessibility")
         @Override
-        public boolean onTouchEvent(MotionEvent e) {
+        public boolean onTouch(View v, MotionEvent e) {
             int MIN_MOVEMENT = 4;
+            x = e.getX();
+            y = e.getY();
             switch (e.getActionMasked()) {
                 case MotionEvent.ACTION_DOWN:
                     //Log.i("Main", "ACTION_DOWN moving=" + moving);
-                    oldX = startX = e.getX();
-                    oldY = startY = e.getY();
+                    oldX = startX = x;
+                    oldY = startY = y;
                     moving = false;
                     return true;
                 case MotionEvent.ACTION_MOVE:
                     //Log.i("Main", "ACTION_MOVE moving=" + moving);
-                    dx = rX(e.getX()) - rX(oldX);
-                    dy = rY(e.getY()) - rY(oldY);
-                    oldX = e.getX();
-                    oldY = e.getY();
-                    if (Math.abs(e.getX() - startX) < MIN_MOVEMENT
-                            && Math.abs(e.getY() - startY) < MIN_MOVEMENT)
+                    dx = rX(x) - rX(oldX);
+                    dy = rY(y) - rY(oldY);
+                    oldX = x;
+                    oldY = y;
+                    if (Math.abs(x - startX) < MIN_MOVEMENT
+                            && Math.abs(y - startY) < MIN_MOVEMENT)
+                        // movement too small, return
                         return true;
                     else
                         moving = true;
-                    double fact = 1;
-                    dx *= fact;
-                    dy *= fact;
+                    if (aiming) {
+                        double fact = 0.001;
+                        dx *= fact;
+                        // update values of cueball then call sim
+                        if (Math.abs(x - startX) > Math.abs(y - startY))
+                            angle -= Math.toDegrees(dx);
+                        else
+                            speed -= dy;
+                        if (speed <= 0)
+                            speed = 0;
+                        if (speed > 2000)
+                            speed = 2000;
+                        if (angle > 360)
+                            angle -= 360;
+                        else if (angle < 0)
+                            angle += 360;
+                        startSim(null);
+                        return true;
+                    }
                     if (activeBall != null) { // move active Ball
                         if (activeBall.Pos.x + dx < tableWidth - ballRadius
                                 && activeBall.Pos.x + dx > ballRadius)
@@ -704,20 +625,18 @@ public class Main extends AppCompatActivity {
                         if (activeBall.Pos.y + dy < tableLength - ballRadius
                                 && activeBall.Pos.y + dy > ballRadius)
                             activeBall.Pos.y += dy;
+                        startSim(null);
                     } else {
                         // activeBall = null, no moving
                         moving = false;
                         return true;
-                    }
-                    if (!simRunning && !calcRunning) {
-                        calc();
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
                     //Log.i("Main", "ACTION_UP moving=" + moving);
                     if (!moving) {
                         // not moving, "click"-event:
-                        newBall = getBallFromPosition(rX(e.getX()), rY(e.getY()), ballsOnTable);
+                        newBall = getBallFromPosition(rX(x), rY(y), ballsOnTable);
                         if (newBall == null) {
                             cycleShot();
                             return false;
@@ -764,9 +683,7 @@ public class Main extends AppCompatActivity {
     }
 
     private void draw() {
-        if (calcRunning || canvas == null) {
-            return;
-        }
+        Log.d(TAG, "draw()");
         // draw Table
         // cloth
         paint.setStyle(Style.FILL);
@@ -804,65 +721,61 @@ public class Main extends AppCompatActivity {
         if (ballsOnTable == null || ballsOnTable.isEmpty()) {
             return;
         }
-        if (!simRunning) {
-            for (Ball ball : ballsOnTable)
-                ball.draw(this, paint, canvas);
-        }
+        for (Ball ball : ballsOnTable)
+            ball.draw(this, paint, canvas);
         if (currentShot > -1 && !possibleShots.isEmpty()) {
             Shot s = possibleShots.get(currentShot);
             Ball btp = s.ballToPot;
-            double da1 = btp.getTargetAngle(s.pocket);
-            double da2 = ballsOnTable.get(0).getTargetAngle(
-                    btp.contactPoint(s.pocket));
-            if (!simRunning) {
-                // draw aim line
-                paint.setStyle(Style.STROKE);
-                paint.setColor(Color.WHITE);
-                canvas.drawLine(screenX(ballsOnTable.get(0).Pos.x),
-                        screenY(ballsOnTable.get(0).Pos.y), screenX(s.target.x),
-                        screenY(s.target.y), paint);
-                // draw target
-                canvas.drawCircle(screenX(s.target.x), screenY(s.target.y),
-                        (float) (ballRadius * screenScale), paint);
-                // draw pocket line
-                paint.setColor(getBallColor(btp.value));
-                canvas.drawLine(screenX(btp.Pos.x),
-                        screenY(btp.Pos.y), screenX(s.pocket.x),
-                        screenY(s.pocket.y), paint);
-                // draw Stats
-                // object ball
-                paint.setColor(Color.WHITE);
-                paint.setStyle(Style.STROKE);
-                double dist = s.pocket.distanceTo(btp.Pos);
-                double totdist = dist;
-                double dx = screenX(s.pocket.x) - screenX(btp.Pos.x);
-                double dy = screenY(s.pocket.y) - screenY(btp.Pos.y);
-                double dl = Math.sqrt(dx * dx + dy * dy);
-                Vec3 normal = new Vec3(screenX(btp.Pos.x) + dx / 2
-                        - 25 * dy / dl, screenY(btp.Pos.y) + dy
-                        / 2 - 25 * dx / dl, 0);
-                canvas.drawText("d = " + d(dist * 100, 1) + " cm",
-                        (float) normal.x, (float) normal.y, paint);
-                // cue ball
-                dist = ballsOnTable.get(0).Pos.distanceTo(s.target);
-                totdist += dist;
-                dx = screenX(s.target.x) - screenX(ballsOnTable.get(0).Pos.x);
-                dy = screenY(s.target.y) - screenY(ballsOnTable.get(0).Pos.y);
-                dl = Math.sqrt(dx * dx + dy * dy);
-                normal = new Vec3(screenX(ballsOnTable.get(0).Pos.x) + dx / 2 - 25
-                        * dy / dl, screenY(ballsOnTable.get(0).Pos.y) + dy / 2 - 25
-                        * dx / dl, 0);
-                double da = Math.toDegrees(s.target.subtract(ballsOnTable.get(0).Pos)
-                        .deltaAngle(
-                                s.pocket.subtract(btp.Pos)));
-                paint.setTextSize(15);
-                canvas.drawText("ang = " + d(da, 2) + " deg", (float) normal.x,
-                        (float) normal.y, paint);
-                canvas.drawText("dist = " + d(dist * 100, 1) + " cm",
-                        (float) normal.x, (float) normal.y + 20, paint);
-                canvas.drawText("tot = " + d(totdist * 100, 1) + " cm",
-                        (float) normal.x, (float) normal.y + 40, paint);
-            }
+            double da1 = btp.getNode().getTargetAngle(s.pocket);
+            double da2 = ballsOnTable.get(0).getNode().getTargetAngle(
+                    btp.getNode().contactPoint(s.pocket));
+            // draw aim line
+            paint.setStyle(Style.STROKE);
+            paint.setColor(Color.WHITE);
+            canvas.drawLine(screenX(ballsOnTable.get(0).Pos.x),
+                    screenY(ballsOnTable.get(0).Pos.y), screenX(s.target.x),
+                    screenY(s.target.y), paint);
+            // draw target
+            canvas.drawCircle(screenX(s.target.x), screenY(s.target.y),
+                    (float) (ballRadius * screenScale), paint);
+            // draw pocket line
+            paint.setColor(getBallColor(btp.value));
+            canvas.drawLine(screenX(btp.Pos.x),
+                    screenY(btp.Pos.y), screenX(s.pocket.x),
+                    screenY(s.pocket.y), paint);
+            // draw Stats
+            // object ball
+            paint.setColor(Color.WHITE);
+            paint.setStyle(Style.STROKE);
+            double dist = s.pocket.distanceTo(btp.Pos);
+            double totdist = dist;
+            double dx = screenX(s.pocket.x) - screenX(btp.Pos.x);
+            double dy = screenY(s.pocket.y) - screenY(btp.Pos.y);
+            double dl = Math.sqrt(dx * dx + dy * dy);
+            Vec3 normal = new Vec3(screenX(btp.Pos.x) + dx / 2
+                    - 25 * dy / dl, screenY(btp.Pos.y) + dy
+                    / 2 - 25 * dx / dl, 0);
+            canvas.drawText("d = " + d(dist * 100, 1) + " cm",
+                    (float) normal.x, (float) normal.y, paint);
+            // cue ball
+            dist = ballsOnTable.get(0).Pos.distanceTo(s.target);
+            totdist += dist;
+            dx = screenX(s.target.x) - screenX(ballsOnTable.get(0).Pos.x);
+            dy = screenY(s.target.y) - screenY(ballsOnTable.get(0).Pos.y);
+            dl = Math.sqrt(dx * dx + dy * dy);
+            normal = new Vec3(screenX(ballsOnTable.get(0).Pos.x) + dx / 2 - 25
+                    * dy / dl, screenY(ballsOnTable.get(0).Pos.y) + dy / 2 - 25
+                    * dx / dl, 0);
+            double da = Math.toDegrees(s.target.subtract(ballsOnTable.get(0).Pos)
+                    .deltaAngle(
+                            s.pocket.subtract(btp.Pos)));
+            paint.setTextSize(15);
+            canvas.drawText("ang = " + d(da, 2) + " deg", (float) normal.x,
+                    (float) normal.y, paint);
+            canvas.drawText("dist = " + d(dist * 100, 1) + " cm",
+                    (float) normal.x, (float) normal.y + 20, paint);
+            canvas.drawText("tot = " + d(totdist * 100, 1) + " cm",
+                    (float) normal.x, (float) normal.y + 40, paint);
             // draw helper ballOn
             paint.setStyle(Style.FILL);
             paint.setColor(getBallColor(btp.value));
@@ -890,22 +803,36 @@ public class Main extends AppCompatActivity {
         }
 
         // simulation
-        if (currentShot > -1 && simRunning) {
-            paint.setStyle(Style.FILL);
-            for (int b = 0; b < possibleShots.get(currentShot).sBalls.size(); b++) {
-                // draw ball
-                paint.setColor(getBallColor(possibleShots.get(currentShot).sBalls
-                        .get(b).value));
-                canvas.drawCircle(
-                        screenX(possibleShots.get(currentShot).sBalls.get(b).Pos.x),
-                        screenY(possibleShots.get(currentShot).sBalls.get(b).Pos.y),
-                        (float) (ballRadius * screenScale), paint);
-            }
-        }
-        drawSurface.setBackground(new BitmapDrawable(getResources(), bitmap));
+//        if (currentShot > -1 && simRunning) {
+//            paint.setStyle(Style.FILL);
+//            for (int b = 0; b < possibleShots.get(currentShot).sBalls.size(); b++) {
+//                // draw ball
+//                paint.setColor(getBallColor(possibleShots.get(currentShot).sBalls
+//                        .get(b).value));
+//                canvas.drawCircle(
+//                        screenX(possibleShots.get(currentShot).sBalls.get(b).Pos.x),
+//                        screenY(possibleShots.get(currentShot).sBalls.get(b).Pos.y),
+//                        (float) (ballRadius * screenScale), paint);
+//            }
+//        }
+        Canvas mCanvas = holder.lockCanvas();
+        mCanvas.drawBitmap(bitmap, new Matrix(), null);
+        holder.unlockCanvasAndPost(mCanvas);
+        handler.sendEmptyMessage(DONE_DRAWING);
     }
 
-    private void initTable() {
+    @SuppressWarnings("SameParameterValue")
+    private void initTable(boolean test) {
+        ballsOnTable.clear();
+        if (test) {
+            // cueball
+            ballsOnTable.add(new Ball(yellowSpot.x, blackSpot.y, 0, 1));
+            ballsOnTable.add(new Ball(blackSpot.x, blackSpot.y, 7, 2));
+            activeBall = ballsOnTable.get(0);
+            activeBall.getNode().setV0(new Vec3(500, 0, 0),
+                    new Vec3(0, 0, 0)); // [mm/s]
+            return;
+        }
         // cueball
         ballsOnTable.add(new Ball((brownSpot.x + greenSpot.x) / 2, brownSpot.y,
                 0, 1));

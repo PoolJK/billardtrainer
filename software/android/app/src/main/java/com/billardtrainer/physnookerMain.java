@@ -16,7 +16,7 @@ import java.util.*;
 
 import static com.physnooker.Cons.*;
 
-public class Main extends Activity {
+public class physnookerMain extends Activity {
 
     static boolean first;
 
@@ -67,7 +67,7 @@ public class Main extends Activity {
         double a, b, c, D, p, q, t, tn;
         double tr1, tr2, tl1, tl2, tb1, tb2, tt1, tt2;
         double tballmin;
-        p = -2d / (fC);
+        p = -2d / (friction_cloth);
         q = 0;
         D = 0;
         // long t0, t1;
@@ -76,9 +76,9 @@ public class Main extends Activity {
             case STATE_ROLLING:
                 // t0 = System.nanoTime();
                 // no coll
-                tn = length(v0) / fCR;
+                tn = length(v0) / friction_cloth_roll;
                 // right cushion
-                a = v0.x * 0.5 * fCR / length(v0);
+                a = v0.x * 0.5 * friction_cloth_roll / length(v0);
                 b = -v0.x;
                 c = -(p0.x - tableWidth + ballRadius);
                 if (a == 0) {
@@ -122,7 +122,7 @@ public class Main extends Activity {
                             : (tl2 < dprecision ? tl1 : Math.min(tl1, tl2));
                 }
                 // bottom cushion
-                a = v0.y * 0.5 * fCR / length(v0);
+                a = v0.y * 0.5 * friction_cloth_roll / length(v0);
                 b = -v0.y;
                 c = -(p0.y + tableLength - ballRadius);
                 if (a == 0) {
@@ -167,12 +167,12 @@ public class Main extends Activity {
                 }
                 t = Math.min(Math.min(Math.min(Math.min(tt1, tr1), tb1), tl1), tn);
                 // t1 = System.nanoTime();
-                // toast("calc time = " + (t1 - t0) + "ns");
+                // toast("calc t = " + (t1 - t0) + "ns");
                 break;
             case STATE_SPINNING:
-                tn = 2.0 / 7.0 * length(vc0) / fC;
+                tn = 2.0 / 7.0 * length(vc0) / friction_cloth;
                 // right cushion
-                a = vc0.x * 0.5 * fC / length(vc0);
+                a = vc0.x * 0.5 * friction_cloth / length(vc0);
                 b = -v0.x;
                 c = -(p0.x - tableWidth + ballRadius);
                 if (a == 0) {
@@ -218,7 +218,7 @@ public class Main extends Activity {
                 }
                 t = Math.min(t, tl1);
                 // bottom cushion
-                a = vc0.y * 0.5 * fC / length(vc0);
+                a = vc0.y * 0.5 * friction_cloth / length(vc0);
                 b = -v0.y;
                 c = -(p0.y + tableLength - ballRadius);
                 if (a == 0) {
@@ -293,24 +293,24 @@ public class Main extends Activity {
         double fax, fbx, fay, fby;
         switch (statea) {
             case STATE_ROLLING:
-                fax = 0.5 * fCR * v0a.x / length(v0a);
-                fay = 0.5 * fCR * v0a.y / length(v0a);
+                fax = 0.5 * friction_cloth_roll * v0a.x / length(v0a);
+                fay = 0.5 * friction_cloth_roll * v0a.y / length(v0a);
                 break;
             case STATE_SPINNING:
-                fax = 0.5 * fC * vc0a.x / length(vc0a);
-                fay = 0.5 * fC * vc0a.y / length(vc0a);
+                fax = 0.5 * friction_cloth * vc0a.x / length(vc0a);
+                fay = 0.5 * friction_cloth * vc0a.y / length(vc0a);
                 break;
             default:
                 fax = fay = 0;
         }
         switch (stateb) {
             case STATE_ROLLING:
-                fbx = 0.5 * fCR * v0b.x / length(v0b);
-                fby = 0.5 * fCR * v0b.y / length(v0b);
+                fbx = 0.5 * friction_cloth_roll * v0b.x / length(v0b);
+                fby = 0.5 * friction_cloth_roll * v0b.y / length(v0b);
                 break;
             case STATE_SPINNING:
-                fbx = 0.5 * fC * vc0b.x / length(vc0b);
-                fby = 0.5 * fC * vc0b.y / length(vc0b);
+                fbx = 0.5 * friction_cloth * vc0b.x / length(vc0b);
+                fby = 0.5 * friction_cloth * vc0b.y / length(vc0b);
                 break;
             default:
                 fbx = fby = 0;
@@ -428,13 +428,13 @@ public class Main extends Activity {
 
                     // draw node stats
                     /*
-                     * canvas.drawText("t=" + d(bn.time, 2) + ", p: " + bn.P0 +
+                     * canvas.drawText("t=" + d(bn.t, 2) + ", p: " + bn.P0 +
                      * ", state=" + bn.state, 70, 20 + n * 60, paint);
                      * canvas.drawText("v: " + bn.V0 + ", l=" + d(length(bn.V0),
                      * 3), 70, 40 + n * 60, paint); canvas.drawText( "vc0: " +
                      * bn.Vc0 + ", l=" + d(length(bn.Vc0), 3), 70, 60 + n * 60,
                      * paint); if (n == b.nodes.size() - 2) {
-                     * canvas.drawText("t=" + d(bn2.time, 2) + ", p: " + bn2.P0
+                     * canvas.drawText("t=" + d(bn2.t, 2) + ", p: " + bn2.P0
                      * + ", state=" + bn2.state, 70, 80 + n * 60, paint);
                      * canvas.drawText( "v: " + bn2.V0 + ", l=" +
                      * d(length(bn2.V0), 3), 70, 100 + n * 60, paint);

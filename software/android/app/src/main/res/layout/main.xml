@@ -8,16 +8,19 @@
     tools:context=".Main"
     tools:ignore="RtlHardcoded,HardcodedText" >
 
+    <SurfaceView
+        android:id="@+id/surface_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
     <Button
         android:id="@+id/button2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_alignParentBottom="true"
-        android:onClick="start"
-        android:text="Sim"
-        android:visibility="invisible"
-        tools:visibility="visible" />
+        android:onClick="startSim"
+        android:text="Sim" />
 
     <Button
         android:id="@+id/button3"
@@ -26,9 +29,7 @@
         android:layout_alignParentLeft="true"
         android:layout_above="@id/button2"
         android:onClick="aimSwitch"
-        android:text="move"
-        android:visibility="invisible"
-        tools:visibility="visible" />
+        android:text="move" />
 		
     <Button
         android:id="@+id/button4"
@@ -36,7 +37,7 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_above="@id/button3"
-        android:onClick="resetBalls"
+        android:onClick="resetSim"
         android:text="reset"
         android:visibility="invisible"
         tools:visibility="visible" />
@@ -60,29 +61,30 @@
         android:layout_above="@id/button5"
         android:onClick="device_ready"
         android:text="ready" />
-    <!--
+
     <EditText
         android:id="@+id/Angle"
-        android:layout_width="100dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_toRightOf="@id/button2"
+        android:layout_above="@id/button6"
+        android:focusable="false"
         android:inputType="numberDecimal"
-		android:focusable="false"
-        android:text="320" />
+        android:text="90"
+        android:textColor="@android:color/white"
+        tools:ignore="Autofill,LabelFor" />
 
     <EditText
         android:id="@+id/Speed"
-        android:layout_width="100dp"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_toRightOf="@id/Angle"
+        android:layout_above="@id/Angle"
+        android:focusable="false"
         android:inputType="numberDecimal"
-		android:focusable="false"
-        android:text="3" />
+        android:text="500"
+        android:textColor="@android:color/white"
+        tools:ignore="Autofill,LabelFor" />
 
 
-    -->
 
     <android.gesture.GestureOverlayView
         android:id="@+id/gestureView"
