@@ -31,9 +31,12 @@ class Ball(VisualItem):
         screen_y = int((self.y - offset_y) * ppm_y)
         print(
             'ball drawn @({}, {}) [px] ({}, {}) [mm]'.format(screen_x, screen_y, self.x, self.y))
-        # circle outline
+        # circle fill
         cv2.circle(image, (screen_x, screen_y),
                    int(self.radius * ppm_x), self.color, -1)
+        # circle outline white
+        cv2.circle(image, (screen_x, screen_y),
+                   int(self.radius * ppm_x), [255, 255, 255], 5)
         # if settings.debugging:
         #     print("ball drawn at: x:{}px y:{}px".format(screen_x, screen_y))
         # draw mid point for debugging

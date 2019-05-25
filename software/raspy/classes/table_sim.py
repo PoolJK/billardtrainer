@@ -22,9 +22,9 @@ class TableSim:
     # beamer_size = (366, 651)  # pixel
     t_size = (1778, 3556)  # pixel table size
     ppm = 1  # table sim ppm
-    b_pos = (719, 2502)  # mm beamer position
+    b_pos = (700, 2245)  # mm beamer position
     b_res = (1080, 1920)  # pixel beamer resolution
-    real_size = (590, 1070)  # mm beamer real size
+    real_size = (590, 1055)  # mm beamer real size
     ppmx = b_res[0] / real_size[0]
     ppmy = b_res[1] / real_size[1]
     b1 = Ball(b_pos[0] + 30,
