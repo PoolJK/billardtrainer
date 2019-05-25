@@ -1,9 +1,8 @@
-from .visual_item import VisualItem
-from ..utils import *
-from .. import settings
+from .utils import *
+from . import settings
 
 
-class Ball(VisualItem):
+class Ball:
     """
     Parameters and functions for a billiard ball
     """
@@ -22,30 +21,30 @@ class Ball(VisualItem):
         :param radius: radius in mm
         :param color: ball color
         """
-        super().__init__(x, y, color)
+        if color is None:
+            color = [255, 255, 255]
+        self.x = x
+        self.y = y
+        self.color = color
         self.radius = radius
 
-    def draw_self(self, image, offset_x, offset_y, ppm_x, ppm_y) -> None:
-        # print(image.shape)
+    def draw(self, image, offset_x, offset_y, ppm_x, ppm_y) -> None:
         screen_x = int((self.x - offset_x) * ppm_x)
         screen_y = int((self.y - offset_y) * ppm_y)
-        print(
-            'ball drawn @({}, {}) [px] ({}, {}) [mm]'.format(screen_x, screen_y, self.x, self.y))
+        # print('ball drawn @({}, {}) [px] ({}, {}) [mm]'.format(screen_x, screen_y, self.x, self.y))
         # circle fill
         cv2.circle(image, (screen_x, screen_y),
                    int(self.radius * ppm_x), self.color, -1)
         # circle outline white
         cv2.circle(image, (screen_x, screen_y),
                    int(self.radius * ppm_x), [255, 255, 255], 5)
-        # if settings.debugging:
-        #     print("ball drawn at: x:{}px y:{}px".format(screen_x, screen_y))
         # draw mid point for debugging
         if settings.debug:
             cv2.drawMarker(image, (screen_x, screen_y),
                            (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
 
     @staticmethod
-    def find_self(image, offs_x=0, offs_y=0, pix_per_mm=1):
+    def find(image, offs_x=0, offs_y=0, pix_per_mm=1):
         # create gray image
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         gray = cv2.medianBlur(gray, 5)

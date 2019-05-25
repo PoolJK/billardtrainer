@@ -71,7 +71,6 @@ if args.push_to_pi:
     # exit, you're done on PC
     exit(0)
 
-print("billardtrainer.py is running")
 settings.on_pi = cv2.getVersionMajor() < 4
 # on the pi try to catch all errors
 try:
@@ -79,6 +78,7 @@ try:
     if not args.camera_test and not args.preview:
         detect_test.main()
 except Exception as e:
+    # TODO: better way of handling exceptions on the pi
     # wait to be able to read console output on raspberry pi before closing terminal on error:
     if settings.on_pi:
         print('\nsome error occurred: {}'.format(sys.exc_info()[0]))

@@ -39,7 +39,7 @@ import static com.billardtrainer.Utils.*;
 public class Main extends AppCompatActivity {
     // Debug
     private final String TAG = "Main";
-    private final boolean debug = BuildConfig.DEBUG;
+    // private final boolean debug = BuildConfig.DEBUG;
 
     // Bluetooth
     private static BTService btService;
@@ -116,7 +116,7 @@ public class Main extends AppCompatActivity {
         });
         if (ballsOnTable == null) {
             ballsOnTable = new ArrayList<>();
-            initTable(true);
+            initTable();
         }
         if (handler == null) {
             handler = new mHandler() {
@@ -310,7 +310,7 @@ public class Main extends AppCompatActivity {
 //        sThread.start();
 //    }
 
-    private void calc() {
+    void calc(View view) {
         Vec3 pock;
         Ball b, btp;
         Vec3 contactPoint, a;
@@ -529,7 +529,7 @@ public class Main extends AppCompatActivity {
     }
 
     public void resetBalls(View view) {
-        initTable(debug);
+        initTable();
         startSim(view);
     }
 
@@ -550,7 +550,7 @@ public class Main extends AppCompatActivity {
                 activeBallView.setText(activeBall.toString());
                 break;
             }
-        calc();
+        calc(null);
         calcPos();
     }
 
@@ -616,6 +616,7 @@ public class Main extends AppCompatActivity {
                             angle -= 360;
                         else if (angle < 0)
                             angle += 360;
+                        calc(null);
                         startSim(null);
                         return true;
                     }
@@ -626,6 +627,7 @@ public class Main extends AppCompatActivity {
                         if (activeBall.Pos.y + dy < tableLength - ballRadius
                                 && activeBall.Pos.y + dy > ballRadius)
                             activeBall.Pos.y += dy;
+                        calc(null);
                         startSim(null);
                     } else {
                         // activeBall = null, no moving
@@ -638,22 +640,24 @@ public class Main extends AppCompatActivity {
                     if (!moving) {
                         // not moving, "click"-event:
                         newBall = getBallFromPosition(rX(x), rY(y), ballsOnTable);
-                        if (newBall == null) {
+                        if (newBall == null || (newBall == activeBall && ballOn == activeBall.id)) {
                             cycleShot();
+                            calc(null);
                             return false;
                         } else {
                             // ball clicked
                             if (newBall == activeBall) {
                                 ballOn = activeBall.id;
-                                calc();
                             } else {
                                 activeBall = newBall;
                                 activeBallView.setText(activeBall.toString());
-                                return false;
                             }
+                            calc(null);
+                            return false;
                         }
                     } else {
                         // movement ended
+                        calc(null);
                         startSim(null);
                         moving = false;
                     }
@@ -840,19 +844,11 @@ public class Main extends AppCompatActivity {
     }
 
     @SuppressWarnings("SameParameterValue")
-    private void initTable(boolean test) {
+    private void initTable() {
         ballsOnTable.clear();
-        if (test) {
-            // cueball
-            ballsOnTable.add(new Ball(yellowSpot.x, blackSpot.y, 0, 1));
-            ballsOnTable.add(new Ball(blackSpot.x, blackSpot.y, 7, 2));
-            activeBall = ballsOnTable.get(0);
-            setCueBallV0();
-            return;
-        }
         // cueball
-        ballsOnTable.add(new Ball((brownSpot.x + greenSpot.x) / 2, brownSpot.y,
-                0, 1));
+        ballsOnTable.add(new Ball(yellowSpot.x, blackSpot.y, 0, 1));
+        setCueBallV0();
         activeBall = ballsOnTable.get(0);
 
         // colors

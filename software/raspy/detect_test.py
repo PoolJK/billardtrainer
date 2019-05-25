@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 from .classes.utils import *
-from .classes.dev_beamer import Beamer
+from .classes.beamer import Beamer
 from .classes.camera import Camera
 from .classes.table_sim import TableSim
 
@@ -16,7 +16,6 @@ class DetectTest:
     def __init__(self, args):
         if args.debug:
             self.debug = True
-        """
         # get source resolution:
         if args.sres:
             x, y = 0, 0
@@ -46,13 +45,12 @@ class DetectTest:
         # set up camera
         self.camera = Camera(args, self.src_size, self.win_size)
         # set up beamer (offset to use monitor on the right)
-        self.beamer = Beamer(args, self.win_size, (0, 0))
+        self.beamer = Beamer()
         if args.calibrate:
             # run calibration per flag
             self.camera.auto_calibrate(self.beamer, args.cal_filename)
         if args.preview:
             self.camera.show_preview()
-        """
 
     @staticmethod
     def main():

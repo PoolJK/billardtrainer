@@ -1,3 +1,4 @@
+from raspy.classes import settings
 from .utils import *
 
 
@@ -34,26 +35,31 @@ class Beamer:
         print('offset(x,y)=({:.2f}, {:.2f}) ppmx={:.2f} ppmy={:.2f}'.format(self.offset_x, self.offset_y, self.ppm_x,
                                                                             self.ppm_y))
         # create window for beamer output (height, width, dimension for numpy array)
+        cv2.namedWindow("beamer", cv2.WINDOW_NORMAL)
         if cv2.getVersionMajor() < 4:
             print('on raspy')
-            cv2.namedWindow("beamer", cv2.WINDOW_NORMAL)
             # cv2.namedWindow('beamerdebug', cv2.WINDOW_NORMAL)
             cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         else:
             print('on pc')
-            cv2.namedWindow("beamer", cv2.WINDOW_NORMAL)
 
-    def show_objects(self):
+    def show_visual_items(self):
         for obj in self.objects:
-            obj.draw_self(self.outPict, self.offset_x, self.offset_y, self.ppm_x, self.ppm_y)
-        cv2.drawMarker(self.outPict, (int(self.outPict.shape[1] / 2),
-                                      int(self.outPict.shape[0] / 2)),
-                       (0, 165, 255), cv2.MARKER_CROSS, 20, 2)
+            obj.draw(self.outPict, self.offset_x, self.offset_y, self.ppm_x, self.ppm_y)
+        # mark middle of beamer
+        if settings.debug:
+            cv2.drawMarker(self.outPict, (int(self.outPict.shape[1] / 2),
+                                          int(self.outPict.shape[0] / 2)),
+                           (0, 165, 255), cv2.MARKER_CROSS, 20, 2)
         self.show_image()
 
-    def show_image(self):
-        dst = rotate(self.outPict, 270)
+    def show_image(self, image=None):
+        if image is None:
+            image = self.outPict
+        dst = rotate(image, 270)
         cv2.imshow("beamer", dst)
+        if not settings.on_pi:
+            cv2.resizeWindow('beamer', 640, 360)
 
     def get_image(self):
         """
@@ -63,19 +69,11 @@ class Beamer:
         # return self.outPict, (int(self.resolution_x / self.ppm_x),
         #                                 int(self.resolution_y / self.ppm_y)))
 
-    @staticmethod
-    def resize_window():
-        cv2.resizeWindow("beamer", 480, 640)
-
-    @staticmethod
-    def hide():
-        cv2.destroyWindow('beamer')
-
     def show_white(self):
         # create black image to show objects in
         white_pict = np.zeros((self.resolution_y, self.resolution_x, 3), np.uint8)
         white_pict[:] = (255, 255, 255)
-        cv2.imshow("beamer", white_pict)
+        self.show_image(white_pict)
 
     def clear_image(self):
         self.objects.clear()
@@ -90,7 +88,7 @@ class Beamer:
 
     def add_visual_item(self, visual_item):
         """
-        Add visual_item to show with show_objects()
+        Add visual_item to show with show_visual_items()
         :param visual_item: some visual item
         """
         self.objects.append(visual_item)

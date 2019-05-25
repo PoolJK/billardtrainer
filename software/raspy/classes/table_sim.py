@@ -5,10 +5,8 @@ import queue
 
 from .bluetooth import BT
 from .beamer import Beamer
-from .visual_items.cross import Cross
-from .visual_items.ball import Ball
-from .visual_items.line import Line
-from .visual_items.ghost import Ghost
+from .visual_items import *
+from .ball import Ball
 from .utils import *
 
 
@@ -36,10 +34,10 @@ class TableSim:
     b3 = Ball(1778 / 2, 3556 / 2, color=ball_color(0))
 
     def __init__(self):
-        self.table_src = cv2.resize(cv2.imread('resources/table.jpg'), (1778, 3556))
+        self.table_src = cv2.resize(cv2.imread('resources/table.jpg'), self.t_size)
         self.width = self.table_src.shape[1]
         self.height = self.table_src.shape[0]
-        print('w={} h={}'.format(self.width, self.height))
+        print('table_sim: table_width={} table_height={}'.format(self.width, self.height))
         self.table = np.copy(self.table_src)
         self.balls_on_table = []
         cv2.namedWindow('table_sim', cv2.WINDOW_NORMAL)
@@ -54,7 +52,6 @@ class TableSim:
             offset_y=self.b_pos[1],  # mm
             ppm_x=self.ppmx,
             ppm_y=self.ppmy)
-        # self.beamer.hide()
 
     def run_table_sim(self):
         # test balls:
@@ -64,10 +61,10 @@ class TableSim:
         # debug: add spot markers
         self.beamer.add_visual_item(Cross(889, 3232, 20))  # black spot
         self.beamer.add_visual_item(Cross(889, 2667, 21))  # pink spot
-        self.beamer.show_objects()
+        self.beamer.show_visual_items()
         # self.beamer.hide()
         # main loop as fps loop
-        # cv2.imshow('table_sim', self.overlay_beamer_image())
+        cv2.imshow('table_sim', self.overlay_beamer_image())
         cv2.resizeWindow('table_sim', 540, 960)
         while True:
             t0 = now()
@@ -112,10 +109,10 @@ class TableSim:
         beamer_image = cv2.resize(self.beamer.get_image(),
                                   (int(i_w), int(i_h)))
         # make outline
-        beamer_image[:, 0:2] = (0, 0, 255)
-        beamer_image[:, i_w - 3:i_w - 1] = (0, 0, 255)
-        beamer_image[0:2, :] = (0, 0, 255)
-        beamer_image[i_h - 3:i_h - 1, :] = (0, 0, 255)
+        cv2.line(beamer_image, (0, 0), (0, i_h), [0, 0, 255], 5)
+        cv2.line(beamer_image, (i_w, 0), (i_w, i_h), [0, 0, 255], 5)
+        cv2.line(beamer_image, (0, 0), (i_w, 0), [0, 0, 255], 5)
+        cv2.line(beamer_image, (0, i_h), (i_w, i_h), [0, 0, 255], 5)
         # TODO: if portion of beamer_image is off table_image, this fails
         roi = table_image[b_y:b_y + i_h, b_x:b_x + i_w]
         beamer_gray = cv2.cvtColor(beamer_image, cv2.COLOR_BGR2GRAY)
@@ -124,7 +121,6 @@ class TableSim:
         table_bg = cv2.bitwise_and(roi, roi, mask=mask_inv)
         beamer_fg = cv2.bitwise_and(beamer_image, beamer_image, mask=mask)
         table_image[b_y:b_y + i_h, b_x:b_x + i_w] = cv2.add(table_bg, beamer_fg)
-        # cv2.imshow('res', img1)
         return table_image
 
     def handle_dt_message(self, message):
@@ -133,14 +129,11 @@ class TableSim:
         # writing beamer class: add balls to beamer
         try:
             message = json.loads(message)
-        except JSONDecodeError as e:
+        except JSONDecodeError:
             print('\n' + message)
             print('json error.')
             exit(0)
         self.beamer.clear_image()
-        # debug: add spot markers
-        self.beamer.add_visual_item(Cross(1778, 3232, 50))
-        self.beamer.add_visual_item(Cross(1778, 2667, 50))
         res = ""
         for ball_id, ball in message["balls"].items():
             res += 'id={} x={}, y={}, v={}'.format(ball_id, ball['x'], ball['y'], ball['v'])
@@ -154,11 +147,11 @@ class TableSim:
         if 'ghosts' in message:
             for ghost_id, ghost in message["ghosts"].items():
                 self.beamer.add_visual_item(Ghost(ghost['x'], ghost['y']))
-        self.beamer.show_objects()
+        self.beamer.show_visual_items()
         # self.beamer.resize_window()
         # self.beamer.hide()
         self.bluetooth.send("done")
-        # cv2.imshow('table_sim', self.overlay_beamer_image())
+        cv2.imshow('table_sim', self.overlay_beamer_image())
         cv2.resizeWindow('table_sim', 540, 960)
         # self.bluetooth.send(res)
 

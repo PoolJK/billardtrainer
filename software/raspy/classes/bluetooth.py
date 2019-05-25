@@ -1,3 +1,5 @@
+import traceback
+
 from bluetooth import *
 from threading import Thread
 from queue import Queue
@@ -48,20 +50,24 @@ class BT:
     # https://github.com/ev3dev/ev3dev/issues/274
     @staticmethod
     def init_server():
-        server_sock = BluetoothSocket(RFCOMM)
-        server_sock.bind(("", PORT_ANY))
-        server_sock.listen(1)
-        uuid = "00001101-0000-1000-8000-00805F9B34FB"
         try:
+            server_sock = BluetoothSocket(RFCOMM)
+            server_sock.bind(("", PORT_ANY))
+            server_sock.listen(1)
+            uuid = "00001101-0000-1000-8000-00805F9B34FB"
             advertise_service(server_sock, "Echo Server",
                               service_id=uuid,
                               service_classes=[uuid, SERIAL_PORT_CLASS],
                               profiles=[SERIAL_PORT_PROFILE]
                               )
-        except Exception as e:
-            print('init_server error')
-            raise e
-        return server_sock
+        except OSError:
+            # so far this happens when there is no bluetooth hardware present, so just exit the thread
+            wait(1000)
+            print('init_server: bluetooth error, exiting thread:')
+            traceback.print_exc()
+            exit(0)
+        else:
+            return server_sock
 
     @staticmethod
     def get_client_connection(server_sock):
@@ -76,11 +82,7 @@ class BT:
         connection_attempts = 0
         while True:
             connection_attempts += 1
-            try:
-                self.server = self.init_server()
-            except OSError as e:
-                print('manage_connection: no bluetooth on your pc')
-                raise e
+            self.server = self.init_server()
             self.client = self.get_client_connection(self.server)
             try:
                 data = self.client.recv(1024)
@@ -96,8 +98,7 @@ class BT:
                             # self.send('size={}'.format(len(line)))
                     data = self.client.recv(1024)
             except IOError as e:
-                print('IOError in manage_connection', e)
-                print('connection_attempts={}'.format(connection_attempts))
+                print('connection lost', e)
             self.client.close()
             self.server.close()
         print("terminating...")

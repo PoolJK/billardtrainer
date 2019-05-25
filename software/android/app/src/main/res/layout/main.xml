@@ -18,8 +18,8 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_alignParentBottom="true"
-        android:onClick="startSim"
-        android:text="Sim" />
+        android:onClick="calc"
+        android:text="calc" />
 
     <Button
         android:id="@+id/button3"
