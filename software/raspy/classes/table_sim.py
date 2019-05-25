@@ -5,6 +5,7 @@ import queue
 
 from .bluetooth import BT
 from .beamer import Beamer
+from .visual_items.cross import Cross
 from .visual_items.ball import Ball
 from .visual_items.line import Line
 from .visual_items.ghost import Ghost
@@ -19,11 +20,11 @@ class TableSim:
     # test values for beamer position
     # beamer_position = (360, 1200)  # pixel
     # beamer_size = (366, 651)  # pixel
-    t_size = (1080, 2160)  # pixel table size
-    ppm = 1080 / 1778  # table sim ppm
-    b_pos = (380 / ppm, 1460 / ppm)  # mm beamer position
-    b_res = (720, 1280)  # pixel beamer resolution
-    real_size = (540, 960)  # mm beamer real size
+    t_size = (1778, 3556)  # pixel table size
+    ppm = 1  # table sim ppm
+    b_pos = (719, 2502)  # mm beamer position
+    b_res = (1080, 1920)  # pixel beamer resolution
+    real_size = (590, 1070)  # mm beamer real size
     ppmx = b_res[0] / real_size[0]
     ppmy = b_res[1] / real_size[1]
     b1 = Ball(b_pos[0] + 30,
@@ -35,7 +36,7 @@ class TableSim:
     b3 = Ball(1778 / 2, 3556 / 2, color=ball_color(0))
 
     def __init__(self):
-        self.table_src = cv2.imread('resources/table.jpg')
+        self.table_src = cv2.resize(cv2.imread('resources/table.jpg'), (1778, 3556))
         self.width = self.table_src.shape[1]
         self.height = self.table_src.shape[0]
         print('w={} h={}'.format(self.width, self.height))
@@ -57,13 +58,16 @@ class TableSim:
 
     def run_table_sim(self):
         # test balls:
-        self.beamer.add_visual_item(self.b1)
-        self.beamer.add_visual_item(self.b2)
-        self.beamer.add_visual_item(self.b3)
+        self.beamer.add_visual_item(self.b1)  # @beamer(0,0)
+        self.beamer.add_visual_item(self.b2)  # @beamer(w,h)
+        self.beamer.add_visual_item(self.b3)  # @tablecenter
+        # debug: add spot markers
+        self.beamer.add_visual_item(Cross(889, 3232, 20))  # black spot
+        self.beamer.add_visual_item(Cross(889, 2667, 21))  # pink spot
         self.beamer.show_objects()
         # self.beamer.hide()
         # main loop as fps loop
-        cv2.imshow('table_sim', self.overlay_beamer_image())
+        # cv2.imshow('table_sim', self.overlay_beamer_image())
         cv2.resizeWindow('table_sim', 540, 960)
         while True:
             t0 = now()
@@ -134,6 +138,9 @@ class TableSim:
             print('json error.')
             exit(0)
         self.beamer.clear_image()
+        # debug: add spot markers
+        self.beamer.add_visual_item(Cross(1778, 3232, 50))
+        self.beamer.add_visual_item(Cross(1778, 2667, 50))
         res = ""
         for ball_id, ball in message["balls"].items():
             res += 'id={} x={}, y={}, v={}'.format(ball_id, ball['x'], ball['y'], ball['v'])
@@ -148,10 +155,10 @@ class TableSim:
             for ghost_id, ghost in message["ghosts"].items():
                 self.beamer.add_visual_item(Ghost(ghost['x'], ghost['y']))
         self.beamer.show_objects()
-        self.beamer.resize_window()
+        # self.beamer.resize_window()
         # self.beamer.hide()
         self.bluetooth.send("done")
-        cv2.imshow('table_sim', self.overlay_beamer_image())
+        # cv2.imshow('table_sim', self.overlay_beamer_image())
         cv2.resizeWindow('table_sim', 540, 960)
         # self.bluetooth.send(res)
 

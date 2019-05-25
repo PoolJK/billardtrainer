@@ -44,20 +44,23 @@ class BT:
             self.send_thread.daemon = True
             self.send_thread.start()
 
+    # https://stackoverflow.com/questions/34599703/rfcomm-bluetooth-permission-denied-error-raspberry-pi
+    # https://github.com/ev3dev/ev3dev/issues/274
     @staticmethod
     def init_server():
         server_sock = BluetoothSocket(RFCOMM)
         server_sock.bind(("", PORT_ANY))
         server_sock.listen(1)
         uuid = "00001101-0000-1000-8000-00805F9B34FB"
-        try:    
+        try:
             advertise_service(server_sock, "Echo Server",
                               service_id=uuid,
                               service_classes=[uuid, SERIAL_PORT_CLASS],
                               profiles=[SERIAL_PORT_PROFILE]
                               )
         except Exception as e:
-            print(e)
+            print('init_server error')
+            raise e
         return server_sock
 
     @staticmethod
@@ -75,9 +78,9 @@ class BT:
             connection_attempts += 1
             try:
                 self.server = self.init_server()
-            except OSError:
-                print('no bluetooth on your pc')
-                return
+            except OSError as e:
+                print('manage_connection: no bluetooth on your pc')
+                raise e
             self.client = self.get_client_connection(self.server)
             try:
                 data = self.client.recv(1024)

@@ -42,7 +42,9 @@ if args.push_to_pi:
             attempts = 0
             e = 1
             while e > 0 and attempts < 5:
-                e = os.system('pscp -pw pi ../{} pi@raspberrypi:/home/pi/billardtrainer/{}'
+                # e = os.system('pscp -pw pi ../{} pi@raspberrypi:/home/pi/billardtrainer/{}'
+                #              .format(diff.b_path, diff.b_path))
+                e = os.system('pscp -pw keins01 ../{} pi@192.168.0.100:/home/pi/bt2/Billardtrainer/{}'
                               .format(diff.b_path, diff.b_path))
                 if e > 0:
                     print('retrying')
@@ -56,11 +58,14 @@ if args.push_to_pi:
         # get string from args
         for a in sys.argv[1:]:
             args += ' ' + a
-        cmd.write('export DISPLAY=:0 && cd /home/pi/billardtrainer/software && lxterminal --command=\'python3 '
-                  '"/home/pi/billardtrainer/software/billardtrainer.py"' + args + '\'\n')
+        # cmd.write('export DISPLAY=:0 && cd /home/pi/billardtrainer/software && lxterminal --command=\'python3 '
+        #          '"/home/pi/billardtrainer/software/billardtrainer.py"' + args + '\'\n')
+        cmd.write('export DISPLAY=:0 && cd /home/pi/bt2/Billardtrainer/software && lxterminal --command=\'python3 '
+                  '"/home/pi/bt2/Billardtrainer/software/billardtrainer.py"' + args + '\'\n')
         cmd.close()
         # run the program on the pi (works again, hooray!)
         # os.system('putty -ssh -2 -l pi -pw pi -m c:pi_command raspberrypi')
+        os.system('putty -ssh -2 -l pi -pw keins01 -m c:pi_command 192.168.0.100')
     # TODO: elif os.name == unix: ...
     # TODO: elif os.name == osx: ...
     # exit, you're done on PC

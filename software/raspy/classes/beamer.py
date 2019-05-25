@@ -1,5 +1,4 @@
-import cv2
-import numpy as np
+from .utils import *
 
 
 class Beamer:
@@ -32,11 +31,13 @@ class Beamer:
         self.objects = []
         # create black image to show objects in
         self.outPict = np.zeros((self.resolution_y, self.resolution_x, 3), np.uint8)
-        print('offset(x,y)={} ppmx={} ppmy={}'.format((self.offset_x, self.offset_y), self.ppm_x, self.ppm_y))
+        print('offset(x,y)=({:.2f}, {:.2f}) ppmx={:.2f} ppmy={:.2f}'.format(self.offset_x, self.offset_y, self.ppm_x,
+                                                                            self.ppm_y))
         # create window for beamer output (height, width, dimension for numpy array)
         if cv2.getVersionMajor() < 4:
             print('on raspy')
-            cv2.namedWindow("beamer", cv2.WINDOW_AUTOSIZE + cv2.WINDOW_NORMAL)
+            cv2.namedWindow("beamer", cv2.WINDOW_NORMAL)
+            # cv2.namedWindow('beamerdebug', cv2.WINDOW_NORMAL)
             cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         else:
             print('on pc')
@@ -48,7 +49,11 @@ class Beamer:
         cv2.drawMarker(self.outPict, (int(self.outPict.shape[1] / 2),
                                       int(self.outPict.shape[0] / 2)),
                        (0, 165, 255), cv2.MARKER_CROSS, 20, 2)
-        cv2.imshow("beamer", self.outPict)
+        self.show_image()
+
+    def show_image(self):
+        dst = rotate(self.outPict, 270)
+        cv2.imshow("beamer", dst)
 
     def get_image(self):
         """

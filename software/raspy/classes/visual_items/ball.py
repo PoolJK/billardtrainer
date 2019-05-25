@@ -29,7 +29,8 @@ class Ball(VisualItem):
         # print(image.shape)
         screen_x = int((self.x - offset_x) * ppm_x)
         screen_y = int((self.y - offset_y) * ppm_y)
-        # print('radius={} ppm={} x={} y={}'.format(self.radius, pix_per_mm, screen_x, screen_y))
+        print(
+            'ball drawn @({}, {}) [px] ({}, {}) [mm]'.format(screen_x, screen_y, self.x, self.y))
         # circle outline
         cv2.circle(image, (screen_x, screen_y),
                    int(self.radius * ppm_x), self.color, -1)

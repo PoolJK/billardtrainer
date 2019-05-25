@@ -135,7 +135,7 @@ class Camera:
             # print('\nposition={}'.format(position))
             # rotate the image and recalculate position
             # _s = pattern.shape[:2]
-            pat = rotate_bound(pattern, position[2])
+            pat = rotate(pattern, position[2])
             # if pat.shape[1] > _s[1]:
             #     p0 = int(position[0] - (pat.shape[1] - _s[1]) / 2)
             # else:

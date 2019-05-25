@@ -33,7 +33,7 @@ def now():
 
 
 # rotate an image keeping the full image
-def rotate_bound(image, angle):
+def rotate(image, angle):
     # grab the dimensions of the image and then determine the center
     (h, w) = image.shape[:2]
     (cX, cY) = (w // 2, h // 2)

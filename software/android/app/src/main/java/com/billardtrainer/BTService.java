@@ -88,7 +88,7 @@ class BTService extends Thread {
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter
                 .getBondedDevices();
         for (BluetoothDevice device : pairedDevices) {
-            if (device.getName().equals("raspberrypi")) {
+            if (device.getName().equals("raspi9b")) {
                 mDevice = device;
                 break;
             }

@@ -16,6 +16,7 @@ class DetectTest:
     def __init__(self, args):
         if args.debug:
             self.debug = True
+        """
         # get source resolution:
         if args.sres:
             x, y = 0, 0
@@ -51,6 +52,7 @@ class DetectTest:
             self.camera.auto_calibrate(self.beamer, args.cal_filename)
         if args.preview:
             self.camera.show_preview()
+        """
 
     @staticmethod
     def main():
