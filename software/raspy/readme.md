@@ -1,9 +1,9 @@
 ### Script to be run on the Raspberry Pi
 
-Currently development in this branch is focused on `detect_test.py`, which gets called 
-from `../billardtrainer.py` after initialisation.  
-It can manage the classes under development like camera, beamer and ball.  
-For testing without a table setup, it uses the table_sim class to simulate a table.
+On PC `../billardtrainer.py` initialises a table sim, loading images taken from the PiCamera over the table.    
+The table sim can manage the classes under development like camera, beamer and ball.  
+The camera is simulated via loaded images, the beamer is unchanged.  
+Both are superimposed over the table_image.
 
 # Setup:
 

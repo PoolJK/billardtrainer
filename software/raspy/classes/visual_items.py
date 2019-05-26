@@ -26,15 +26,13 @@ class VisualItem:
 
 
 class Line(VisualItem):
-    def __init__(self, x1, y1, x2, y2, color=None):
-        super().__init__(x1, y1, color)
-        self.x1 = x1
-        self.y1 = y1
+    def __init__(self, x, y, x2, y2, color=None):
+        super().__init__(x, y, color)
         self.x2 = x2
         self.y2 = y2
 
     def draw(self, image, offset_x, offset_y, ppm_x, ppm_y):
-        screen_p1 = (int((self.x1 - offset_x) * ppm_x), int((self.y1 - offset_y) * ppm_y))
+        screen_p1 = (int((self.x - offset_x) * ppm_x), int((self.y - offset_y) * ppm_y))
         screen_p2 = (int((self.x2 - offset_x) * ppm_x), int((self.y2 - offset_y) * ppm_y))
         cv2.line(image, screen_p1, screen_p2, self.color, 5)
         pass
@@ -46,8 +44,10 @@ class Line(VisualItem):
 
 class Cross(VisualItem):
 
-    def __init__(self, x, y, length):
-        super().__init__(x, y, (255, 255, 255))
+    def __init__(self, x, y, length, color=None):
+        if color is None:
+            color = [255, 255, 255]
+        super().__init__(x, y, color)
         self.length = length
 
     def draw(self, image, offset_x, offset_y, ppm_x, ppm_y):

@@ -1,7 +1,7 @@
 # Billardtrainer
 A snooker and pool training system in development with Python on Raspberry-Pi and Android.
 
-Using libraries:  
+Using libraries (Win 10):  
 ```
 Python 3.7.3
 OpenCV (opencv-python & -contrib) 4.1.0.25
@@ -13,10 +13,15 @@ GitPython 2.1.11
 
 on Raspberry-Pi:  
 ```
-bluetooth 5.43-2+rpt2+deb9u2
-bluez 5.43-2+rpt2+deb9u2
+PiCamera
+opencv-python
+opencv-python-contrib
+imutils
+numpy
 
+und noch anderes Zeug... mal checken was gebraucht wird, um den Pi neu aufzusetzen
 ```
 
+Ist das noch relevant?:  
 Make sure to add `billardtrainer (/software)` as your
 src root folder in pycharm to prevent 'unresolved reference'-error.

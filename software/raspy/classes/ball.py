@@ -13,7 +13,7 @@ class Ball:
     minR = 16
     maxR = 28
 
-    def __init__(self, x, y, radius=26, color=None):
+    def __init__(self, x, y, radius=26, color=None, text=None):
         """
         Generate new ball
         :param x: x-position of center in mm
@@ -27,6 +27,7 @@ class Ball:
         self.y = y
         self.color = color
         self.radius = radius
+        self.text = text
 
     def draw(self, image, offset_x, offset_y, ppm_x, ppm_y) -> None:
         screen_x = int((self.x - offset_x) * ppm_x)
@@ -41,7 +42,10 @@ class Ball:
         # draw mid point for debugging
         if settings.debug:
             cv2.drawMarker(image, (screen_x, screen_y),
-                           (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
+                           [1-v for v in self.color], cv2.MARKER_CROSS, 10, 1)
+        if self.text is not None:
+            cv2.putText(image, self.text, (screen_x, screen_y),
+                        cv2.FONT_HERSHEY_PLAIN, 3, [1-v for v in self.color], 5)
 
     @staticmethod
     def find(image, offs_x=0, offs_y=0, pix_per_mm=1):

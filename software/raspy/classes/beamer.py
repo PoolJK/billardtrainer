@@ -10,7 +10,7 @@ class Beamer:
 
     def __init__(self, resolution_x=1280, resolution_y=720,
                  offset_x=0, offset_y=0,
-                 ppm_x=1, ppm_y=1):
+                 ppm_x=1, ppm_y=1, rotation=270):
         """
         Define new Beamer
         :param resolution_x: image resolution in pixel
@@ -28,6 +28,10 @@ class Beamer:
         self.offset_x = offset_x
         #: y offset of beamer from table mid point in mm
         self.offset_y = offset_y
+        self.rotation = rotation
+
+        # get Matrix
+        self.matrix = cv2.getRotationMatrix2D((offset_x, offset_y), rotation, 1.0)
         #: objects to show in image
         self.objects = []
         # create black image to show objects in
@@ -48,18 +52,17 @@ class Beamer:
             obj.draw(self.outPict, self.offset_x, self.offset_y, self.ppm_x, self.ppm_y)
         # mark middle of beamer
         if settings.debug:
-            cv2.drawMarker(self.outPict, (int(self.outPict.shape[1] / 2),
-                                          int(self.outPict.shape[0] / 2)),
-                           (0, 165, 255), cv2.MARKER_CROSS, 20, 2)
+            cv2.drawMarker(self.outPict, (self.outPict.shape[1] // 2,
+                                          self.outPict.shape[0] // 2),
+                           [0, 165, 255], cv2.MARKER_CROSS, 20, 5)
         self.show_image()
 
     def show_image(self, image=None):
         if image is None:
             image = self.outPict
-        dst = rotate(image, 270)
-        cv2.imshow("beamer", dst)
+        cv2.imshow("beamer", image)
         if not settings.on_pi:
-            cv2.resizeWindow('beamer', 640, 360)
+            cv2.resizeWindow('beamer', 360, 640)
 
     @staticmethod
     def hide():
@@ -70,8 +73,6 @@ class Beamer:
         Get current outPict
         """
         return self.outPict
-        # return self.outPict, (int(self.resolution_x / self.ppm_x),
-        #                                 int(self.resolution_y / self.ppm_y)))
 
     def show_white(self):
         # create black image to show objects in

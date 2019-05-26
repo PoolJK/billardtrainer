@@ -21,8 +21,7 @@ optional arguments:
   -test, --camera-test  only test specified input
   -p, --preview         only show preview
   ```  
-The `-push` command uses GitPython to send only modified files to the Pi. The Pi has to be reachable
-via network under the alias `raspberrypi`.  
+The `-push` command uses GitPython to send only modified files to the Pi. The Pi's adress is defined in 'ip'.  
 On Windows 10, PuTTY and PSCP are required to use this function, remember to add PSCP to PATH
 in environment variables
 
@@ -37,8 +36,8 @@ billardtrainer.py -f resources/20190405_172601.jpg -cf resources/experimental/ca
 To find available resolutions of the camera, use flag -test, to output the resolutions to terminal.  
 On the pi, try 'v4l2-ctl --list-formats-ext' (sudo apt-get install v4l-utils" if not installed).
 
-#### classes/
-Classes for the system parts
+#### android/
+The app source code
 
 #### raspy/
 Script(s) to be run on the Raspberry-Pi.  
@@ -46,7 +45,3 @@ See the readme.md for details
 
 #### resources/
 Folder for all non-code files.
-
-#### test_ui/
-A script for development convenience, possibly extendable to actual UI.  
-Currently not in use

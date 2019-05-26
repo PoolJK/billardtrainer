@@ -2,7 +2,6 @@ import queue
 from queue import Queue
 from threading import Thread
 
-from .camera import Camera
 from .utils import *
 
 

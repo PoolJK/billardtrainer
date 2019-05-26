@@ -3,11 +3,12 @@ from json import JSONDecodeError
 from queue import Queue
 import queue
 
-from .bluetooth import BT
-from .beamer import Beamer
-from .visual_items import *
-from .ball import Ball
-from .utils import *
+from .classes.bluetooth import BT
+from .classes.camera import Camera
+from .classes.beamer import Beamer
+from .classes.visual_items import *
+from .classes.ball import Ball
+from .classes.utils import *
 
 
 class TableSim:
@@ -16,58 +17,67 @@ class TableSim:
     """
 
     # test values for beamer position
-    # beamer_position = (360, 1200)  # pixel
-    # beamer_size = (366, 651)  # pixel
-    t_size = (1778, 3556)  # pixel table size
-    ppm = 1  # table sim ppm
-    b_pos = (700, 2245)  # mm beamer position
-    b_res = (1080, 1920)  # pixel beamer resolution
-    real_size = (590, 1055)  # mm beamer real size
-    ppmx = b_res[0] / real_size[0]
-    ppmy = b_res[1] / real_size[1]
-    b1 = Ball(b_pos[0] + 30,
-              b_pos[1] + 30,
-              color=ball_color(0))
-    b2 = Ball(b_pos[0] + real_size[0] - 30,
-              b_pos[1] + real_size[1] - 30,
-              color=ball_color(0))
-    b3 = Ball(1778 / 2, 3556 / 2, color=ball_color(0))
+    table_size = (1778, 3556)  # pixel table size
+
+    beamer_resolution = (1080, 1920)  # pixel beamer resolution
+    beamer_offset = (700, 2265)  # mm beamer position
+    beamer_real_size = (590, 1055)  # mm beamer real size
+    beamer_rotation = 270
+    beamer_ppm_x = beamer_resolution[0] / beamer_real_size[0]
+    beamer_ppm_y = beamer_resolution[1] / beamer_real_size[1]
+
+    camera_resolution = (1088, 1920)
+    camera_offset = (543, 2293)
+    camera_real_size = (711, 1220)
+    camera_rotation = 90
+    camera_ppm_x = camera_resolution[0] / camera_real_size[0]
+    camera_ppm_y = camera_resolution[1] / camera_real_size[1]
+
+    test_ball_1 = Ball(beamer_offset[0] + 30,
+                       beamer_offset[1] + 30,
+                       color=ball_color(0))
+    test_ball_2 = Ball(beamer_offset[0] + beamer_real_size[0] - 30,
+                       beamer_offset[1] + beamer_real_size[1] - 30,
+                       color=ball_color(0))
+    test_ball_3 = Ball(1778 / 2, 3556 / 2, color=ball_color(0), text='blue')
 
     def __init__(self):
-        self.table_src = cv2.resize(cv2.imread('resources/table.jpg'), self.t_size)
-        self.width = self.table_src.shape[1]
-        self.height = self.table_src.shape[0]
-        print('table_sim: table_width={} table_height={}'.format(self.width, self.height))
-        self.table = np.copy(self.table_src)
-        self.balls_on_table = []
+        self.table_src = cv2.resize(cv2.imread('resources/table.jpg'), self.table_size)
         cv2.namedWindow('table_sim', cv2.WINDOW_NORMAL)
-        self.b_size = (40, 40)
         self.message_queue = Queue(10)
         cv2.setMouseCallback('table_sim', self.mouse_callback, None)
+        self.key = 0
         self.bluetooth = BT()
+        self.camera = Camera(
+            resolution_x=self.camera_resolution[0],
+            resolution_y=self.camera_resolution[1],
+            offset_x=self.camera_offset[0],
+            offset_y=self.camera_offset[1],
+            ppm_x=self.camera_ppm_x,
+            ppm_y=self.camera_ppm_y
+        )
         self.beamer = Beamer(
-            resolution_x=self.b_res[0],
-            resolution_y=self.b_res[1],
-            offset_x=self.b_pos[0],  # mm
-            offset_y=self.b_pos[1],  # mm
-            ppm_x=self.ppmx,
-            ppm_y=self.ppmy)
+            resolution_x=self.beamer_resolution[0],
+            resolution_y=self.beamer_resolution[1],
+            offset_x=self.beamer_offset[0],  # mm
+            offset_y=self.beamer_offset[1],  # mm
+            ppm_x=self.beamer_ppm_x,
+            ppm_y=self.beamer_ppm_y)
 
     def run_table_sim(self):
         # test balls:
-        self.beamer.add_visual_item(self.b1)  # @beamer(0,0)
-        self.beamer.add_visual_item(self.b2)  # @beamer(w,h)
-        self.beamer.add_visual_item(self.b3)  # @tablecenter
+        self.beamer.add_visual_item(self.test_ball_1)  # @beamer(0,0)
+        self.beamer.add_visual_item(self.test_ball_2)  # @beamer(w,h)
+        self.beamer.add_visual_item(self.test_ball_3)  # @tablecenter
         # debug: add spot markers
-        self.beamer.add_visual_item(Cross(889, 3232, 20))  # black spot
-        self.beamer.add_visual_item(Cross(889, 2667, 21))  # pink spot
+        self.beamer.add_visual_item(Cross(889, 3232, 30, ball_color(1)))  # black spot
+        self.beamer.add_visual_item(Cross(889, 2667, 30, ball_color(1)))  # pink spot
         self.beamer.show_visual_items()
         # self.beamer.hide()
         # main loop as fps loop
-        cv2.imshow('table_sim', self.overlay_beamer_image())
-        cv2.resizeWindow('table_sim', 540, 960)
         while True:
             t0 = now()
+            self.show_table()
             # show the current table (with balls if any)
             # get (nonblocking) bluetooth read
             msg = self.bluetooth.read()
@@ -81,8 +91,11 @@ class TableSim:
             #     self.handle_dt_message(msg)
             d = dt(t0, now())
             print('loop time: {: 4d}ms'.format(d), end='\r')
-            key = cv2.waitKey(max(40, 100 - d)) & 0xFF
-            if key == ord('q') or key == 27:
+            # wait 40ms max:
+            self.key = cv2.waitKey(max(100 - d, 1)) & 0xFF
+            # wait for keypressed:
+            # self.key = cv2.waitKey(0) & 0xFF
+            if self.key == ord('q') or self.key == 27:
                 break
         cv2.destroyAllWindows()
 
@@ -98,14 +111,38 @@ class TableSim:
             msg = None
         return msg
 
-    def overlay_beamer_image(self):
-        table_image = np.copy(self.table_src)
-        b_y = int(self.b_pos[1] * self.ppm)  # beamer in table_image
-        b_x = int(self.b_pos[0] * self.ppm)
-        r_w = self.real_size[0]  # beamer in real
-        r_h = self.real_size[1]
-        i_w = int(r_w * self.ppm)  # beamer in table_image
-        i_h = int(r_h * self.ppm)
+    def overlay_camera(self, table_image):
+        # camera
+        b_x = int(self.camera_offset[0])  # camera in table_image
+        b_y = int(self.camera_offset[1])
+        r_w = self.camera_real_size[0]  # camera in real
+        r_h = self.camera_real_size[1]
+        i_w = int(r_w)  # camera in table_image
+        i_h = int(r_h)
+        camera_image = cv2.resize(self.camera.get_image(),
+                                  (i_w, i_h))
+        # make outline
+        cv2.line(camera_image, (0, 0), (0, i_h), [0, 0, 255], 5)
+        cv2.line(camera_image, (i_w, 0), (i_w, i_h), [0, 0, 255], 5)
+        cv2.line(camera_image, (0, 0), (i_w, 0), [0, 0, 255], 5)
+        cv2.line(camera_image, (0, i_h), (i_w, i_h), [0, 0, 255], 5)
+        # camera_image = rotate(camera_image, -self.camera_rotation)
+        # TODO: if portion of camera_image is off table_image, this fails
+        lim_y = b_y + i_h
+        lim_x = b_x + i_w
+        lcy = min(i_h, self.table_size[1] - b_y)
+        lcx = min(i_w, self.table_size[0] - b_x)
+        table_image[b_y:lim_y, b_x:lim_x] = camera_image[0:lcy, 0:lcx]
+        return table_image
+
+    def overlay_beamer(self, table_image):
+        # beamer
+        b_x = int(self.beamer_offset[0])  # beamer in table_image
+        b_y = int(self.beamer_offset[1])
+        r_w = self.beamer_real_size[0]  # beamer in real
+        r_h = self.beamer_real_size[1]
+        i_w = int(r_w)  # beamer in table_image
+        i_h = int(r_h)
         beamer_image = cv2.resize(self.beamer.get_image(),
                                   (int(i_w), int(i_h)))
         # make outline
@@ -150,10 +187,13 @@ class TableSim:
         self.beamer.show_visual_items()
         # self.beamer.resize_window()
         # self.beamer.hide()
+        self.show_table()
         self.bluetooth.send("done")
-        cv2.imshow('table_sim', self.overlay_beamer_image())
-        cv2.resizeWindow('table_sim', 540, 960)
         # self.bluetooth.send(res)
+
+    def show_table(self):
+        cv2.imshow('table_sim', self.overlay_beamer(self.overlay_camera(np.copy(self.table_src))))
+        cv2.resizeWindow('table_sim', 540, 960)
 
     @staticmethod
     def handle_bt_message(message):

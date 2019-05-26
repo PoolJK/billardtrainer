@@ -5,7 +5,7 @@ import sys
 
 from raspy.classes.utils import *
 from raspy.classes import settings
-from raspy.detect_test import DetectTest
+from raspy.table_sim import TableSim
 
 cl_parser = argparse.ArgumentParser()
 cl_parser.add_argument('-f', '--file', dest='filename', help='input (device, file, video, stream)',
@@ -75,9 +75,8 @@ if args.push_to_pi:
 settings.on_pi = cv2.getVersionMajor() < 4
 # on the pi try to catch all errors
 try:
-    detect_test = DetectTest(args)
-    if not args.camera_test and not args.preview:
-        detect_test.main()
+    table_sim = TableSim()
+    table_sim.start()
 except Exception as e:
     # TODO: better way of handling exceptions on the pi
     # wait to be able to read console output on raspberry pi before closing terminal on error:
