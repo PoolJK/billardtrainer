@@ -28,6 +28,7 @@ cl_parser.add_argument('-p', '--preview', dest='preview', help='only show previe
 args = cl_parser.parse_args()
 
 if args.push_to_pi:
+    ip = '192.168.43.187'
     # remove -push and -pc flags if set
     sys.argv.remove('-push')
     if '-pc' in sys.argv:
@@ -44,8 +45,8 @@ if args.push_to_pi:
             while e > 0 and attempts < 5:
                 # e = os.system('pscp -pw pi ../{} pi@raspberrypi:/home/pi/billardtrainer/{}'
                 #              .format(diff.b_path, diff.b_path))
-                e = os.system('pscp -pw keins01 ../{} pi@192.168.0.100:/home/pi/bt2/Billardtrainer/{}'
-                              .format(diff.b_path, diff.b_path))
+                e = os.system('pscp -pw keins01 ../{} pi@{}:/home/pi/bt2/Billardtrainer/{}'
+                              .format(diff.b_path, ip, diff.b_path))
                 if e > 0:
                     print('retrying')
                 if attempts == 5:
@@ -65,7 +66,7 @@ if args.push_to_pi:
         cmd.close()
         # run the program on the pi (works again, hooray!)
         # os.system('putty -ssh -2 -l pi -pw pi -m c:pi_command raspberrypi')
-        os.system('putty -ssh -2 -l pi -pw keins01 -m c:pi_command 192.168.0.100')
+        # os.system('putty -ssh -2 -l pi -pw keins01 -m c:pi_command {}'.format(ip))
     # TODO: elif os.name == unix: ...
     # TODO: elif os.name == osx: ...
     # exit, you're done on PC

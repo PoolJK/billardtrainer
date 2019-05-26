@@ -61,6 +61,10 @@ class Beamer:
         if not settings.on_pi:
             cv2.resizeWindow('beamer', 640, 360)
 
+    @staticmethod
+    def hide():
+        cv2.destroyWindow('beamer')
+
     def get_image(self):
         """
         Get current outPict
@@ -71,7 +75,7 @@ class Beamer:
 
     def show_white(self):
         # create black image to show objects in
-        white_pict = np.zeros((self.resolution_y, self.resolution_x, 3), np.uint8)
+        white_pict = np.zeros((self.resolution_x, self.resolution_y, 3), np.uint8)
         white_pict[:] = (255, 255, 255)
         self.show_image(white_pict)
 

@@ -3,12 +3,19 @@ A snooker and pool training system in development with Python on Raspberry-Pi an
 
 Using libraries:  
 ```
-Python 3.7.3 (3.5.3 @raspberrypi)
-OpenCV (&-contrib) 4.1.0.25 (3.4.4 @raspberrypi)
-Imutils 0.5.2
-PyBluez 0.22
-Numpy 1.16.3 (1.12.1 @raspberrypi)
+Python 3.7.3
+OpenCV (opencv-python & -contrib) 4.1.0.25
+Imutils (imutils) 0.5.2
+PyBluez (pybluez) 0.22
+Numpy 1.16.3
 GitPython 2.1.11
+```
+
+on Raspberry-Pi:  
+```
+bluetooth 5.43-2+rpt2+deb9u2
+bluez 5.43-2+rpt2+deb9u2
+
 ```
 
 Make sure to add `billardtrainer (/software)` as your
