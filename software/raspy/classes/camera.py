@@ -1,4 +1,3 @@
-import queue
 from queue import Queue
 from threading import Thread
 
@@ -21,6 +20,7 @@ class Camera:
         self.offset_y = offset_y
         self.ppm_y = ppm_y
         self.rotation = rotation
+        self.image = None
 
         if settings.on_pi:
             self.camera = PiCamera()
@@ -39,29 +39,27 @@ class Camera:
         self.t = Thread(target=self.update, args=())
         self.t.daemon = True
         self.Q = Queue(1)
-        wait(100)
         self.t.start()
 
     def update(self):
         # development @home: read images from resources/detection_input instead of camera
-        """
-        for frame in self.camera.capture_continuous(self.rawCapture, format="bgr",
-                                                    use_video_port=True):
-            frame.array = rotate(frame.array, 90)
-            self.Q.put(frame.array)
-            self.rawCapture.truncate(0)
-        """
-        i = 36
-        while True:
-            # print(os.path.abspath(''))
-            self.Q.put(rotate(cv2.imread('resources/experimental/detection_input/img{:02}.jpg'.format(i)),
-                              self.rotation))
-            i = i + 1
-            if i == 39:
-                i = 4
+        if settings.on_pi:
+            for frame in self.camera.capture_continuous(self.rawCapture, format="bgr",
+                                                        use_video_port=True):
+                frame.array = rotate(frame.array, 90)
+                self.Q.put(frame.array)
+                self.rawCapture.truncate(0)
+        else:
+            i = 36
+            while True:
+                # print(os.path.abspath(''))
+                self.Q.put(rotate(cv2.imread('resources/experimental/detection_input/img{:02}.jpg'.format(i)),
+                                  self.rotation))
+                i = i + 1
+                if i == 39:
+                    i = 4
 
     def get_image(self):
-        try:
-            return self.Q.get()
-        except queue.Empty:
-            return None
+        # TODO idea: also return a timestamp for synchronization of visual_items across beamer, detection and bluetooth
+        self.image = self.Q.get()
+        return self.image

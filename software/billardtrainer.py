@@ -73,10 +73,11 @@ if args.push_to_pi:
     exit(0)
 
 settings.on_pi = cv2.getVersionMajor() < 4
+settings.debug = args.debug
 # on the pi try to catch all errors
 try:
     table_sim = TableSim()
-    table_sim.start()
+    table_sim.run_table_sim()
 except Exception as e:
     # TODO: better way of handling exceptions on the pi
     # wait to be able to read console output on raspberry pi before closing terminal on error:

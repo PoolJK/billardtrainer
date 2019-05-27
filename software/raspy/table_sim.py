@@ -1,11 +1,12 @@
 import json
 from json import JSONDecodeError
 from queue import Queue
-import queue
 
+from .classes import settings
 from .classes.bluetooth import BT
 from .classes.camera import Camera
 from .classes.beamer import Beamer
+from .classes.detection import Detection
 from .classes.visual_items import *
 from .classes.ball import Ball
 from .classes.utils import *
@@ -63,6 +64,7 @@ class TableSim:
             offset_y=self.beamer_offset[1],  # mm
             ppm_x=self.beamer_ppm_x,
             ppm_y=self.beamer_ppm_y)
+        self.detection = Detection(self.camera)
 
     def run_table_sim(self):
         # test balls:
@@ -74,7 +76,16 @@ class TableSim:
         self.beamer.add_visual_item(Cross(889, 2667, 30, ball_color(1)))  # pink spot
         self.beamer.show_visual_items()
         # self.beamer.hide()
+        if not settings.on_pi:
+            cv2.createTrackbar('grad_val', 'beamer', Ball.grad_val, 100, nothing)
+            cv2.createTrackbar('acc_thr', 'beamer', Ball.acc_thr, 200, nothing)
+            cv2.createTrackbar('min_dist', 'beamer', Ball.min_dist, 300, nothing)
+            cv2.createTrackbar('dp', 'beamer', Ball.dp, 15, nothing)
+            cv2.createTrackbar('min_radius', 'beamer', Ball.min_radius, 70, nothing)
+            cv2.createTrackbar('max_radius', 'beamer', Ball.max_radius, 150, nothing)
         # main loop as fps loop
+        print('starting detection')
+        self.detection.start()
         while True:
             t0 = now()
             self.show_table()
@@ -83,33 +94,85 @@ class TableSim:
             msg = self.bluetooth.read()
             if msg is not None:
                 # for writing beamer, act as if inputs from bluetooth are detection inputs
-                self.handle_dt_message(msg)
-                # self.handle_bt_message(msg)
+                # self.handle_dt_message(msg)
+                self.handle_bt_message(msg)
             # get nonblocking 'detection read'
-            # msg = self.fake_detection_read()
-            # if msg is not None:
-            #     self.handle_dt_message(msg)
+            msg = self.detection.read()
+            if msg is not None:
+                self.handle_dt_message(msg)
             d = dt(t0, now())
-            print('loop time: {: 4d}ms'.format(d), end='\r')
+            if settings.debug:
+                print('main loop time: {:3d}ms (waiting time: {}'.format(d, max(40 - d, 1)))
             # wait 40ms max:
-            self.key = cv2.waitKey(max(100 - d, 1)) & 0xFF
+            self.key = cv2.waitKey(max(40 - d, 1)) & 0xFF
             # wait for keypressed:
             # self.key = cv2.waitKey(0) & 0xFF
             if self.key == ord('q') or self.key == 27:
                 break
+            elif self.key == ord('p'):
+                self.detection.pause(5000)
         cv2.destroyAllWindows()
 
-    def start(self):
-        self.run_table_sim()
+    def handle_dt_message(self, message):
+        if settings.debug:
+            print('handle_dt_message\n', end='')
+        self.beamer.clear_image()
+        for ball in message:
+            self.beamer.add_visual_item(ball)
+        self.beamer.show_visual_items()
 
-    def fake_detection_read(self):
-        # TODO: outside of table_sim this will be detection.read()
+    # if there is an input (from mouse_callback), send it to app
+    # self.bluetooth.send('{}'.format(message))
+    # self.bluetooth.send(res)
+
+    def handle_bt_message(self, message):
+        if settings.debug:
+            print('handle_bt_message')
+        # writing beamer class: add balls to beamer
         try:
-            msg = self.message_queue.get_nowait()
-            print('detection msg read: {}'.format(msg))
-        except queue.Empty:
-            msg = None
-        return msg
+            message = json.loads(message)
+        except JSONDecodeError:
+            print('\n' + message)
+            print('json error.')
+            exit(0)
+        self.beamer.clear_image()
+        for ball_id, ball in message["balls"].items():
+            self.beamer.add_visual_item(Ball(
+                ball['x'],
+                ball['y'],
+                color=ball_color(ball['v'])))
+        if 'lines' in message:
+            for line_id, line in message["lines"].items():
+                self.beamer.add_visual_item(Line(line['x1'], line['y1'], line['x2'], line['y2']))
+        if 'ghosts' in message:
+            for ghost_id, ghost in message["ghosts"].items():
+                self.beamer.add_visual_item(Ghost(ghost['x'], ghost['y']))
+        self.beamer.show_visual_items()
+        # self.beamer.resize_window()
+        # self.beamer.hide()
+        self.show_table()
+        self.detection.pause(5000)
+        self.bluetooth.send("done")
+
+    def show_table(self):
+        cv2.imshow('table_sim', self.overlay_beamer(self.overlay_camera(self.table_src)))
+        cv2.resizeWindow('table_sim', 540, 960)
+
+    @staticmethod
+    def mouse_callback(event, x, y, flags, param):
+        # print('flags: {} param: {}'.format(flags, param))
+        if flags or param or x or y:
+            pass
+        if event == cv2.EVENT_LBUTTONDOWN:
+            # TODO: check if ball at click position (for moving)
+            pass
+        elif event == cv2.EVENT_LBUTTONUP:
+            pass
+        elif event == cv2.EVENT_RBUTTONDOWN:
+            # TODO: else create ball here
+            # send to message_queue (simulating detection.read)
+            # calculate table pos from pixel:
+            pass
 
     def overlay_camera(self, table_image):
         # camera
@@ -159,73 +222,3 @@ class TableSim:
         beamer_fg = cv2.bitwise_and(beamer_image, beamer_image, mask=mask)
         table_image[b_y:b_y + i_h, b_x:b_x + i_w] = cv2.add(table_bg, beamer_fg)
         return table_image
-
-    def handle_dt_message(self, message):
-        # if there is an input (from mouse_callback), send it to app
-        # self.bluetooth.send('{}'.format(message))
-        # writing beamer class: add balls to beamer
-        try:
-            message = json.loads(message)
-        except JSONDecodeError:
-            print('\n' + message)
-            print('json error.')
-            exit(0)
-        self.beamer.clear_image()
-        res = ""
-        for ball_id, ball in message["balls"].items():
-            res += 'id={} x={}, y={}, v={}'.format(ball_id, ball['x'], ball['y'], ball['v'])
-            self.beamer.add_visual_item(Ball(
-                ball['x'],
-                ball['y'],
-                color=ball_color(ball['v'])))
-        if 'lines' in message:
-            for line_id, line in message["lines"].items():
-                self.beamer.add_visual_item(Line(line['x1'], line['y1'], line['x2'], line['y2']))
-        if 'ghosts' in message:
-            for ghost_id, ghost in message["ghosts"].items():
-                self.beamer.add_visual_item(Ghost(ghost['x'], ghost['y']))
-        self.beamer.show_visual_items()
-        # self.beamer.resize_window()
-        # self.beamer.hide()
-        self.show_table()
-        self.bluetooth.send("done")
-        # self.bluetooth.send(res)
-
-    def show_table(self):
-        cv2.imshow('table_sim', self.overlay_beamer(self.overlay_camera(np.copy(self.table_src))))
-        cv2.resizeWindow('table_sim', 540, 960)
-
-    @staticmethod
-    def handle_bt_message(message):
-        """
-        Process a message read from bluetooth class
-        :param message: the message read by the bluetooth class
-        """
-        # print("bt_message = " + message)
-        # first character of message is 'what'
-        if message[0] == 'n':
-            print('ballName = ' + message[message.find("(") + 1:message.find(")")])
-        elif message[0] == 'b':
-            # split (x, y) into variables
-            message = message[message.find("(") + 1:message.find(")")]
-            x, y = message.split(',')
-            x = float(x)
-            y = float(y)
-            # create ball at screen_pos(x, y)
-            print("x={} y={}".format(x, y))
-
-    @staticmethod
-    def mouse_callback(event, x, y, flags, param):
-        # print('flags: {} param: {}'.format(flags, param))
-        if flags or param or x or y:
-            pass
-        if event == cv2.EVENT_LBUTTONDOWN:
-            # TODO: check if ball at click position (for moving)
-            pass
-        elif event == cv2.EVENT_LBUTTONUP:
-            pass
-        elif event == cv2.EVENT_RBUTTONDOWN:
-            # TODO: else create ball here
-            # send to message_queue (simulating detection.read)
-            # calculate table pos from pixel:
-            pass
