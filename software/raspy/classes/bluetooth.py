@@ -12,14 +12,6 @@ class BT:
     """
     Class for bluetooth hardware handling.
     Provides read() and send() with queues
-
-    TODO: move to readme
-    add pi to bluetooth group:
-    sudo usermod -G bluetooth -a pi
-    check:
-    cat /etc/group | grep bluetooth
-    change group of sdp:
-    sudo chgrp bluetooth /var/run/sdp
     """
 
     def __init__(self):
@@ -46,44 +38,39 @@ class BT:
             self.send_thread.daemon = True
             self.send_thread.start()
 
-    # https://stackoverflow.com/questions/34599703/rfcomm-bluetooth-permission-denied-error-raspberry-pi
-    # https://github.com/ev3dev/ev3dev/issues/274
-    @staticmethod
-    def init_server():
-        try:
-            server_sock = BluetoothSocket(RFCOMM)
-            server_sock.bind(("", PORT_ANY))
-            server_sock.listen(1)
-            uuid = "00001101-0000-1000-8000-00805F9B34FB"
-            advertise_service(server_sock, "Echo Server",
-                              service_id=uuid,
-                              service_classes=[uuid, SERIAL_PORT_CLASS],
-                              profiles=[SERIAL_PORT_PROFILE]
-                              )
-        except OSError:
-            # so far this happens when there is no bluetooth hardware present, so just exit the thread
-            wait(1000)
-            print('init_server: bluetooth error, exiting thread:')
-            traceback.print_exc()
-            exit(0)
-        else:
-            return server_sock
-
-    @staticmethod
-    def get_client_connection(server_sock):
-        print("Waiting for connection")
-        client_sock, client_info = server_sock.accept()
-        print("accepted connection from ", client_info[0])
-        return client_sock
-
     def manage_connection(self):
+        """
+        The main bluetooth loop. Creates a socket and starts listening in a loop, exiting on failure.
+        After running through, does nothing
+        """
         # TODO: https://stackoverflow.com/questions/8386679/why-am-i-receiving-a-
         #  string-from-the-socket-until-the-n-newline-escape-sequence
         connection_attempts = 0
         while True:
             connection_attempts += 1
-            self.server = self.init_server()
-            self.client = self.get_client_connection(self.server)
+            # https://stackoverflow.com/questions/34599703/rfcomm-bluetooth-permission-denied-error-raspberry-pi
+            # https://github.com/ev3dev/ev3dev/issues/274
+            # create new server socket
+            try:
+                self.server = BluetoothSocket(RFCOMM)
+                self.server.bind(("", PORT_ANY))
+                self.server.listen(1)
+                uuid = "00001101-0000-1000-8000-00805F9B34FB"
+                advertise_service(self.server, "Echo Server",
+                                  service_id=uuid,
+                                  service_classes=[uuid, SERIAL_PORT_CLASS],
+                                  profiles=[SERIAL_PORT_PROFILE]
+                                  )
+            except OSError:
+                # so far this happens when there is no bluetooth hardware present, so just exit the thread
+                wait(1000)
+                traceback.print_exc()
+                wait(500)
+                print('seems like u got no colored teeth')
+                exit(0)
+            print("Waiting for connection")
+            self.client, client_info = self.server.accept()
+            print("accepted connection from ", client_info[0])
             try:
                 data = self.client.recv(1024)
                 if data == 'b\'exit\'':

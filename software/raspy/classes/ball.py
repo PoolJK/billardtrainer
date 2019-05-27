@@ -8,12 +8,12 @@ class Ball:
     """
 
     # HoughCircles parameters
-    grad_val = 90
-    acc_thr = 67
+    grad_val = 172
+    acc_thr = 23
     dp = 2
     min_dist = 100
-    min_radius = 0
-    max_radius = 100
+    min_radius = 8
+    max_radius = 33
 
     def __init__(self, x, y, radius=26, color=None, text=None):
         """
@@ -77,8 +77,8 @@ class Ball:
             for circle in circles[0, :]:
                 # get relative position from image origin, convert to mm and subtract camera offset
                 balls.append(Ball(circle[0] / ppm_x + offs_x, circle[1] / ppm_y + offs_y))
-                # if settings.debug:
-                #    print("ball found: {} (mm)".format(balls[len(balls)-1]))
+                if settings.debug:
+                    print("ball found: {} (mm)".format(balls[len(balls) - 1]))
         if len(balls) == 0:
             balls = None
         return balls

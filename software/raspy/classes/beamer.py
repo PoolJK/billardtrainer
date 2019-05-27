@@ -36,8 +36,8 @@ class Beamer:
         self.objects = []
         # create black image to show objects in
         self.outPict = np.zeros((self.resolution_y, self.resolution_x, 3), np.uint8)
-        print('offset(x,y)=({:.2f}, {:.2f}) ppmx={:.2f} ppmy={:.2f}'.format(self.offset_x, self.offset_y, self.ppm_x,
-                                                                            self.ppm_y))
+        print('beamer offset(x,y)=({:.2f}, {:.2f}) ppmx={:.2f} ppmy={:.2f}'.format(
+            self.offset_x, self.offset_y, self.ppm_x, self.ppm_y))
         # create window for beamer output (height, width, dimension for numpy array)
         cv2.namedWindow("beamer", cv2.WINDOW_NORMAL)
         if cv2.getVersionMajor() < 4:
@@ -60,8 +60,11 @@ class Beamer:
     def show_image(self, image=None):
         if image is None:
             image = self.outPict
-        cv2.imshow("beamer", image)
+        if settings.on_pi:
+            dst = rotate(image, self.rotation)
+            cv2.imshow('beamer', dst)
         if not settings.on_pi:
+            cv2.imshow("beamer", image)
             cv2.resizeWindow('beamer', 360, 640)
 
     @staticmethod

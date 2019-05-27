@@ -21,18 +21,18 @@ class TableSim:
     table_size = (1778, 3556)  # pixel table size
 
     beamer_resolution = (1080, 1920)  # pixel beamer resolution
-    beamer_offset = (700, 2265)  # mm beamer position
+    beamer_offset = (700, 2245)  # mm beamer position
     beamer_real_size = (590, 1055)  # mm beamer real size
     beamer_rotation = 270
     beamer_ppm_x = beamer_resolution[0] / beamer_real_size[0]
     beamer_ppm_y = beamer_resolution[1] / beamer_real_size[1]
 
-    camera_resolution = (1088, 1920)
-    camera_offset = (543, 2293)
-    camera_real_size = (711, 1220)
+    camera_resolution = (1920, 1088)
+    camera_offset = (546, 2284)
+    camera_real_size = (700, 1220)
     camera_rotation = 90
-    camera_ppm_x = camera_resolution[0] / camera_real_size[0]
-    camera_ppm_y = camera_resolution[1] / camera_real_size[1]
+    camera_ppm_x = camera_resolution[1] / camera_real_size[0]
+    camera_ppm_y = camera_resolution[0] / camera_real_size[1]
 
     test_ball_1 = Ball(beamer_offset[0] + 30,
                        beamer_offset[1] + 30,
@@ -55,7 +55,8 @@ class TableSim:
             offset_x=self.camera_offset[0],
             offset_y=self.camera_offset[1],
             ppm_x=self.camera_ppm_x,
-            ppm_y=self.camera_ppm_y
+            ppm_y=self.camera_ppm_y,
+            rotation=self.camera_rotation
         )
         self.beamer = Beamer(
             resolution_x=self.beamer_resolution[0],
@@ -63,7 +64,9 @@ class TableSim:
             offset_x=self.beamer_offset[0],  # mm
             offset_y=self.beamer_offset[1],  # mm
             ppm_x=self.beamer_ppm_x,
-            ppm_y=self.beamer_ppm_y)
+            ppm_y=self.beamer_ppm_y,
+            rotation=self.beamer_rotation
+        )
         self.detection = Detection(self.camera)
 
     def run_table_sim(self):
@@ -77,7 +80,7 @@ class TableSim:
         self.beamer.show_visual_items()
         # self.beamer.hide()
         if not settings.on_pi:
-            cv2.createTrackbar('grad_val', 'beamer', Ball.grad_val, 100, nothing)
+            cv2.createTrackbar('grad_val', 'beamer', Ball.grad_val, 200, nothing)
             cv2.createTrackbar('acc_thr', 'beamer', Ball.acc_thr, 200, nothing)
             cv2.createTrackbar('min_dist', 'beamer', Ball.min_dist, 300, nothing)
             cv2.createTrackbar('dp', 'beamer', Ball.dp, 15, nothing)
@@ -88,7 +91,8 @@ class TableSim:
         self.detection.start()
         while True:
             t0 = now()
-            self.show_table()
+            if not settings.on_pi:
+                self.show_table()
             # show the current table (with balls if any)
             # get (nonblocking) bluetooth read
             msg = self.bluetooth.read()

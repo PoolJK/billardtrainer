@@ -1,3 +1,4 @@
+import os
 from queue import Queue
 from threading import Thread
 
@@ -12,7 +13,7 @@ except ModuleNotFoundError:
 
 
 class Camera:
-    def __init__(self, resolution_x=1920, resolution_y=1088, offset_x=0, offset_y=0, ppm_x=1, ppm_y=1, rotation=90):
+    def __init__(self, resolution_x=1088, resolution_y=1920, offset_x=0, offset_y=0, ppm_x=1, ppm_y=1, rotation=90):
         self.resolution_x = resolution_x
         self.offset_x = offset_x
         self.ppm_x = ppm_x
@@ -21,6 +22,8 @@ class Camera:
         self.ppm_y = ppm_y
         self.rotation = rotation
         self.image = None
+        print('camera offset(x,y)=({:.2f}, {:.2f}) ppmx={:.2f} ppmy={:.2f}'.format(
+            self.offset_x, self.offset_y, self.ppm_x, self.ppm_y))
 
         if settings.on_pi:
             self.camera = PiCamera()
@@ -44,17 +47,25 @@ class Camera:
     def update(self):
         # development @home: read images from resources/detection_input instead of camera
         if settings.on_pi:
+            i = 0
             for frame in self.camera.capture_continuous(self.rawCapture, format="bgr",
                                                         use_video_port=True):
-                frame.array = rotate(frame.array, 90)
+                frame.array = rotate(frame.array, -self.rotation)
                 self.Q.put(frame.array)
                 self.rawCapture.truncate(0)
+                if settings.debug:
+                    print(os.path.abspath('./resources/experimental/detection_input'))
+                    cv2.imwrite('./resources/experimental/detection_input/img{:02}.jpg'.format(i), frame.array)
+                    i = i + 1
         else:
-            i = 36
+            i = 4
             while True:
                 # print(os.path.abspath(''))
-                self.Q.put(rotate(cv2.imread('resources/experimental/detection_input/img{:02}.jpg'.format(i)),
-                                  self.rotation))
+                if i < 8:
+                    self.Q.put(cv2.imread('resources/experimental/detection_input/img{:02}.jpg'.format(i)))
+                else:
+                    self.Q.put(rotate(cv2.imread('resources/experimental/detection_input/img{:02}.jpg'.format(i)),
+                                      self.rotation))
                 i = i + 1
                 if i == 39:
                     i = 4
