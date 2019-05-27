@@ -18,12 +18,13 @@ class BT:
         self.server = None
         self.client = None
         self.message_queue = Queue(100)
-        self.send_queue = Queue(1000)
+        self.send_queue = Queue(10)
         self.bt = Thread(target=self.manage_connection, args=())
         self.bt.daemon = True
         self.bt.start()
         self.send_thread = Thread(target=self.flush_send_queue, args=())
         self.send_thread.daemon = True
+        self.exit_requested = False
 
     def read(self):
         try:
@@ -31,8 +32,19 @@ class BT:
         except queue.Empty:
             return None
 
+    def read_blocking(self):
+        try:
+            return self.message_queue.get(timeout=1)
+        except queue.Empty:
+            debug('bluetooth: bt_queue empty after 5s')
+            return None
+
     def send(self, data):
-        self.send_queue.put(data)
+        try:
+            self.send_queue.put_nowait(data)
+        except queue.Full:
+            self.send_queue.get_nowait()
+            self.send_queue.put_nowait(data)
         if not self.send_thread.is_alive():
             self.send_thread = Thread(target=self.flush_send_queue, args=())
             self.send_thread.daemon = True
@@ -43,8 +55,6 @@ class BT:
         The main bluetooth loop. Creates a socket and starts listening in a loop, exiting on failure.
         After running through, does nothing
         """
-        # TODO: https://stackoverflow.com/questions/8386679/why-am-i-receiving-a-
-        #  string-from-the-socket-until-the-n-newline-escape-sequence
         connection_attempts = 0
         while True:
             connection_attempts += 1
@@ -72,22 +82,26 @@ class BT:
             self.client, client_info = self.server.accept()
             print("accepted connection from ", client_info[0])
             try:
+                # initial read
                 data = self.client.recv(1024)
-                if data == 'b\'exit\'':
-                    break
+                # receiving loop:
                 while True:
-                    # print("bluetooth.py: received \"{}\"".format(data))
+                    debug("bluetooth.py: received \"{}\"".format(data), 0)
                     data = str(data).lstrip('b').strip('\'')
-                    data = data.split('\\n')
+                    # split message in case two lines are received at once
+                    data = data.split('\\x04')
                     for line in data:
                         if line != '':
+                            line = line.strip(chr(4)).strip('\\x04')
                             self.message_queue.put(line)
-                            # self.send('size={}'.format(len(line)))
+                            debug('bluetooth: queued line: \"{}\"'.format(line), 0)
                     data = self.client.recv(1024)
             except IOError as e:
                 print('connection lost', e)
             self.client.close()
             self.server.close()
+            if self.exit_requested:
+                break
         print("terminating...")
         self.client.close()
         self.client = None
@@ -97,6 +111,6 @@ class BT:
         while not self.send_queue.empty():
             data = self.send_queue.get_nowait()
             while self.client is None:
-                print('send_queue: client is None. Qsize: {}'.format(self.send_queue.qsize() + 1))
-                wait(5000)
+                print('send_queue: not connected, sleeping 1s. Q.size: {}'.format(self.send_queue.qsize() + 1))
+                wait(1000)
             self.client.send("%s\n" % data)

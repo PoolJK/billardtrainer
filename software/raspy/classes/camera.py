@@ -2,7 +2,6 @@ import os
 from queue import Queue
 from threading import Thread
 
-from . import settings
 from .utils import *
 
 try:
@@ -22,14 +21,14 @@ class Camera:
         self.ppm_y = ppm_y
         self.rotation = rotation
         self.image = None
-        print('camera offset(x,y)=({:.2f}, {:.2f}) ppmx={:.2f} ppmy={:.2f}'.format(
+        debug('camera offset(x,y)=({:.2f}, {:.2f}) ppmx={:.2f} ppmy={:.2f}'.format(
             self.offset_x, self.offset_y, self.ppm_x, self.ppm_y))
 
         if settings.on_pi:
             self.camera = PiCamera()
             self.camera.resolution = (self.resolution_x, self.resolution_y)
             self.camera.framerate = 25
-            self.camera.iso = 400
+            # self.camera.iso = 800
             # Wait for the automatic gain control to settle
             wait(1000)
             # Now fix the values
@@ -46,31 +45,31 @@ class Camera:
 
     def update(self):
         # development @home: read images from resources/detection_input instead of camera
+        path = 'resources/experimental/detection_input'
         if settings.on_pi:
             i = 0
             for frame in self.camera.capture_continuous(self.rawCapture, format="bgr",
                                                         use_video_port=True):
+                t0 = now()
                 frame.array = rotate(frame.array, -self.rotation)
                 self.Q.put(frame.array)
                 self.rawCapture.truncate(0)
+                t_src = dt(t0, now())
                 if settings.debug:
-                    print(os.path.abspath('./resources/experimental/detection_input'))
-                    cv2.imwrite('./resources/experimental/detection_input/img{:02}.jpg'.format(i), frame.array)
-                    i = i + 1
+                    debug('camera: put frame into queue ({:2d}ms)'.format(t_src), 0)
+                    # while os.path.isfile('{}/img{:02}.jpg'.format(path, i)):
+                    #     i += 1
+                    # cv2.imwrite('{}/img{:02}.jpg'.format(path, i), frame.array)
+                    # i += 1
         else:
-            i = 4
+            files = os.listdir(path)
             while True:
-                # print(os.path.abspath(''))
-                if i < 8:
-                    self.Q.put(cv2.imread('resources/experimental/detection_input/img{:02}.jpg'.format(i)))
-                else:
-                    self.Q.put(rotate(cv2.imread('resources/experimental/detection_input/img{:02}.jpg'.format(i)),
-                                      self.rotation))
-                i = i + 1
-                if i == 39:
-                    i = 4
+                for file in files:
+                    self.Q.put(cv2.imread('{}/{}'.format(path, file)))
+                    debug('camera: read {}/{}'.format(path, file), 0)
 
     def get_image(self):
         # TODO idea: also return a timestamp for synchronization of visual_items across beamer, detection and bluetooth
         self.image = self.Q.get()
+        debug('camera: read frame from queue', 0)
         return self.image

@@ -43,16 +43,20 @@ class BTService extends Thread {
     }
 
     BTService(Main.mHandler mainHandler) {
-        last_connect_time = System.currentTimeMillis() - 5000;
+        last_connect_time = System.currentTimeMillis() - 6000;
         this.mainHandler = mainHandler;
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
     }
 
     synchronized void send(String data) {
+        if (data.equals("")) {
+            Log.e(TAG, "refuse to send empty. shame on you");
+            return;
+        }
         try {
             OutputStream os = mSocket.getOutputStream();
             PrintStream sender = new PrintStream(os);
-            sender.print(data);
+            sender.print(data + (char) 4);
         } catch (IOException e) {
             e.printStackTrace();
         } catch (NullPointerException e) {
@@ -76,7 +80,7 @@ class BTService extends Thread {
         }
         Log.v(TAG, "connecting");
         try {
-            Thread.sleep(Math.max(last_connect_time + 5000 - System.currentTimeMillis(), 0));
+            Thread.sleep(Math.max(last_connect_time + 1000 - System.currentTimeMillis(), 0));
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -116,15 +120,17 @@ class BTService extends Thread {
                 connT = new connectedThread();
                 connT.start();
             } catch (IOException e) {
-                Log.e(TAG, "Connection failed, IOException");
-                if (!this.isInterrupted())
-                    disconnect();
+                BTState = DISCONNECTED;
+                Log.v(TAG, "Connection failed, IOException");
+                if (!this.isInterrupted()) {
+                    Log.d(TAG, "connectThread: trying to reconnect");
+                    connect();
+                }
             } catch (NullPointerException e) {
                 e.printStackTrace();
             }
         }
     }
-
 
     private class connectedThread extends Thread {
 

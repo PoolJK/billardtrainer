@@ -1,8 +1,8 @@
 import json
+import traceback
 from json import JSONDecodeError
 from queue import Queue
 
-from .classes import settings
 from .classes.bluetooth import BT
 from .classes.camera import Camera
 from .classes.beamer import Beamer
@@ -44,9 +44,10 @@ class TableSim:
 
     def __init__(self):
         self.table_src = cv2.resize(cv2.imread('resources/table.jpg'), self.table_size)
-        cv2.namedWindow('table_sim', cv2.WINDOW_NORMAL)
+        if not settings.on_pi or settings.debug:
+            cv2.namedWindow('table_sim', cv2.WINDOW_NORMAL)
+            cv2.setMouseCallback('table_sim', self.mouse_callback, None)
         self.message_queue = Queue(10)
-        cv2.setMouseCallback('table_sim', self.mouse_callback, None)
         self.key = 0
         self.bluetooth = BT()
         self.camera = Camera(
@@ -67,7 +68,7 @@ class TableSim:
             ppm_y=self.beamer_ppm_y,
             rotation=self.beamer_rotation
         )
-        self.detection = Detection(self.camera)
+        self.detection = Detection(self.camera, self.beamer)
 
     def run_table_sim(self):
         # test balls:
@@ -79,7 +80,7 @@ class TableSim:
         self.beamer.add_visual_item(Cross(889, 2667, 30, ball_color(1)))  # pink spot
         self.beamer.show_visual_items()
         # self.beamer.hide()
-        if not settings.on_pi:
+        if settings.debug:
             cv2.createTrackbar('grad_val', 'beamer', Ball.grad_val, 200, nothing)
             cv2.createTrackbar('acc_thr', 'beamer', Ball.acc_thr, 200, nothing)
             cv2.createTrackbar('min_dist', 'beamer', Ball.min_dist, 300, nothing)
@@ -87,28 +88,46 @@ class TableSim:
             cv2.createTrackbar('min_radius', 'beamer', Ball.min_radius, 70, nothing)
             cv2.createTrackbar('max_radius', 'beamer', Ball.max_radius, 150, nothing)
         # main loop as fps loop
-        print('starting detection')
-        self.detection.start()
+        debug('starting detection')
+        # turned off while testing sequentially
+        # self.detection.start()
         while True:
+            ts = now()
+            image = self.camera.get_image()
             t0 = now()
-            if not settings.on_pi:
-                self.show_table()
-            # show the current table (with balls if any)
-            # get (nonblocking) bluetooth read
-            msg = self.bluetooth.read()
-            if msg is not None:
-                # for writing beamer, act as if inputs from bluetooth are detection inputs
-                # self.handle_dt_message(msg)
-                self.handle_bt_message(msg)
+            balls = Ball.find(image,
+                              self.camera.offset_x, self.camera.offset_y,
+                              self.camera.ppm_x, self.camera.ppm_y,
+                              scale=1)
+            t1 = now()
+            if balls is not None:
+                self.handle_dt_message(balls)
+
             # get nonblocking 'detection read'
-            msg = self.detection.read()
-            if msg is not None:
-                self.handle_dt_message(msg)
-            d = dt(t0, now())
-            if settings.debug:
-                print('main loop time: {:3d}ms (waiting time: {}'.format(d, max(40 - d, 1)))
+            # msg = self.detection.read()
+            # if msg is not None:
+            #     self.handle_dt_message(msg)
+            # t1 = now()
+            # # get (nonblocking) bluetooth read
+            # msg = self.bluetooth.read()
+            # if msg is not None:
+            #     # for writing beamer, act as if inputs from bluetooth are detection inputs
+            #     # self.handle_dt_message(msg)
+            #     self.handle_bt_message(msg)
+            t2 = now()
+            # show the current table (with balls if any)
+            if settings.debug or not settings.on_pi:
+                self.show_table()
+            t3 = now()
+            t_det = dt(t0, t1)
+            t_bt = dt(t1, t2)
+            t_show = dt(t2, t3)
+            main_loop = dt(t0, t3)
+            # if main_loop > 0:
+            debug('timings: loop: {:3d}ms    detection: {:3d}ms    handling: {:3d}ms    table_show: {:3d}ms'.
+                  format(main_loop, t_det, t_bt, t_show))
             # wait 40ms max:
-            self.key = cv2.waitKey(max(40 - d, 1)) & 0xFF
+            self.key = cv2.waitKey(max(40 - main_loop, 1)) & 0xFF
             # wait for keypressed:
             # self.key = cv2.waitKey(0) & 0xFF
             if self.key == ord('q') or self.key == 27:
@@ -118,28 +137,28 @@ class TableSim:
         cv2.destroyAllWindows()
 
     def handle_dt_message(self, message):
-        if settings.debug:
-            print('handle_dt_message\n', end='')
-        self.beamer.clear_image()
+        debug('handle_dt_message', 0)
+        json_array = {}
+        ball_id = 0
         for ball in message:
-            self.beamer.add_visual_item(ball)
-        self.beamer.show_visual_items()
-
-    # if there is an input (from mouse_callback), send it to app
-    # self.bluetooth.send('{}'.format(message))
-    # self.bluetooth.send(res)
+            json_array[ball_id] = {"x": int(ball.x), "y": int(ball.y), "v": ball_value(ball.color)}
+            ball_id += 1
+        json_string = json.dumps({"balls": json_array})
+        debug(json_string, 0)
+        self.bluetooth.send(json_string)
+        if settings.simulate:
+            self.handle_bt_message(json_string)
 
     def handle_bt_message(self, message):
-        if settings.debug:
-            print('handle_bt_message')
-        # writing beamer class: add balls to beamer
+        debug('handle_bt_message: \"{}\"'.format(message), 0)
+        self.beamer.clear_image()
         try:
             message = json.loads(message)
         except JSONDecodeError:
             print('\n' + message)
             print('json error.')
-            exit(0)
-        self.beamer.clear_image()
+            traceback.print_exc()
+            return
         for ball_id, ball in message["balls"].items():
             self.beamer.add_visual_item(Ball(
                 ball['x'],
@@ -154,11 +173,14 @@ class TableSim:
         self.beamer.show_visual_items()
         # self.beamer.resize_window()
         # self.beamer.hide()
-        self.show_table()
-        self.detection.pause(5000)
+        if settings.debug or not settings.on_pi:
+            self.show_table()
+        # self.detection.pause(5000)
         self.bluetooth.send("done")
 
     def show_table(self):
+        if settings.on_pi and not settings.debug:
+            return
         cv2.imshow('table_sim', self.overlay_beamer(self.overlay_camera(self.table_src)))
         cv2.resizeWindow('table_sim', 540, 960)
 
@@ -186,8 +208,7 @@ class TableSim:
         r_h = self.camera_real_size[1]
         i_w = int(r_w)  # camera in table_image
         i_h = int(r_h)
-        camera_image = cv2.resize(self.camera.get_image(),
-                                  (i_w, i_h))
+        camera_image = cv2.resize(self.camera.get_image(), (i_w, i_h))
         # make outline
         cv2.line(camera_image, (0, 0), (0, i_h), [0, 0, 255], 5)
         cv2.line(camera_image, (i_w, 0), (i_w, i_h), [0, 0, 255], 5)

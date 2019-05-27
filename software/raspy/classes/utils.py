@@ -2,6 +2,7 @@ from threading import Lock
 import time
 import cv2
 import numpy as np
+from . import settings
 
 
 # shorthand sleep
@@ -87,8 +88,15 @@ def ball_color(value):
     return colors.get(value, None)
 
 
+# ball value from color
 def ball_value(color):
     for k, v in colors.items():
         if v == color:
             return k
     return 0
+
+
+# debug output
+def debug(message, level=settings.debug_level):
+    if settings.debug and level >= settings.debug_level:
+        print('{}\n'.format(message), end='')

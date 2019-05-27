@@ -2,9 +2,6 @@ package com.billardtrainer;
 
 // https://billiards.colostate.edu/technical-proof/
 
-import java.util.ArrayList;
-import java.util.Locale;
-
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
@@ -32,6 +29,10 @@ import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
+
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.Locale;
 
 import static com.billardtrainer.Cons.*;
 import static com.billardtrainer.Utils.*;
@@ -110,13 +111,14 @@ public class Main extends AppCompatActivity {
                     screenSet = true;
                     Log.v(TAG, String.format(Locale.ROOT, "screenW=%d screenH=%d", screenWidth, screenHeight));
                     // calc();
+                    handler.sendEmptyMessage(DRAW);
                 }
                 return true;
             }
         });
         if (ballsOnTable == null) {
             ballsOnTable = new ArrayList<>();
-            initTable();
+            // initTable();
         }
         if (handler == null) {
             handler = new mHandler() {
@@ -145,7 +147,7 @@ public class Main extends AppCompatActivity {
                         case BT_SEND:
                             if (device_busy) {
                                 Log.v("Handler", "device busy");
-                                break;
+                                // break;
                             }
                             device_busy = true;
                             if (btService != null && btService.isConnected())
@@ -163,6 +165,8 @@ public class Main extends AppCompatActivity {
                             break;
                         case BT_DISCONNECTED:
                             toast("bluetooth disconnected");
+                            ballsOnTable.clear();
+                            this.sendEmptyMessage(DRAW);
                             btService.connect();
                             break;
                         default:
@@ -188,7 +192,7 @@ public class Main extends AppCompatActivity {
     protected void onResume() {
         super.onResume();
         // Test case for physics sim
-        startSim(null);
+        // startSim(null);
         // Test case to simulate data from bluetooth:
         if (btService == null) {
             Log.d(TAG, "btService is null");
@@ -211,14 +215,28 @@ public class Main extends AppCompatActivity {
             handler.sendEmptyMessage(DEVICE_READY);
             return;
         }
-        if (message.charAt(0) == 'b') {
-            message = message.substring(2, message.length() - 1);
-            String[] m = message.split(",");
-            double x = Double.parseDouble(m[0]);
-            double y = Double.parseDouble(m[1]);
-            ballsOnTable.add(new Ball(x, y, 1, ballsOnTable.size()));
-            handler.sendEmptyMessage(DRAW);
-            toast(message);
+        if (message.contains("balls")) {
+            ballsOnTable.clear();
+            JSONObject j;
+            try {
+                j = new JSONObject(message);
+                JSONObject balls = j.getJSONObject("balls");
+                Iterator<String> iter = balls.keys();
+                while (iter.hasNext()) {
+                    String key = iter.next();
+                    JSONObject ball = (JSONObject) balls.get(key);
+                    addBallToTable(
+                            ball.getDouble("x"),
+                            ball.getDouble("y"),
+                            ball.getInt("v")
+                    );
+                }
+                calc(null);
+                //toast(message);
+            } catch (JSONException e) {
+                Log.e(TAG, "handle_bt_message: JSONError");
+                e.printStackTrace();
+            }
         } else {
             toast(message);
             Log.d(TAG, message);
@@ -275,8 +293,12 @@ public class Main extends AppCompatActivity {
     }
 
     public void startSim(View view) {
+        if (ballsOnTable.isEmpty()) {
+            Log.d(TAG, "startSim: no balls on table");
+            return;
+        }
         if (sim_running) {
-            Log.v(TAG, "sim running, sim start cancelled");
+            Log.v(TAG, "startSim: sim running, start cancelled");
             return;
         }
         resetSim(view);
@@ -310,6 +332,7 @@ public class Main extends AppCompatActivity {
 //        sThread.start();
 //    }
 
+    @SuppressWarnings({"unused", "SameParameterValue"})
     void calc(View view) {
         Vec3 pock;
         Ball b, btp;
@@ -378,6 +401,7 @@ public class Main extends AppCompatActivity {
             currentShot = -1;
         }
         handler.sendEmptyMessage(DRAW);
+        handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
     }
 
     private void calcPos() {
@@ -677,16 +701,22 @@ public class Main extends AppCompatActivity {
         try {
             for (Ball ball : ballsOnTable)
                 ball.addJSON(balls, lines, ghosts);
-            all.put("balls", balls);
-            all.put("lines", lines);
-            all.put("ghosts", ghosts);
+            if (balls.length() > 0)
+                all.put("balls", balls);
+            if (lines.length() > 0)
+                all.put("lines", lines);
+            if (ghosts.length() > 0)
+                all.put("ghosts", ghosts);
         } catch (JSONException e) {
             e.printStackTrace();
             return "";
         }
         Log.v("main", String.format(Locale.ROOT, "JSON took %.0fms to generate",
                 (SystemClock.currentThreadTimeMillis() - t0)));
-        return all.toString();
+        if (all.length() > 0)
+            return all.toString();
+        else
+            return "";
     }
 
     private void draw() {
@@ -726,90 +756,89 @@ public class Main extends AppCompatActivity {
         canvas.drawLine(screenX(blackSpot.x), screenY(blackSpot.y - 0.01f),
                 screenX(blackSpot.x), screenY(blackSpot.y + 0.01f), paint);
         // draw Balls
-        if (ballsOnTable == null || ballsOnTable.isEmpty()) {
-            return;
-        }
-        double t1 = now();
-        for (Ball ball : ballsOnTable)
-            ball.draw(this, paint, canvas);
-        Log.v(TAG, String.format(Locale.ROOT, "draw balls took %.0fms", now() - t1));
-        if (currentShot > -1 && !possibleShots.isEmpty()) {
-            Shot s = possibleShots.get(currentShot);
-            Ball btp = s.ballToPot;
-            double da1 = btp.getNode().getTargetAngle(s.pocket);
-            double da2 = ballsOnTable.get(0).getNode().getTargetAngle(
-                    btp.getNode().contactPoint(s.pocket));
-            // draw aim line
-            paint.setStyle(Style.STROKE);
-            paint.setColor(Color.WHITE);
-            canvas.drawLine(screenX(ballsOnTable.get(0).Pos.x),
-                    screenY(ballsOnTable.get(0).Pos.y), screenX(s.target.x),
-                    screenY(s.target.y), paint);
-            // draw target
-            canvas.drawCircle(screenX(s.target.x), screenY(s.target.y),
-                    (float) (ballRadius * screenScale), paint);
-            // draw pocket line
-            paint.setColor(getBallColor(btp.value));
-            canvas.drawLine(screenX(btp.Pos.x),
-                    screenY(btp.Pos.y), screenX(s.pocket.x),
-                    screenY(s.pocket.y), paint);
-            // draw Stats
-            // object ball
-            paint.setColor(Color.WHITE);
-            paint.setStyle(Style.STROKE);
-            double dist = s.pocket.distanceTo(btp.Pos);
-            double totdist = dist;
-            double dx = screenX(s.pocket.x) - screenX(btp.Pos.x);
-            double dy = screenY(s.pocket.y) - screenY(btp.Pos.y);
-            double dl = Math.sqrt(dx * dx + dy * dy);
-            Vec3 normal = new Vec3(screenX(btp.Pos.x) + dx / 2
-                    - 25 * dy / dl, screenY(btp.Pos.y) + dy
-                    / 2 - 25 * dx / dl, 0);
-            canvas.drawText("d = " + d(dist * 100, 1) + " cm",
-                    (float) normal.x, (float) normal.y, paint);
-            // cue ball
-            dist = ballsOnTable.get(0).Pos.distanceTo(s.target);
-            totdist += dist;
-            dx = screenX(s.target.x) - screenX(ballsOnTable.get(0).Pos.x);
-            dy = screenY(s.target.y) - screenY(ballsOnTable.get(0).Pos.y);
-            dl = Math.sqrt(dx * dx + dy * dy);
-            normal = new Vec3(screenX(ballsOnTable.get(0).Pos.x) + dx / 2 - 25
-                    * dy / dl, screenY(ballsOnTable.get(0).Pos.y) + dy / 2 - 25
-                    * dx / dl, 0);
-            double da = Math.toDegrees(s.target.subtract(ballsOnTable.get(0).Pos)
-                    .deltaAngle(
-                            s.pocket.subtract(btp.Pos)));
-            paint.setTextSize(15);
-            canvas.drawText("ang = " + d(da, 2) + " deg", (float) normal.x,
-                    (float) normal.y, paint);
-            canvas.drawText("dist = " + d(dist * 100, 1) + " cm",
-                    (float) normal.x, (float) normal.y + 20, paint);
-            canvas.drawText("tot = " + d(totdist * 100, 1) + " cm",
-                    (float) normal.x, (float) normal.y + 40, paint);
-            // draw helper ballOn
-            paint.setStyle(Style.FILL);
-            paint.setColor(getBallColor(btp.value));
-            float scale = (float) (30 / ballRadius / screenScale);
-            canvas.drawCircle(230, screenHeight
-                            - (float) (scale * ballRadius * screenScale),
-                    (float) (scale * ballRadius * screenScale), paint);
-            if (btp.value == 7) {
+        if (ballsOnTable != null && !ballsOnTable.isEmpty()) {
+            double t1 = now();
+            for (Ball ball : ballsOnTable)
+                ball.draw(this, paint, canvas);
+            Log.v(TAG, String.format(Locale.ROOT, "draw balls took %.0fms", now() - t1));
+            if (currentShot > -1 && !possibleShots.isEmpty()) {
+                Shot s = possibleShots.get(currentShot);
+                Ball btp = s.ballToPot;
+                double da1 = btp.getNode().getTargetAngle(s.pocket);
+                double da2 = ballsOnTable.get(0).getNode().getTargetAngle(
+                        btp.getNode().contactPoint(s.pocket));
+                // draw aim line
                 paint.setStyle(Style.STROKE);
                 paint.setColor(Color.WHITE);
+                canvas.drawLine(screenX(ballsOnTable.get(0).Pos.x),
+                        screenY(ballsOnTable.get(0).Pos.y), screenX(s.target.x),
+                        screenY(s.target.y), paint);
+                // draw target
+                canvas.drawCircle(screenX(s.target.x), screenY(s.target.y),
+                        (float) (ballRadius * screenScale), paint);
+                // draw pocket line
+                paint.setColor(getBallColor(btp.value));
+                canvas.drawLine(screenX(btp.Pos.x),
+                        screenY(btp.Pos.y), screenX(s.pocket.x),
+                        screenY(s.pocket.y), paint);
+                // draw Stats
+                // object ball
+                paint.setColor(Color.WHITE);
+                paint.setStyle(Style.STROKE);
+                double dist = s.pocket.distanceTo(btp.Pos);
+                double totdist = dist;
+                double dx = screenX(s.pocket.x) - screenX(btp.Pos.x);
+                double dy = screenY(s.pocket.y) - screenY(btp.Pos.y);
+                double dl = Math.sqrt(dx * dx + dy * dy);
+                Vec3 normal = new Vec3(screenX(btp.Pos.x) + dx / 2
+                        - 25 * dy / dl, screenY(btp.Pos.y) + dy
+                        / 2 - 25 * dx / dl, 0);
+                canvas.drawText("d = " + d(dist * 100, 1) + " cm",
+                        (float) normal.x, (float) normal.y, paint);
+                // cue ball
+                dist = ballsOnTable.get(0).Pos.distanceTo(s.target);
+                totdist += dist;
+                dx = screenX(s.target.x) - screenX(ballsOnTable.get(0).Pos.x);
+                dy = screenY(s.target.y) - screenY(ballsOnTable.get(0).Pos.y);
+                dl = Math.sqrt(dx * dx + dy * dy);
+                normal = new Vec3(screenX(ballsOnTable.get(0).Pos.x) + dx / 2 - 25
+                        * dy / dl, screenY(ballsOnTable.get(0).Pos.y) + dy / 2 - 25
+                        * dx / dl, 0);
+                double da = Math.toDegrees(s.target.subtract(ballsOnTable.get(0).Pos)
+                        .deltaAngle(
+                                s.pocket.subtract(btp.Pos)));
+                paint.setTextSize(15);
+                canvas.drawText("ang = " + d(da, 2) + " deg", (float) normal.x,
+                        (float) normal.y, paint);
+                canvas.drawText("dist = " + d(dist * 100, 1) + " cm",
+                        (float) normal.x, (float) normal.y + 20, paint);
+                canvas.drawText("tot = " + d(totdist * 100, 1) + " cm",
+                        (float) normal.x, (float) normal.y + 40, paint);
+                // draw helper ballOn
+                paint.setStyle(Style.FILL);
+                paint.setColor(getBallColor(btp.value));
+                float scale = (float) (30 / ballRadius / screenScale);
                 canvas.drawCircle(230, screenHeight
                                 - (float) (scale * ballRadius * screenScale),
                         (float) (scale * ballRadius * screenScale), paint);
-            }
+                if (btp.value == 7) {
+                    paint.setStyle(Style.STROKE);
+                    paint.setColor(Color.WHITE);
+                    canvas.drawCircle(230, screenHeight
+                                    - (float) (scale * ballRadius * screenScale),
+                            (float) (scale * ballRadius * screenScale), paint);
+                }
 
-            // helper cueball
-            paint.setAlpha(127);
-            paint.setStyle(Style.STROKE);
-            paint.setColor(Color.WHITE);
-            canvas.drawCircle(230 + (float) (Math.sin(da2 - da1) * 2 * scale
-                            * ballRadius * screenScale), screenHeight
-                            - (float) (scale * ballRadius * screenScale),
-                    (float) (scale * ballRadius * screenScale), paint);
-            paint.setAlpha(255);
+                // helper cueball
+                paint.setAlpha(127);
+                paint.setStyle(Style.STROKE);
+                paint.setColor(Color.WHITE);
+                canvas.drawCircle(230 + (float) (Math.sin(da2 - da1) * 2 * scale
+                                * ballRadius * screenScale), screenHeight
+                                - (float) (scale * ballRadius * screenScale),
+                        (float) (scale * ballRadius * screenScale), paint);
+                paint.setAlpha(255);
+            }
         }
 
         // simulation
@@ -843,7 +872,12 @@ public class Main extends AppCompatActivity {
             handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
     }
 
-    @SuppressWarnings("SameParameterValue")
+    void addBallToTable(double x, double y, int value) {
+        if (ballsOnTable == null)
+            ballsOnTable = new ArrayList<>();
+        ballsOnTable.add(new Ball(x, y, value, ballsOnTable.size()));
+    }
+
     private void initTable() {
         ballsOnTable.clear();
         // cueball

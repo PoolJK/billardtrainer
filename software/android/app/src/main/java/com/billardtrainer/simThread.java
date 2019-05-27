@@ -86,7 +86,7 @@ class simThread extends Thread {
     private void solveCollisions(ArrayList<Ball> ballsOnTable, double t, double new_t) {
         for (Ball ball : ballsOnTable)
             if (ball.getNode(t).collisionTime >= t && ball.getNode(t).collisionTime <= new_t) {
-                Log.v(TAG, String.format(Locale.ROOT, "Ball %d is colliding: coll_t=%.2f", ball.id, ball.getNode(t).collisionTime));
+                Log.v(TAG, String.format(Locale.ROOT, "Ball %d: solving collision @%.2fs", ball.id, ball.getNode(t).collisionTime));
                 ball.addNode(ball.getNode(t).nextNode(new_t));
             }
     }

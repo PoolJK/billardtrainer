@@ -1,4 +1,3 @@
-from raspy.classes import settings
 from .utils import *
 
 
@@ -42,8 +41,8 @@ class Beamer:
         cv2.namedWindow("beamer", cv2.WINDOW_NORMAL)
         if cv2.getVersionMajor() < 4:
             print('on raspy')
-            # cv2.namedWindow('beamerdebug', cv2.WINDOW_NORMAL)
-            cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+            if not settings.debug:
+                cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         else:
             print('on pc')
 
@@ -79,8 +78,8 @@ class Beamer:
 
     def show_white(self):
         # create black image to show objects in
-        white_pict = np.zeros((self.resolution_x, self.resolution_y, 3), np.uint8)
-        white_pict[:] = (255, 255, 255)
+        white_pict = np.zeros((self.resolution_x, self.resolution_y), np.uint8)
+        white_pict[:] = 255
         self.show_image(white_pict)
 
     def clear_image(self):
