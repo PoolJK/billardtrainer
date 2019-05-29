@@ -20,10 +20,9 @@ class Camera:
         self.offset_y = offset_y
         self.ppm_y = ppm_y
         self.rotation = rotation
-        self.image = None
+        self.output_q = Queue(10)
         debug('camera offset(x,y)=({:.2f}, {:.2f}) ppmx={:.2f} ppmy={:.2f}'.format(
-            self.offset_x, self.offset_y, self.ppm_x, self.ppm_y))
-
+            self.offset_x, self.offset_y, self.ppm_x, self.ppm_y), 0)
         if settings.on_pi:
             self.camera = PiCamera()
             self.camera.resolution = (self.resolution_x, self.resolution_y)
@@ -40,23 +39,22 @@ class Camera:
             self.rawCapture = PiRGBArray(self.camera, size=(self.resolution_x, self.resolution_y))
         self.t = Thread(target=self.update, args=())
         self.t.daemon = True
-        self.Q = Queue(1)
         self.t.start()
 
     def update(self):
         # development @home: read images from resources/detection_input instead of camera
         path = 'resources/experimental/detection_input'
-        if settings.on_pi:
+        if settings.on_pi and not settings.simulate:
             i = 0
             for frame in self.camera.capture_continuous(self.rawCapture, format="bgr",
                                                         use_video_port=True):
                 t0 = now()
                 frame.array = rotate(frame.array, -self.rotation)
-                self.Q.put(frame.array)
+                self.output_q.put(frame.array)
                 self.rawCapture.truncate(0)
                 t_src = dt(t0, now())
                 if settings.debug:
-                    debug('camera: put frame into queue ({:2d}ms)'.format(t_src), 0)
+                    debug('camera: queued src in {:2d}ms'.format(t_src), 0)
                     # while os.path.isfile('{}/img{:02}.jpg'.format(path, i)):
                     #     i += 1
                     # cv2.imwrite('{}/img{:02}.jpg'.format(path, i), frame.array)
@@ -65,11 +63,7 @@ class Camera:
             files = os.listdir(path)
             while True:
                 for file in files:
-                    self.Q.put(cv2.imread('{}/{}'.format(path, file)))
-                    debug('camera: read {}/{}'.format(path, file), 0)
+                    t0 = now()
+                    self.output_q.put(cv2.imread('{}/{}'.format(path, file)))
+                    debug('camera: queued {}/{} in {:2d}ms'.format(path, file, dt(t0, now())), 0)
 
-    def get_image(self):
-        # TODO idea: also return a timestamp for synchronization of visual_items across beamer, detection and bluetooth
-        self.image = self.Q.get()
-        debug('camera: read frame from queue', 0)
-        return self.image

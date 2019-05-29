@@ -17,7 +17,7 @@ class BT:
     def __init__(self):
         self.server = None
         self.client = None
-        self.message_queue = Queue(100)
+        self.output_q = Queue(100)
         self.send_queue = Queue(10)
         self.bt = Thread(target=self.manage_connection, args=())
         self.bt.daemon = True
@@ -25,19 +25,7 @@ class BT:
         self.send_thread = Thread(target=self.flush_send_queue, args=())
         self.send_thread.daemon = True
         self.exit_requested = False
-
-    def read(self):
-        try:
-            return self.message_queue.get_nowait()
-        except queue.Empty:
-            return None
-
-    def read_blocking(self):
-        try:
-            return self.message_queue.get(timeout=1)
-        except queue.Empty:
-            debug('bluetooth: bt_queue empty after 5s')
-            return None
+        self.has_bluetooth = True
 
     def send(self, data):
         try:
@@ -45,7 +33,7 @@ class BT:
         except queue.Full:
             self.send_queue.get_nowait()
             self.send_queue.put_nowait(data)
-        if not self.send_thread.is_alive():
+        if not self.send_thread.is_alive() and not self.exit_requested:
             self.send_thread = Thread(target=self.flush_send_queue, args=())
             self.send_thread.daemon = True
             self.send_thread.start()
@@ -74,9 +62,10 @@ class BT:
             except OSError:
                 # so far this happens when there is no bluetooth hardware present, so just exit the thread
                 wait(1000)
-                traceback.print_exc()
+                # traceback.print_exc()
                 wait(500)
-                print('seems like u got no colored teeth')
+                debug('seems like u got no colored teeth')
+                self.exit_requested = True
                 exit(0)
             print("Waiting for connection")
             self.client, client_info = self.server.accept()
@@ -85,7 +74,8 @@ class BT:
                 # initial read
                 data = self.client.recv(1024)
                 # receiving loop:
-                while True:
+                while True and not self.exit_requested:
+                    t0 = now()
                     debug("bluetooth.py: received \"{}\"".format(data), 0)
                     data = str(data).lstrip('b').strip('\'')
                     # split message in case two lines are received at once
@@ -93,8 +83,8 @@ class BT:
                     for line in data:
                         if line != '':
                             line = line.strip(chr(4)).strip('\\x04')
-                            self.message_queue.put(line)
-                            debug('bluetooth: queued line: \"{}\"'.format(line), 0)
+                            self.parse_line_to_queue(line)
+                            debug('bluetooth: queued line: \"{}\" in {}ms'.format(line, dt(t0, now())), 0)
                     data = self.client.recv(1024)
             except IOError as e:
                 print('connection lost', e)
@@ -108,9 +98,23 @@ class BT:
         self.server.close()
 
     def flush_send_queue(self):
-        while not self.send_queue.empty():
+        while not self.send_queue.empty() and not self.exit_requested:
             data = self.send_queue.get_nowait()
             while self.client is None:
-                print('send_queue: not connected, sleeping 1s. Q.size: {}'.format(self.send_queue.qsize() + 1))
+                if self.exit_requested:
+                    exit(0)
+                debug('send_queue: not connected, sleeping 1s. Q.size: {}'.format(self.send_queue.qsize() + 1))
                 wait(1000)
             self.client.send("%s\n" % data)
+
+    def parse_line_to_queue(self, line):
+        """
+        Prepends the index currently.
+        Can be expanded to handle different commands
+        :param line: received data from bluetooth (or simulation thereof)
+        """
+        index = int(line[:2])
+        self.output_q.put([index, line[2:]])
+
+    def stop(self):
+        self.exit_requested = True

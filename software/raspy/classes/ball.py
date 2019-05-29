@@ -56,8 +56,8 @@ class Ball:
             acc_thr = max(cv2.getTrackbarPos('acc_thr', 'beamer'), 1)
             dp = max(cv2.getTrackbarPos('dp', 'beamer'), 1)
             min_dist = max(cv2.getTrackbarPos('min_dist', 'beamer'), 1)
-            min_radius = cv2.getTrackbarPos('min_radius', 'beamer') // scale
-            max_radius = cv2.getTrackbarPos('max_radius', 'beamer') // scale
+            min_radius = int(cv2.getTrackbarPos('min_radius', 'beamer') / scale)
+            max_radius = int(cv2.getTrackbarPos('max_radius', 'beamer') / scale)
         else:
             grad_val = Ball.grad_val
             acc_thr = Ball.acc_thr
@@ -75,7 +75,7 @@ class Ball:
         if circles is not None:
             for circle in circles[0, :]:
                 # get relative position from image origin, convert to mm and subtract camera offset
-                balls.append(Ball(circle[0] * scale / ppm_x + offs_x, circle[1] * scale / ppm_y + offs_y))
+                balls.append(Ball(circle[0] / (scale * ppm_x) + offs_x, circle[1] / (scale * ppm_y) + offs_y))
                 debug('ball found: {}'.format(balls[len(balls) - 1]), 0)
         if len(balls) == 0:
             balls = None
