@@ -41,7 +41,7 @@ class Beamer:
         cv2.namedWindow("beamer", cv2.WINDOW_NORMAL)
         if cv2.getVersionMajor() < 4:
             print('on raspy')
-            if not settings.debug:
+            if not settings.show_table:
                 cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         else:
             print('on pc')

@@ -113,8 +113,7 @@ class BT:
         Can be expanded to handle different commands
         :param line: received data from bluetooth (or simulation thereof)
         """
-        index = int(line[:2])
-        self.output_q.put([index, line[2:]])
+        self.output_q.put(line)
 
     def stop(self):
         self.exit_requested = True

@@ -85,13 +85,13 @@ class TableSim:
                                  self.beamer.offset_x, self.beamer.offset_y,
                                  self.beamer.ppm_x, self.beamer.ppm_y)
         # self.beamer.hide()
-        if settings.debug:
-            cv2.createTrackbar('grad_val', 'beamer', Ball.grad_val, 200, nothing)
-            cv2.createTrackbar('acc_thr', 'beamer', Ball.acc_thr, 200, nothing)
-            cv2.createTrackbar('min_dist', 'beamer', Ball.min_dist, 300, nothing)
-            cv2.createTrackbar('dp', 'beamer', Ball.dp, 15, nothing)
-            cv2.createTrackbar('min_radius', 'beamer', Ball.min_radius, 70, nothing)
-            cv2.createTrackbar('max_radius', 'beamer', Ball.max_radius, 150, nothing)
+        # if settings.debug:
+        #     cv2.createTrackbar('grad_val', 'beamer', Ball.grad_val, 200, nothing)
+        #     cv2.createTrackbar('acc_thr', 'beamer', Ball.acc_thr, 200, nothing)
+        #     cv2.createTrackbar('min_dist', 'beamer', Ball.min_dist, 300, nothing)
+        #     cv2.createTrackbar('dp', 'beamer', Ball.dp, 15, nothing)
+        #     cv2.createTrackbar('min_radius', 'beamer', Ball.min_radius, 70, nothing)
+        #     cv2.createTrackbar('max_radius', 'beamer', Ball.max_radius, 150, nothing)
         # main loop as fps loop
         while True:
             t0 = now()
@@ -200,7 +200,7 @@ class TableSim:
         self.beamer.draw_objects(self.beamer.objects, self.beamer.outPict,
                                  self.beamer.offset_x, self.beamer.offset_y,
                                  self.beamer.ppm_x, self.beamer.ppm_y)
-        index = message["index"]
+        index = int(message["index"])
         self.display_q.put([index, self.beamer.get_image()])
         debug('handle_bt: index: {}:  {}ms'.format(index, dt(t0, now())), settings.DEBUG)
         self.bluetooth.send(json.dumps({index: 1}))

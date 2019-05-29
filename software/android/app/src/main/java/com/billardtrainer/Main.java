@@ -209,18 +209,23 @@ public class Main extends AppCompatActivity {
         super.onPause();
     }
 
+    int index = -1;
+
     private void handle_bt_message(String message) {
         if (message.contains("done")) {
             Log.v("main", "device ready");
             handler.sendEmptyMessage(DEVICE_READY);
             return;
         }
+        Log.v(TAG, message);
         if (message.contains("balls")) {
             ballsOnTable.clear();
             JSONObject j;
             try {
                 j = new JSONObject(message);
                 JSONObject balls = j.getJSONObject("balls");
+                index = j.getInt("index");
+                Log.d(TAG, "index = " + index);
                 Iterator<String> iter = balls.keys();
                 while (iter.hasNext()) {
                     String key = iter.next();
@@ -701,6 +706,7 @@ public class Main extends AppCompatActivity {
         try {
             for (Ball ball : ballsOnTable)
                 ball.addJSON(balls, lines, ghosts);
+            all.put("index", index);
             if (balls.length() > 0)
                 all.put("balls", balls);
             if (lines.length() > 0)

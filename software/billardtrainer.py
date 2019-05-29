@@ -45,8 +45,8 @@ if args.push_to_pi:
             while e > 0 and attempts < 5:
                 # e = os.system('pscp -pw pi ../{} pi@raspberrypi:/home/pi/billardtrainer/{}'
                 #              .format(diff.b_path, diff.b_path))
-                e = os.system('pscp -pw {} ../{} pi@{}:/home/pi/billardtrainer/{}'
-                              .format(settings.pw, diff.b_path, settings.ip, diff.b_path))
+                e = os.system('pscp -pw {} ../{} pi@{}:/home/pi/{}/{}'
+                              .format(settings.pw, diff.b_path, settings.ip, settings.folder, diff.b_path))
                 if e > 0:
                     print('retrying')
                 if attempts == 5:

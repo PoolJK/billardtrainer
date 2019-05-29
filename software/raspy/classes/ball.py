@@ -51,20 +51,20 @@ class Ball:
 
     @staticmethod
     def find(image, offs_x=0, offs_y=0, ppm_x=1, ppm_y=1, scale=1):
-        if settings.debug:
-            grad_val = max(cv2.getTrackbarPos('grad_val', 'beamer'), 1)
-            acc_thr = max(cv2.getTrackbarPos('acc_thr', 'beamer'), 1)
-            dp = max(cv2.getTrackbarPos('dp', 'beamer'), 1)
-            min_dist = max(cv2.getTrackbarPos('min_dist', 'beamer'), 1)
-            min_radius = int(cv2.getTrackbarPos('min_radius', 'beamer') / scale)
-            max_radius = int(cv2.getTrackbarPos('max_radius', 'beamer') / scale)
-        else:
-            grad_val = Ball.grad_val
-            acc_thr = Ball.acc_thr
-            dp = Ball.dp
-            min_dist = Ball.min_dist
-            min_radius = Ball.min_radius
-            max_radius = Ball.max_radius
+        # if settings.debug:
+        #     grad_val = max(cv2.getTrackbarPos('grad_val', 'beamer'), 1)
+        #     acc_thr = max(cv2.getTrackbarPos('acc_thr', 'beamer'), 1)
+        #     dp = max(cv2.getTrackbarPos('dp', 'beamer'), 1)
+        #     min_dist = max(cv2.getTrackbarPos('min_dist', 'beamer'), 1)
+        #     min_radius = int(cv2.getTrackbarPos('min_radius', 'beamer') / scale)
+        #     max_radius = int(cv2.getTrackbarPos('max_radius', 'beamer') / scale)
+        # else:
+        grad_val = Ball.grad_val
+        acc_thr = Ball.acc_thr
+        dp = Ball.dp
+        min_dist = Ball.min_dist
+        min_radius = Ball.min_radius
+        max_radius = Ball.max_radius
         # create gray image
         gray = cv2.medianBlur(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY), 5)
         # find circles in image
