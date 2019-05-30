@@ -19,7 +19,6 @@ class Detection:
         t.start()
 
     def detect(self, index, image):
-        debug('detection: queued index ' + str(index), settings.VERBOSE)
         t0 = now()
         # try smaller image for faster detection
         scale = 1
@@ -29,8 +28,7 @@ class Detection:
         # do some stuff then add a message to the queue if anything is found
         balls = Ball.find(image, self.camera.offset_x, self.camera.offset_y,
                           self.camera.ppm_x, self.camera.ppm_y, scale)
-        debug('detect: balls: ' + str(balls), settings.VERBOSE)
         if balls is not None:
             self.output_q.put([index, balls])
         d = dt(t0, now())
-        debug('detection thread time: {:3d}ms {} balls added'.format(d, len(balls) if balls is not None else 0), settings.TIMING)
+        debug('detection: index: {}: {:3d}ms   {} balls added'.format(index, d, len(balls) if balls is not None else 0), settings.DEBUG)

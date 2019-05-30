@@ -19,6 +19,8 @@ cl_parser.add_argument('-pc', dest='pc_test', help='for testing on pc',
                        action='store_true', default=False)
 cl_parser.add_argument('-d', '--debug', dest='debug', help='show more debug output',
                        action='store_true', default=False)
+cl_parser.add_argument('-l', '--level', dest='debug_level', help='set debuglevel',
+                       default=settings.ERROR)
 cl_parser.add_argument('-push', '--push-to-pi', dest='push_to_pi', help='push sources to pi',
                        action='store_true', default=False)
 cl_parser.add_argument('-mir', '--mirror', dest='mirror', help='mirror input', action='store_true', required=False)
@@ -74,6 +76,7 @@ if args.push_to_pi:
 
 settings.on_pi = cv2.getVersionMajor() < 4
 settings.debug = args.debug
+settings.debug_level = int(args.debug_level)
 settings.simulate = args.simulate
 
 # on the pi try to catch all errors

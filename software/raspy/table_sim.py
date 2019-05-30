@@ -1,5 +1,6 @@
 import json
 import queue
+import statistics
 import traceback
 from json import JSONDecodeError
 from queue import Queue
@@ -35,22 +36,25 @@ class TableSim:
     camera_rotation = 90
     camera_ppm_x = camera_resolution[1] / camera_real_size[0]
     camera_ppm_y = camera_resolution[0] / camera_real_size[1]
-
+    # beamer upper left corner
     test_ball_1 = Ball(beamer_offset[0] + 30,
                        beamer_offset[1] + 30,
                        color=ball_color(0))
+    # beamer lower right corner
     test_ball_2 = Ball(beamer_offset[0] + beamer_real_size[0] - 30,
                        beamer_offset[1] + beamer_real_size[1] - 30,
                        color=ball_color(0))
+    # center of table
     test_ball_3 = Ball(1778 / 2, 3556 / 2, color=ball_color(0), text='blue')
 
     def __init__(self):
+        self.queue_size = 10
         self.table_src = cv2.resize(cv2.imread('resources/table.jpg'), self.table_size)
-        if not settings.on_pi or settings.debug:
+        if settings.show_table:
             cv2.namedWindow('table_sim', cv2.WINDOW_NORMAL)
             cv2.setMouseCallback('table_sim', self.mouse_callback, None)
         self.key = 0
-        self.display_q = Queue(10)
+        self.display_q = Queue(self.queue_size)
         self.bluetooth = BT()
         self.camera = Camera(
             resolution_x=self.camera_resolution[0],
@@ -70,20 +74,21 @@ class TableSim:
             ppm_y=self.beamer_ppm_y,
             rotation=self.beamer_rotation
         )
-        self.frames = {i: "" for i in range(10)}
-        self.detection = Detection(self.camera, self.beamer, Queue(10))
+        self.frames = {i: "" for i in range(self.queue_size)}
+        self.detection = Detection(self.camera, self.beamer, Queue(self.queue_size))
+        self.measured_fps = []
 
     def run_table_sim(self):
         # test balls:
-        self.beamer.add_visual_item(self.test_ball_1)  # @beamer(0,0)
-        self.beamer.add_visual_item(self.test_ball_2)  # @beamer(w,h)
-        self.beamer.add_visual_item(self.test_ball_3)  # @tablecenter
+        self.beamer.add_visual_item(self.test_ball_1)
+        self.beamer.add_visual_item(self.test_ball_2)
+        self.beamer.add_visual_item(self.test_ball_3)
         # debug: add spot markers
         self.beamer.add_visual_item(Cross(889, 3232, 30, ball_color(1)))  # black spot
         self.beamer.add_visual_item(Cross(889, 2667, 30, ball_color(1)))  # pink spot
-        self.beamer.draw_objects(self.beamer.objects, self.beamer.outPict,
-                                 self.beamer.offset_x, self.beamer.offset_y,
-                                 self.beamer.ppm_x, self.beamer.ppm_y)
+        Beamer.draw_objects(self.beamer.objects, self.beamer.outPict,
+                            self.beamer.offset_x, self.beamer.offset_y,
+                            self.beamer.ppm_x, self.beamer.ppm_y)
         # self.beamer.hide()
         # if settings.debug:
         #     cv2.createTrackbar('grad_val', 'beamer', Ball.grad_val, 200, nothing)
@@ -93,75 +98,80 @@ class TableSim:
         #     cv2.createTrackbar('min_radius', 'beamer', Ball.min_radius, 70, nothing)
         #     cv2.createTrackbar('max_radius', 'beamer', Ball.max_radius, 150, nothing)
         # main loop as fps loop
+        t_last_fps = now()
         while True:
             t0 = now()
+            # queue sizes
             cam_q = self.camera.output_q.qsize()
             det_q = self.detection.output_q.qsize()
             bt_q = self.bluetooth.output_q.qsize()
             disp_q = self.display_q.qsize()
-
-            try:
-                index, beamer_image = self.display_q.get_nowait()
-                if settings.show_table:
-                    self.show_table(index, self.frames[index], beamer_image)
-                else:
-                    Beamer.show_image(beamer_image, self.beamer.rotation)
-                self.frames[index] = ""
-                continue
-            except queue.Empty:
-                pass
+            # number of input frames
+            n = 0
+            for i in range(10):
+                if self.frames[i] is not '':
+                    n += 1
+            # process message from bluetooth queue
             try:
                 objects = self.bluetooth.output_q.get_nowait()
+                # no index, because bluetooth message is returned as json
                 t = Thread(target=self.handle_bt_message, args=[objects])
                 t.daemon = True
                 t.start()
-                continue
-            except queue.Empty:
+            except queue.Empty:  # bluetooth queue empty
                 pass
+            # process balls from detection queue
             try:
                 index, balls = self.detection.output_q.get_nowait()
                 t = Thread(target=self.handle_dt_message, args=[index, balls])
                 t.daemon = True
                 t.start()
-                continue
-            except queue.Empty:
+            except queue.Empty:  # detection queue empty
                 pass
+            # get next available frame index:
             i = 0
             while i < 10:
                 if self.frames[i] is "":
                     break
                 i += 1
+            # if the frame array is not full, read a frame into it and start detection on it
             if i < 10:
                 try:
                     self.frames[i] = self.camera.output_q.get_nowait()
-                    if self.frames[i] is 0:
-                        print('wtf')
-                        wait(10000)
-                    else:
-                        self.detection.queue(i, self.frames[i])
-                except queue.Empty:
+                    self.detection.queue(i, self.frames[i])
+                except queue.Empty:  # camera queue empty
                     pass
-            main_loop = dt(t0, now())
-            # if main_loop > 0:
-            n = 0
-            for i in range(10):
-                if self.frames[i] is not '':
-                    n += 1
-            debug('{}frames: {}   cam_q: {}   det_q: {}   bt_q: {}   disp_q: {}'.format(
-                'loop: {:2d}ms'.format(main_loop) if settings.debug_level >= settings.TIMING else '',
-                n, cam_q, det_q, bt_q, disp_q), settings.DEBUG)
+            # display beamer image (from display queue)
+            try:
+                index, beamer_image = self.display_q.get_nowait()
+                self.measured_fps.append(1000 / dt(t_last_fps, t0))
+                if len(self.measured_fps) > 5:
+                    self.measured_fps.pop(0)
+                t_last_fps = t0
+                fps = statistics.mean(self.measured_fps)
+                cv2.putText(beamer_image, '@{:2.1f}fps'.format(fps),
+                            (20, self.beamer.resolution_y - 20), cv2.FONT_HERSHEY_COMPLEX,
+                            3, (255, 255, 255), 5)
+                debug('@{:2.1f}fps (~{:.0f}ms)   frames: {}   cam_q: {}   det_q: {}   bt_q: {}   disp_q: {}'.format(
+                    fps, 1000 / fps, n, cam_q, det_q, bt_q, disp_q), settings.DEBUG)
+                Beamer.show_image(beamer_image, self.beamer.rotation)
+                if settings.show_table:
+                    self.show_table(index, self.frames[index], beamer_image)
+                self.frames[index] = ""
+            except queue.Empty:  # display queue empty
+                pass
             # wait 40ms max:
-            self.key = cv2.waitKey(max(40 - main_loop, 1)) & 0xFF
+            self.key = cv2.waitKey(max(40 - dt(t0, now()), 1)) & 0xFF
             # wait for keypressed:
             # self.key = cv2.waitKey(0) & 0xFF
             if self.key == ord('q') or self.key == 27:
                 break
         cv2.destroyAllWindows()
+        self.camera.stop()
         self.bluetooth.stop()
 
-    def handle_dt_message(self, index, balls):
-        t0 = now()
-        debug('handle_dt_message', settings.VERBOSE)
+    @staticmethod
+    def get_json_from_balls(index, balls):
         json_array = {}
         ball_id = 0
         for ball in balls:
@@ -169,13 +179,28 @@ class TableSim:
             ball_id += 1
         json_string = json.dumps({"index": index, "balls": json_array})
         debug(json_string, settings.VERBOSE)
-        if settings.simulate:
-            self.bluetooth.output_q.put(json_string)
-        else:
+        return json_string
+
+    def handle_dt_message(self, index, balls):
+        """
+        Handle detection output
+        :param index: index of input frame
+        :param balls: found balls (always != None)
+        """
+        t0 = now()
+        debug('handle_dt_message', settings.VERBOSE)
+        json_string = self.get_json_from_balls(index, balls)
+        if self.bluetooth.is_connected:
             self.bluetooth.send(json_string)
-        debug('handle_dt: {:2d}ms'.format(dt(t0, now())), settings.TIMING)
+        else:
+            self.bluetooth.output_q.put(json_string)
+        debug('handle_dt: index: {}: {:2d}ms'.format(index, dt(t0, now())), settings.TIMING)
 
     def handle_bt_message(self, objects):
+        """
+        Handle bluetooth message from App
+        :param objects: a json string
+        """
         t0 = now()
         debug('handle_bt_message: \"{}\"'.format(objects), settings.VERBOSE)
         self.beamer.clear_objects()
@@ -197,18 +222,19 @@ class TableSim:
         if 'ghosts' in message:
             for ghost_id, ghost in message["ghosts"].items():
                 self.beamer.add_visual_item(Ghost(ghost['x'], ghost['y']))
-        self.beamer.draw_objects(self.beamer.objects, self.beamer.outPict,
-                                 self.beamer.offset_x, self.beamer.offset_y,
-                                 self.beamer.ppm_x, self.beamer.ppm_y)
+        Beamer.draw_objects(self.beamer.objects, self.beamer.outPict,
+                            self.beamer.offset_x, self.beamer.offset_y,
+                            self.beamer.ppm_x, self.beamer.ppm_y)
         index = int(message["index"])
+        # put image in display queue
         self.display_q.put([index, self.beamer.get_image()])
         debug('handle_bt: index: {}:  {}ms'.format(index, dt(t0, now())), settings.DEBUG)
+        # send status 'done' to bluetooth
         self.bluetooth.send(json.dumps({index: 1}))
 
     def show_table(self, index, camera_image, beamer_image):
         t0 = now()
         cv2.imshow('table_sim', self.overlay_beamer(beamer_image, self.overlay_camera(camera_image, self.table_src)))
-        Beamer.show_image(beamer_image, self.beamer.rotation)
         cv2.resizeWindow('table_sim', 540, 960)
         debug('show_table: index: {}:  {:3d}ms'.format(index, dt(t0, now())), settings.DEBUG)
 

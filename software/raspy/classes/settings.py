@@ -8,13 +8,18 @@ DEBUG = 2
 INFO = 3
 WARN = 4
 ERROR = 5
-ip = '192.168.43.187'
-folder = 'bt2/Billardtrainer'
-# ip = '192.168.0.94'
-pw = 'keins01'
+# @the club:
+# ip = '192.168.43.187'
+# folder = 'bt2/Billardtrainer'
+# pw = 'keins01'
+# @home:
+ip = '192.168.0.94'
+folder = 'billardtrainer'
+pw = 'pi'
+# default debugging values:
 on_pi = False
 debug = True
 debug_level = DEBUG
 # simulate bluetooth during testing
 simulate = False
-show_table = False
+show_table = True

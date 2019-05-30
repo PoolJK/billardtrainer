@@ -26,6 +26,7 @@ class BT:
         self.send_thread.daemon = True
         self.exit_requested = False
         self.has_bluetooth = True
+        self.is_connected = False
 
     def send(self, data):
         try:
@@ -60,16 +61,18 @@ class BT:
                                   profiles=[SERIAL_PORT_PROFILE]
                                   )
             except OSError:
+                self.has_bluetooth = False
+                self.exit_requested = True
                 # so far this happens when there is no bluetooth hardware present, so just exit the thread
                 wait(1000)
                 # traceback.print_exc()
                 wait(500)
                 debug('seems like u got no colored teeth')
-                self.exit_requested = True
                 exit(0)
             print("Waiting for connection")
             self.client, client_info = self.server.accept()
             print("accepted connection from ", client_info[0])
+            self.is_connected = True
             try:
                 # initial read
                 data = self.client.recv(1024)
@@ -88,6 +91,7 @@ class BT:
                     data = self.client.recv(1024)
             except IOError as e:
                 print('connection lost', e)
+            self.is_connected = False
             self.client.close()
             self.server.close()
             if self.exit_requested:
@@ -103,7 +107,7 @@ class BT:
             while self.client is None:
                 if self.exit_requested:
                     exit(0)
-                debug('send_queue: not connected, sleeping 1s. Q.size: {}'.format(self.send_queue.qsize() + 1))
+                debug('send_queue: not connected, sleeping 1s. Q.size: {}'.format(self.send_queue.qsize() + 1), settings.VERBOSE)
                 wait(1000)
             self.client.send("%s\n" % data)
 
@@ -117,3 +121,4 @@ class BT:
 
     def stop(self):
         self.exit_requested = True
+        wait(100)

@@ -40,14 +40,16 @@ class Camera:
         self.t = Thread(target=self.update, args=())
         self.t.daemon = True
         self.t.start()
+        self.stopped = False
 
     def update(self):
         # development @home: read images from resources/detection_input instead of camera
         path = 'resources/experimental/detection_input'
         if settings.on_pi and not settings.simulate:
-            i = 0
             for frame in self.camera.capture_continuous(self.rawCapture, format="bgr",
                                                         use_video_port=True):
+                if self.stopped:
+                    exit(0)
                 t0 = now()
                 frame.array = rotate(frame.array, -self.rotation)
                 self.output_q.put(frame.array)
@@ -55,6 +57,7 @@ class Camera:
                 t_src = dt(t0, now())
                 if settings.debug:
                     debug('camera: queued src in {:2d}ms'.format(t_src), 0)
+                    # i = 0
                     # while os.path.isfile('{}/img{:02}.jpg'.format(path, i)):
                     #     i += 1
                     # cv2.imwrite('{}/img{:02}.jpg'.format(path, i), frame.array)
@@ -62,8 +65,13 @@ class Camera:
         else:
             files = os.listdir(path)
             while True:
+                if self.stopped:
+                    exit(0)
                 for file in files:
                     t0 = now()
                     self.output_q.put(cv2.imread('{}/{}'.format(path, file)))
                     debug('camera: queued {}/{} in {:2d}ms'.format(path, file, dt(t0, now())), 0)
 
+    def stop(self):
+        self.stopped = True
+        wait(100)
