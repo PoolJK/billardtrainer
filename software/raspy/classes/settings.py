@@ -13,7 +13,7 @@ ERROR = 5
 # folder = 'bt2/Billardtrainer'
 # pw = 'keins01'
 # @home:
-ip = '192.168.0.94'
+ip = '192.168.0.136'
 folder = 'billardtrainer'
 pw = 'pi'
 # default debugging values:
@@ -21,5 +21,5 @@ on_pi = False
 debug = True
 debug_level = DEBUG
 # simulate bluetooth during testing
-simulate = False
-show_table = True
+simulate = True
+show_table = False

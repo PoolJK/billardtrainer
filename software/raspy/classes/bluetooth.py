@@ -83,11 +83,14 @@ class BT:
                     data = str(data).lstrip('b').strip('\'')
                     # split message in case two lines are received at once
                     data = data.split('\\x04')
+                    last_line = None
                     for line in data:
                         if line != '':
                             line = line.strip(chr(4)).strip('\\x04')
-                            self.parse_line_to_queue(line)
-                            debug('bluetooth: queued line: \"{}\" in {}ms'.format(line, dt(t0, now())), 0)
+                            if line != last_line:
+                                self.parse_line_to_queue(line)
+                                last_line = line
+                                debug('bluetooth: queued line: \"{}\" in {}ms'.format(line, dt(t0, now())), 0)
                     data = self.client.recv(1024)
             except IOError as e:
                 print('connection lost', e)
@@ -107,7 +110,8 @@ class BT:
             while self.client is None:
                 if self.exit_requested:
                     exit(0)
-                debug('send_queue: not connected, sleeping 1s. Q.size: {}'.format(self.send_queue.qsize() + 1), settings.VERBOSE)
+                debug('send_queue: not connected, sleeping 1s. Q.size: {}'.format(self.send_queue.qsize() + 1),
+                      settings.VERBOSE)
                 wait(1000)
             self.client.send("%s\n" % data)
 

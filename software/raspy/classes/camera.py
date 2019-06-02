@@ -37,10 +37,10 @@ class Camera:
             self.camera.awb_mode = 'off'
             self.camera.awb_gains = g
             self.rawCapture = PiRGBArray(self.camera, size=(self.resolution_x, self.resolution_y))
+        self.stopped = False
         self.t = Thread(target=self.update, args=())
         self.t.daemon = True
         self.t.start()
-        self.stopped = False
 
     def update(self):
         # development @home: read images from resources/detection_input instead of camera

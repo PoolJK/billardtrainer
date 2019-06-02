@@ -56,35 +56,16 @@ class Beamer:
             cv2.drawMarker(out_pict, (out_pict.shape[1] // 2,
                                       out_pict.shape[0] // 2),
                            [0, 165, 255], cv2.MARKER_CROSS, 20, 5)
+        return np.copy(out_pict)
 
     @staticmethod
     def show_image(image, rotation):
-        if settings.on_pi:
+        if settings.on_pi and not settings.simulate:
             dst = rotate(image, rotation)
             cv2.imshow('beamer', dst)
-        if not settings.on_pi:
+        else:
             cv2.imshow("beamer", image)
             cv2.resizeWindow('beamer', 360, 640)
-
-    def get_image(self):
-        """
-        Get current outPict
-        """
-        return self.outPict
-
-    @staticmethod
-    def hide():
-        cv2.destroyWindow('beamer')
-
-    def clear_objects(self):
-        self.objects.clear()
-
-    @staticmethod
-    def close_window():
-        """
-        Close full size window to show raspy desktop etc.
-        """
-        cv2.destroyWindow("beamer")
 
     def add_visual_item(self, visual_item):
         """

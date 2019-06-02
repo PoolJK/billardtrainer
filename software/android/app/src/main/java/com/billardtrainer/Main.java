@@ -147,7 +147,7 @@ public class Main extends AppCompatActivity {
                         case BT_SEND:
                             if (device_busy) {
                                 Log.v("Handler", "device busy");
-                                // break;
+                                break;
                             }
                             device_busy = true;
                             if (btService != null && btService.isConnected())
@@ -698,6 +698,10 @@ public class Main extends AppCompatActivity {
 
     @SuppressLint("DefaultLocale")
     private String getTableAsJSONString() {
+        if (index == -1) {
+            Log.e(TAG, "index = -1");
+            return "";
+        }
         double t0 = now();
         JSONObject balls = new JSONObject();
         JSONObject lines = new JSONObject();
@@ -707,12 +711,9 @@ public class Main extends AppCompatActivity {
             for (Ball ball : ballsOnTable)
                 ball.addJSON(balls, lines, ghosts);
             all.put("index", index);
-            if (balls.length() > 0)
-                all.put("balls", balls);
-            if (lines.length() > 0)
-                all.put("lines", lines);
-            if (ghosts.length() > 0)
-                all.put("ghosts", ghosts);
+            all.put("balls", balls);
+            all.put("lines", lines);
+            all.put("ghosts", ghosts);
         } catch (JSONException e) {
             e.printStackTrace();
             return "";
