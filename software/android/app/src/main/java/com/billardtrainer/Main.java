@@ -338,7 +338,7 @@ public class Main extends AppCompatActivity {
 //    }
 
     @SuppressWarnings({"unused", "SameParameterValue"})
-    void calc(View view) {
+    public void calc(View view) {
         Vec3 pock;
         Ball b, btp;
         Vec3 contactPoint, a;
