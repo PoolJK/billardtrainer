@@ -36,15 +36,11 @@ class Beamer:
         # create black image to show objects in
         self.outPict = np.zeros((self.resolution_y, self.resolution_x, 3), np.uint8)
         debug('beamer offset(x,y)=({:.2f}, {:.2f}) ppmx={:.2f} ppmy={:.2f}'.format(
-            self.offset_x, self.offset_y, self.ppm_x, self.ppm_y))
+            self.offset_x, self.offset_y, self.ppm_x, self.ppm_y), settings.VERBOSE)
         # create window for beamer output (height, width, dimension for numpy array)
         cv2.namedWindow("beamer", cv2.WINDOW_NORMAL)
-        if cv2.getVersionMajor() < 4:
-            print('on raspy')
-            if not settings.show_table:
-                cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-        else:
-            print('on pc')
+        if cv2.getVersionMajor() < 4 and not settings.show_table:
+            cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
 
     @staticmethod
     def draw_objects(objects, out_pict, offset_x, offset_y, ppm_x, ppm_y):
@@ -66,6 +62,9 @@ class Beamer:
         else:
             cv2.imshow("beamer", image)
             cv2.resizeWindow('beamer', 360, 640)
+
+    def get_image(self):
+        return self.outPict
 
     def add_visual_item(self, visual_item):
         """

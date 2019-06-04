@@ -7,7 +7,7 @@ class Ball:
     Parameters and functions for a billiard ball
     """
 
-    def __init__(self, x, y, radius=26, color=None, text=None):
+    def __init__(self, x, y, radius=26, color=None, ball_id=None):
         """
         Generate new ball
         :param x: x-position of center in mm
@@ -21,7 +21,7 @@ class Ball:
         self.y = y
         self.color = color
         self.radius = radius
-        self.text = text
+        self.ball_id = ball_id
 
     def draw(self, image, offset_x, offset_y, ppm_x, ppm_y) -> None:
         screen_x = int((self.x - offset_x) * ppm_x)
@@ -32,14 +32,13 @@ class Ball:
         #            int(self.radius * ppm_x), self.color, -1)
         # circle outline white
         cv2.circle(image, (screen_x, screen_y),
-                   int((self.radius + 10) * ppm_x), [255, 255, 255], 5)
+                   int(self.radius * ppm_x), [255, 255, 255], 5)
         # draw mid point for debugging
-        if settings.debug:
-            cv2.drawMarker(image, (screen_x, screen_y),
-                           [1 - v for v in self.color], cv2.MARKER_CROSS, 10, 1)
-        if self.text is not None:
-            cv2.putText(image, self.text, (screen_x, screen_y),
-                        cv2.FONT_HERSHEY_PLAIN, 3, [1 - v for v in self.color], 5)
+        cv2.drawMarker(image, (screen_x, screen_y),
+                       [255, 255, 255], cv2.MARKER_CROSS, 30, 6)
+        if self.ball_id is not None:
+            cv2.putText(image, "id={}".format(self.ball_id), (screen_x, screen_y),
+                        cv2.FONT_HERSHEY_PLAIN, 6, [0, 0, 255], 5)
 
     # HoughCircles parameters
     grad_val = 65
@@ -62,9 +61,21 @@ class Ball:
                                    param2=acc_thr, minRadius=min_radius, maxRadius=max_radius)
         if circles is not None:
             balls = []
+            ball_id = 1
             for circle in circles[0, :]:
-                balls.append(Ball(circle[0] / (scale * ppm_x) + offs_x, circle[1] / (scale * ppm_y) + offs_y))
-                debug('ball found: {}'.format(balls[len(balls) - 1]), settings.VERBOSE)
+                # extract roi around center from image
+                r = 10
+                cx = int(circle[0])
+                cy = int(circle[1])
+                tmp = image[cy - r:cy + r + 1, cx - r:cx + r + 1, :]
+                # cv2.imshow('tmp', cv2.resize(tmp, (100, 100)))
+                # convert to hsv to analyze color
+                hsv = cv2.cvtColor(tmp, cv2.COLOR_BGR2HSV)
+                # cv2.imshow('hsv', cv2.resize(hsv, (100, 100)))
+                # cv2.waitKey(0)
+                balls.append(
+                    Ball(circle[0] / (scale * ppm_x) + offs_x, circle[1] / (scale * ppm_y) + offs_y, ball_id=ball_id))
+                ball_id += 1
             return balls
         else:
             return None

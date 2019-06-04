@@ -21,5 +21,5 @@ on_pi = False
 debug = True
 debug_level = DEBUG
 # simulate bluetooth during testing
-simulate = True
-show_table = False
+simulate = False
+show_table = True

@@ -30,7 +30,7 @@ class simThread extends Thread {
      */
     @Override
     public void run() {
-        Log.v(TAG, "simThread started");
+        Log.d(TAG, "simThread started");
         double t0 = now();
         // first timeStep is [0]->"0.0"
         int timestep = 0;
@@ -73,7 +73,7 @@ class simThread extends Thread {
             }
         } while (timestep < 4 && t < timeSteps.get(timeSteps.size() - 1));
         Main.handler.obtainMessage(Main.SIM_RESULT, ballsOnTable).sendToTarget();
-        Log.v(TAG, String.format(Locale.ROOT, "simThread took %.0fms", now() - t0));
+        Log.d(TAG, String.format(Locale.ROOT, "simThread took %.0fms", now() - t0));
     }
 
     /**

@@ -14,10 +14,10 @@ import static com.billardtrainer.Cons.*;
 import static com.billardtrainer.Utils.*;
 
 class Ball {
-    final int value, id;
+    int value, id;
     private int state = 0;
-    private Vec3 V, W, Rot;
-    Vec3 Pos;
+    private Vec3 W, Rot;
+    Vec3 Pos, V;
     private ArrayList<bNode> nodes;
 
     Ball(double x_position, double y_position, int value, int id) {
@@ -54,6 +54,10 @@ class Ball {
             lastNode = node;
         }
         return lastNode.nextNode(t);
+    }
+
+    int nodeCount() {
+        return nodes.size();
     }
 
     void clearNodes() {

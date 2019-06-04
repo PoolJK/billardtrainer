@@ -18,8 +18,8 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_alignParentBottom="true"
-        android:onClick="calc"
-        android:text="calc" />
+        android:onClick="switchBalls"
+        android:text="switch" />
 
     <Button
         android:id="@+id/button3"
@@ -45,10 +45,8 @@
         android:layout_height="wrap_content"
         android:layout_alignParentLeft="true"
         android:layout_above="@id/button4"
-        android:onClick="removeBall"
-        android:text="remove"
-        android:visibility="invisible"
-        tools:visibility="visible" />
+        android:onClick="detect"
+        android:text="detect" />
 
     <Button
         android:id="@+id/button6"

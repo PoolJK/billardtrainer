@@ -262,7 +262,7 @@ class bNode {
         // target behind ballOn
         if (ballOn != null && P0.distanceTo(ballOn.Pos) < P0.distanceTo(target))
             return true;
-        // if no obstructions, return true
+        // assume ball is blocked
         boolean result = true;
         // check against ballsontable
         Ball ball;
@@ -284,6 +284,7 @@ class bNode {
             if (P0.distanceTo(ball.Pos) > P0.distanceTo(target) + 2
                     * ballRadius)
                 continue;
+            // nothing is blocking, so ball has a line:
             result = false;
             break;
         }

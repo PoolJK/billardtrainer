@@ -29,6 +29,9 @@ class BT:
         self.is_connected = False
 
     def send(self, data):
+        if not self.is_connected:
+            debug("bluetooth not connected, can't send", settings.ERROR)
+            return
         try:
             self.send_queue.put_nowait(data)
         except queue.Full:
@@ -79,7 +82,7 @@ class BT:
                 # receiving loop:
                 while True and not self.exit_requested:
                     t0 = now()
-                    debug("bluetooth.py: received \"{}\"".format(data), 0)
+                    debug("bluetooth.py: received \"{}\"".format(data), settings.DEBUG)
                     data = str(data).lstrip('b').strip('\'')
                     # split message in case two lines are received at once
                     data = data.split('\\x04')
@@ -90,7 +93,7 @@ class BT:
                             if line != last_line:
                                 self.parse_line_to_queue(line)
                                 last_line = line
-                                debug('bluetooth: queued line: \"{}\" in {}ms'.format(line, dt(t0, now())), 0)
+                                debug('bluetooth: queued line: \"{}\" in {}ms'.format(line, dt(t0, now())), settings.DEBUG)
                     data = self.client.recv(1024)
             except IOError as e:
                 print('connection lost', e)

@@ -2,6 +2,7 @@
 import argparse
 import os
 import sys
+import traceback
 
 from raspy.classes.utils import *
 from raspy.classes import settings
@@ -28,6 +29,7 @@ cl_parser.add_argument('-test', '--camera-test', dest='camera_test', help='only 
                        action='store_true', default=False)
 cl_parser.add_argument('-p', '--preview', dest='preview', help='only show preview', action='store_true', default=False)
 cl_parser.add_argument('-sim', dest='simulate', help='simulate bt connection', action='store_true', default=False)
+cl_parser.add_argument('-st', dest='show_table', help='show table_sim', action='store_true', default=False)
 args = cl_parser.parse_args()
 
 if args.push_to_pi:
@@ -75,11 +77,14 @@ if args.push_to_pi:
     exit(0)
 
 settings.on_pi = cv2.getVersionMajor() < 4
+debug("{}".format("on pi" if settings.on_pi else "on pc"), settings.DEBUG)
 settings.debug = args.debug
 settings.debug_level = settings.DEBUG if args.debug_level is None else int(args.debug_level)
 settings.simulate = args.simulate
+settings.show_table = args.show_table
 
 # on the pi try to catch all errors
+# noinspection PyBroadException
 try:
     table_sim = TableSim()
     table_sim.run_table_sim()
@@ -87,7 +92,6 @@ except Exception as e:
     # TODO: better way of handling exceptions on the pi
     # wait to be able to read console output on raspberry pi before closing terminal on error:
     if settings.on_pi:
-        print('\nsome error occurred: {}'.format(sys.exc_info()[0]))
-        print(e.args)
-    raise e
+        traceback.print_exc()
+        cv2.waitKey(0)
 exit(0)

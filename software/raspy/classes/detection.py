@@ -22,7 +22,7 @@ class Detection:
         if not self.stopped:
             t0 = now()
             debug('detection: index: {}: started'.format(index), settings.DEBUG)
-            if settings.debug:
+            if settings.debug and settings.show_table:
                 scale = max(cv2.getTrackbarPos('scale', 'beamer') / 10, 0.1)
                 grad_val = max(cv2.getTrackbarPos('grad_val', 'beamer') * scale, 1)
                 acc_thr = max(cv2.getTrackbarPos('acc_thr', 'beamer') * scale, 1)
@@ -38,7 +38,7 @@ class Detection:
                                   1, image, self.camera.offset_x, self.camera.offset_y, self.camera.ppm_x,
                                   self.camera.ppm_y)
             if balls is not None:
-                self.output_q.put([index, balls])
+                self.output_q.put([index, image, balls])
             d = dt(t0, now())
             debug('detection: index: {}: {:3d}ms   {} balls added'
                   .format(index, d, len(balls) if balls is not None else 0), settings.TIMING)
