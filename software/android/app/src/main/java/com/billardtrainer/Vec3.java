@@ -4,7 +4,7 @@ import android.support.annotation.NonNull;
 
 import java.util.Locale;
 
-import static com.billardtrainer.Cons.*;
+import static com.billardtrainer.Constants.*;
 
 /**
  * A 3D-vector class. Mainly data storage, some basic functions.

@@ -5,7 +5,7 @@ import android.os.SystemClock;
 
 import java.util.ArrayList;
 
-import static com.billardtrainer.Cons.*;
+import static com.billardtrainer.Constants.*;
 
 class Utils {
 

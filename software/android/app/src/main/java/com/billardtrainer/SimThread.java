@@ -5,21 +5,21 @@ import android.util.Log;
 import java.util.ArrayList;
 import java.util.Locale;
 
-import static com.billardtrainer.Cons.*;
+import static com.billardtrainer.Constants.*;
 import static com.billardtrainer.Utils.*;
 
-class simThread extends Thread {
+class SimThread extends Thread {
 
-    private static final String TAG = "simThread";
+    private static final String TAG = "SimThread";
 
     private ArrayList<Ball> ballsOnTable;
     private ArrayList<Double> timeSteps;
 
     /**
-     * Initialize a new simThread
+     * Initialize a new SimThread
      * @param ballsOnTable balls on table
      */
-    simThread(ArrayList<Ball> ballsOnTable) {
+    SimThread(ArrayList<Ball> ballsOnTable) {
         this.ballsOnTable = ballsOnTable;
         timeSteps = new ArrayList<>();
         timeSteps.add(0d);
@@ -30,7 +30,7 @@ class simThread extends Thread {
      */
     @Override
     public void run() {
-        Log.d(TAG, "simThread started");
+        Log.d(TAG, "SimThread started");
         double t0 = now();
         // first timeStep is [0]->"0.0"
         int timestep = 0;
@@ -43,7 +43,7 @@ class simThread extends Thread {
             // set new_t to arbitrarily high value (depends on whether using s or ms)
             new_t = 10000;
             for (Ball b : ballsOnTable) {
-                bNode node = b.getNode(t);
+                Node node = b.getNode(t);
                 // if ball is moving at this node
                 if (node.state > STATE_STILL) {
                     Log.v(TAG, "this node: " + node);
@@ -73,7 +73,7 @@ class simThread extends Thread {
             }
         } while (timestep < 4 && t < timeSteps.get(timeSteps.size() - 1));
         Main.handler.obtainMessage(Main.SIM_RESULT, ballsOnTable).sendToTarget();
-        Log.d(TAG, String.format(Locale.ROOT, "simThread took %.0fms", now() - t0));
+        Log.d(TAG, String.format(Locale.ROOT, "SimThread took %.0fms", now() - t0));
     }
 
     /**

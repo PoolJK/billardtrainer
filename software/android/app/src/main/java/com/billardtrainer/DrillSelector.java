@@ -1,10 +1,6 @@
 package com.billardtrainer;
 
 import android.annotation.SuppressLint;
-import android.graphics.Canvas;
-import android.graphics.Color;
-import android.graphics.Paint;
-import android.graphics.RectF;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.FloatingActionButton;
@@ -23,21 +19,15 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.LinearLayout;
 
-import static com.billardtrainer.Cons.DDistance;
-import static com.billardtrainer.Cons.DRadius;
-import static com.billardtrainer.Cons.blackSpot;
-import static com.billardtrainer.Cons.blueSpot;
-import static com.billardtrainer.Cons.brownSpot;
-import static com.billardtrainer.Cons.greenSpot;
-import static com.billardtrainer.Cons.pinkSpot;
-import static com.billardtrainer.Cons.tableLength;
-import static com.billardtrainer.Cons.tableWidth;
-import static com.billardtrainer.Cons.yellowSpot;
-
 public class DrillSelector extends AppCompatActivity
         implements NavigationView.OnNavigationItemSelectedListener, View.OnTouchListener {
 
     private static final String TAG = "DrillSelector";
+    // private final boolean debug = BuildConfig.DEBUG;
+
+    // Bluetooth
+    private static BTService btService;
+    private Drill testDrill;
 
     CustomSurfaceView customSurfaceView = null;
 
@@ -66,12 +56,12 @@ public class DrillSelector extends AppCompatActivity
 //                LinearLayout contentLayout = findViewById(R.id.drill_selector_content);
 //                navigationView.bringToFront();
 //                navigationView.invalidate();
-                drawer.bringChildToFront(navigationView);
+//                drawer.bringChildToFront(navigationView);
 //                customSurfaceView.invalidate();
 //                contentLayout.invalidate();
 //                contentLayout.requestLayout();
-                drawer.invalidate();
-                drawer.requestLayout();
+//                drawer.invalidate();
+//                drawer.requestLayout();
             }
         };
         drawer.addDrawerListener(toggle);
@@ -84,6 +74,7 @@ public class DrillSelector extends AppCompatActivity
         customSurfaceView = new CustomSurfaceView(getBaseContext());
         customSurfaceView.setOnTouchListener(this);
         contentLayout.addView(customSurfaceView);
+        testDrill = new Drill(customSurfaceView);
     }
 
     @Override
@@ -95,7 +86,6 @@ public class DrillSelector extends AppCompatActivity
             super.onBackPressed();
         }
     }
-
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
@@ -158,62 +148,6 @@ public class DrillSelector extends AppCompatActivity
     }
 
     void draw() {
-        Canvas canvas = customSurfaceView.surfaceHolder.lockCanvas();
-        if (canvas == null){
-            Log.d(TAG, "draw(): canvas null");
-            return;
-        }
-        Log.d(TAG, "draw()");
-        // draw Table
-        // cloth
-        Paint paint = customSurfaceView.paint;
-        paint.setStyle(Paint.Style.FILL);
-        //canvas.drawARGB(255, 0, 0, 0);
-        paint.setColor(Color.rgb(0, 140, 20));
-        canvas.drawRect(screenX(0), screenY(0), screenX(tableWidth), screenY(tableLength), paint);
-        // lines
-        paint.setColor(Color.WHITE);
-        paint.setStyle(Paint.Style.STROKE);
-        canvas.drawLine(screenX(0), screenY(DDistance), screenX(tableWidth), screenY(DDistance),
-                paint);
-        canvas.drawArc(new RectF(screenX(yellowSpot.x), screenY(yellowSpot.y - DRadius),
-                        screenX(greenSpot.x), screenY(greenSpot.y + DRadius)), 180, 180, false,
-                paint);
-        // spots
-        canvas.drawLine(screenX(yellowSpot.x), screenY(yellowSpot.y), screenX(yellowSpot.x),
-                screenY(yellowSpot.y + 0.01f), paint);
-        canvas.drawLine(screenX(greenSpot.x), screenY(greenSpot.y), screenX(greenSpot.x),
-                screenY(greenSpot.y + 0.01f), paint);
-        canvas.drawLine(screenX(brownSpot.x), screenY(brownSpot.y - 0.01f),
-                screenX(brownSpot.x), screenY(brownSpot.y + 0.01f), paint);
-        canvas.drawLine(screenX(blueSpot.x - 0.01f), screenY(blueSpot.y),
-                screenX(blueSpot.x + 0.01f), screenY(blueSpot.y), paint);
-        canvas.drawLine(screenX(blueSpot.x), screenY(blueSpot.y - 0.01f), screenX(blueSpot.x),
-                screenY(blueSpot.y + 0.01f), paint);
-        canvas.drawLine(screenX(pinkSpot.x - 0.01f), screenY(pinkSpot.y),
-                screenX(pinkSpot.x + 0.01f), screenY(pinkSpot.y), paint);
-        canvas.drawLine(screenX(pinkSpot.x), screenY(pinkSpot.y - 0.01f), screenX(pinkSpot.x),
-                screenY(pinkSpot.y + 0.01f), paint);
-        canvas.drawLine(screenX(blackSpot.x - 0.01f), screenY(blackSpot.y),
-                screenX(blackSpot.x + 0.01f), screenY(blackSpot.y), paint);
-        canvas.drawLine(screenX(blackSpot.x), screenY(blackSpot.y - 0.01f),
-                screenX(blackSpot.x), screenY(blackSpot.y + 0.01f), paint);
-        customSurfaceView.surfaceHolder.unlockCanvasAndPost(canvas);
-    }
-
-    float screenX(double x) {
-        return (float) (x * customSurfaceView.screenScale + customSurfaceView.screenOffset);
-    }
-
-    float screenY(double y) {
-        return (float) (y * customSurfaceView.screenScale);
-    }
-
-    double rX(float sX) {
-        return (sX - customSurfaceView.screenOffset) / customSurfaceView.screenScale;
-    }
-
-    double rY(float sY) {
-        return (sY - 20) / customSurfaceView.screenScale;
+        testDrill.draw();
     }
 }

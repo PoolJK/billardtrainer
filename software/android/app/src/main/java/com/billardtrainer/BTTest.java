@@ -4,6 +4,7 @@ import java.util.Set;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -63,7 +64,7 @@ public class BTTest extends AppCompatActivity {
         findRaspberry();
         if (mDevice == null)
             mSendBN.setClickable(false);
-        btService = new BTService(new Main.mHandler());
+        btService = new BTService(new Handler());
         btService.start();
     }
 }

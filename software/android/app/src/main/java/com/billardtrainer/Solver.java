@@ -1,6 +1,6 @@
 package com.billardtrainer;
 
-import static com.billardtrainer.Cons.*;
+import static com.billardtrainer.Constants.*;
 
 class Solver {
     /**
@@ -13,7 +13,7 @@ class Solver {
      * @param node_b Second node
      * @return The time of collision or arbitrarily high number [s]
      */
-    static double getCollisionTime(bNode node_a, bNode node_b) {
+    static double getCollisionTime(Node node_a, Node node_b) {
         double fax, fbx, fay, fby;
         double v0a = node_a.V0.length();
         double vc0a = node_a.Vc0.length();

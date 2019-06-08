@@ -13,20 +13,20 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Locale;
 
-import static com.billardtrainer.Cons.*;
+import static com.billardtrainer.Constants.*;
 
-class bNode {
+class Node {
 
-    private static final String TAG = "bNode";
+    private static final String TAG = "Node";
 
     Vec3 P0, V0, Vc0;
     private Ball ball;
     private Vec3 W0;
-    private bNode previousNode;
+    private Node previousNode;
     int state;
     double t, collisionTime, inherentTime;
 
-    bNode(Vec3 p, Vec3 v, Vec3 w, double t, Ball ball, bNode previousNode) {
+    Node(Vec3 p, Vec3 v, Vec3 w, double t, Ball ball, Node previousNode) {
         this.previousNode = previousNode;
         this.ball = ball;
         this.t = t;
@@ -61,17 +61,17 @@ class bNode {
     }
 
     /**
-     * Get a new bNode at time t
+     * Get a new Node at time t
      *
      * @param t Time [ms]
-     * @return New bNode at time t
+     * @return New Node at time t
      */
-    bNode nextNode(double t) {
+    Node nextNode(double t) {
         if (state == STATE_STILL)
-            return new bNode(P0, V0, W0, t, ball, this);
+            return new Node(P0, V0, W0, t, ball, this);
         else
             // TODO: states
-            return new bNode(getPos(t), getVel(t), getW(t), this.t + t, ball, this);
+            return new Node(getPos(t), getVel(t), getW(t), this.t + t, ball, this);
     }
 
     /**
@@ -123,7 +123,7 @@ class bNode {
                     double cT = ball.getNode(t).getCollisionTime(this);
                     if (cT > 0) {
                         collisionTime = cT;
-                        Log.v("bNode", String.format(Locale.ROOT, "balls collide: id1=%d id2=%d coll_t=%.2f", this.ball.id, ball.id, collisionTime));
+                        Log.v("Node", String.format(Locale.ROOT, "balls collide: id1=%d id2=%d coll_t=%.2f", this.ball.id, ball.id, collisionTime));
                     }
                 }
                 break;
@@ -141,7 +141,7 @@ class bNode {
      * @param node The node to check against
      * @return Collision time [s] or -1
      */
-    private double getCollisionTime(bNode node) {
+    private double getCollisionTime(Node node) {
         collisionTime = Solver.getCollisionTime(this, node);
         return collisionTime;
     }
@@ -329,32 +329,32 @@ class bNode {
     }
 
     /**
-     * Draws this bNode as ghost with a line from the previous node, if it is not null
+     * Draws this Node as ghost with a line from the previous node, if it is not null
      *
-     * @param app    Reference to main app to be able to draw in UI
+     * @param surfaceView    Reference to main surfaceView to be able to draw in UI
      * @param paint  Paint to use
      * @param canvas Canvas to draw on
      */
-    void draw(Main app, Paint paint, Canvas canvas) {
+    void draw(CustomSurfaceView surfaceView, Paint paint, Canvas canvas) {
         // ghost outline
         paint.setStyle(Paint.Style.STROKE);
         paint.setColor(Color.WHITE);
-        canvas.drawCircle(app.screenX(P0.x), app.screenY(P0.y),
-                (float) (ballRadius * app.screenScale), paint);
+        canvas.drawCircle(surfaceView.screenX(P0.x), surfaceView.screenY(P0.y),
+                (float) (ballRadius * surfaceView.screenScale), paint);
         if (previousNode != null) {
             // line from previous
             if (previousNode.state == STATE_ROLLING)
-                canvas.drawLine(app.screenX(previousNode.P0.x), app.screenY(previousNode.P0.y),
-                        app.screenX(P0.x), app.screenY(P0.y), paint);
+                canvas.drawLine(surfaceView.screenX(previousNode.P0.x), surfaceView.screenY(previousNode.P0.y),
+                        surfaceView.screenX(P0.x), surfaceView.screenY(P0.y), paint);
             else if (previousNode.state == STATE_SLIDING) {
                 Path path = new Path();
                 Vec3 simStep = previousNode.P0;
-                path.moveTo(app.screenX(simStep.x), app.screenY(simStep.y));
+                path.moveTo(surfaceView.screenX(simStep.x), surfaceView.screenY(simStep.y));
                 for (int i = 0; i < quadSimSteps; i++) {
                     simStep = previousNode.getPos((t - previousNode.t) / quadSimSteps * i);
-                    path.lineTo(app.screenX(simStep.x), app.screenY(simStep.y));
+                    path.lineTo(surfaceView.screenX(simStep.x), surfaceView.screenY(simStep.y));
                 }
-                path.lineTo(app.screenX(P0.x), app.screenY(P0.y));
+                path.lineTo(surfaceView.screenX(P0.x), surfaceView.screenY(P0.y));
                 canvas.drawPath(path, paint);
             }
         }
@@ -387,9 +387,9 @@ class bNode {
     }
 
     /**
-     * String representation of this bNode.
+     * String representation of this Node.
      *
-     * @return String representation of this bNode
+     * @return String representation of this Node
      */
     @NonNull
     @Override

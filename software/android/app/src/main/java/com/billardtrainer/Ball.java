@@ -10,7 +10,7 @@ import android.support.annotation.NonNull;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import static com.billardtrainer.Cons.*;
+import static com.billardtrainer.Constants.*;
 import static com.billardtrainer.Utils.*;
 
 class Ball {
@@ -18,7 +18,7 @@ class Ball {
     private int state = 0;
     private Vec3 V, W, Rot;
     Vec3 Pos;
-    private ArrayList<bNode> nodes;
+    private ArrayList<Node> nodes;
 
     Ball(double x_position, double y_position, int value, int id) {
         // place on table
@@ -45,20 +45,20 @@ class Ball {
     }
 
     private void addNode() {
-        addNode(new bNode(Pos, V, W, 0, this, null));
+        addNode(new Node(Pos, V, W, 0, this, null));
     }
 
-    void addNode(bNode node) {
+    void addNode(Node node) {
         nodes.add(node);
     }
 
-    bNode getNode() {
+    Node getNode() {
         return nodes.get(nodes.size() - 1);
     }
 
-    bNode getNode(double t) {
-        bNode lastNode = nodes.get(0);
-        for (bNode node : nodes) {
+    Node getNode(double t) {
+        Node lastNode = nodes.get(0);
+        for (Node node : nodes) {
             if (node.t == t)
                 return node;
             if (node.t > t)
@@ -78,14 +78,14 @@ class Ball {
     }
 
     @SuppressWarnings("SameParameterValue")
-    void draw(Main app, Paint paint, Canvas canvas) {
+    void draw(CustomSurfaceView surfaceView, Paint paint, Canvas canvas) {
         paint.setStyle(Paint.Style.FILL);
         paint.setColor(getBallColor(value));
-        canvas.drawCircle(app.screenX(Pos.x), app.screenY(Pos.y),
-                (float) (ballRadius * app.screenScale), paint);
+        canvas.drawCircle(surfaceView.screenX(Pos.x), surfaceView.screenY(Pos.y),
+                (float) (ballRadius * surfaceView.screenScale), paint);
 
-        for (bNode node : nodes)
-            node.draw(app, paint, canvas);
+        for (Node node : nodes)
+            node.draw(surfaceView, paint, canvas);
     }
 
     Ball cloneBall() {
@@ -123,7 +123,7 @@ class Ball {
         j.put("y", (int) Pos.y);
         j.put("v", value);
         balls.put(String.format(Locale.ROOT, "%d", id), j);
-        for (bNode node : nodes) {
+        for (Node node : nodes) {
             if (node == getNode(0))
                 continue;
             node.addJSON(ghosts, lines);

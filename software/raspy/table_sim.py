@@ -204,6 +204,7 @@ class TableSim:
                 except BaseException:
                     traceback.print_exc()
                     index = None
+                    self.bluetooth.send("done")
                 debug('handle_bt: index: {}:  {}ms'.format(index, dt(t0, now())), settings.DEBUG)
 
     def get_table_image(self, camera_image, beamer_image):

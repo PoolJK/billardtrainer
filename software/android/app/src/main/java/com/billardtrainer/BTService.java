@@ -12,6 +12,7 @@ import java.util.UUID;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
+import android.os.Handler;
 import android.util.Log;
 
 import static java.lang.String.format;
@@ -38,13 +39,13 @@ class BTService extends Thread {
     private connectThread conT;
     private connectedThread connT;
 
-    private Main.mHandler mainHandler;
+    private Handler mainHandler;
 
     boolean isConnected() {
         return BTState == CONNECTED;
     }
 
-    BTService(Main.mHandler mainHandler) {
+    BTService(Handler mainHandler) {
         last_connect_time = System.currentTimeMillis() - 6000;
         this.mainHandler = mainHandler;
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();

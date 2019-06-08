@@ -10,10 +10,10 @@ import android.view.SurfaceView;
 
 import java.util.Locale;
 
-import static com.billardtrainer.Cons.*;
+import static com.billardtrainer.Constants.*;
 import static java.lang.String.format;
 
-class CustomSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
+public class CustomSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
 
     SurfaceHolder surfaceHolder = null;
     Paint paint = null;
@@ -65,5 +65,21 @@ class CustomSurfaceView extends SurfaceView implements SurfaceHolder.Callback {
     @Override
     public void surfaceDestroyed(SurfaceHolder surfaceHolder) {
         Log.d(TAG, "surfaceDestroyed");
+    }
+
+    float screenX(double x) {
+        return (float) (x * screenScale + screenOffset);
+    }
+
+    float screenY(double y) {
+        return (float) (y * screenScale);
+    }
+
+    double rX(float sX) {
+        return (sX - screenOffset) / screenScale;
+    }
+
+    double rY(float sY) {
+        return (sY - 20) / screenScale;
     }
 }

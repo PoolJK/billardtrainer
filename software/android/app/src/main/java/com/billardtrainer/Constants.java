@@ -1,6 +1,6 @@
 package com.billardtrainer;
 
-class Cons {
+class Constants {
 
     // prog constants
     static final int STATE_STILL = 0;
@@ -33,15 +33,15 @@ class Cons {
     final static double frictionClothRoll = 125; // [mm/s^2]
 
     final static Vec3 yellowSpot = new Vec3(tableWidth / 2 - DRadius,
-            DDistance, Cons.ballRadius);
+            DDistance, Constants.ballRadius);
     final static Vec3 greenSpot = new Vec3(tableWidth / 2 + DRadius,
-            DDistance, Cons.ballRadius);
+            DDistance, Constants.ballRadius);
     final static Vec3 brownSpot = new Vec3(tableWidth / 2, DDistance,
-            Cons.ballRadius);
+            Constants.ballRadius);
     final static Vec3 blueSpot = new Vec3(tableWidth / 2, tableLength / 2,
-            Cons.ballRadius);
+            Constants.ballRadius);
     final static Vec3 pinkSpot = new Vec3(tableWidth / 2, tableLength / 4 * 3,
-            Cons.ballRadius);
+            Constants.ballRadius);
     final static Vec3 blackSpot = new Vec3(tableWidth / 2, tableLength
             - blackDistance, ballRadius);
 
@@ -54,7 +54,7 @@ class Cons {
     final static Vec3 blueRPocket = new Vec3(tableWidth - ballRadius,
             tableLength / 2, ballRadius);
     final static Vec3 blackLPocket = new Vec3(ballRadius, tableLength
-            - ballRadius, Cons.ballRadius);
+            - ballRadius, Constants.ballRadius);
     final static Vec3 blackRPocket = new Vec3(tableWidth - ballRadius,
             tableLength - ballRadius, ballRadius);
 

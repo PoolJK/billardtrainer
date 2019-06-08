@@ -8,19 +8,15 @@ import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
-import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AppCompatActivity;
+import android.support.v4.app.FragmentActivity;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -49,7 +45,8 @@ import static com.billardtrainer.Utils.getBallFromPosition;
 import static com.billardtrainer.Utils.now;
 import static java.lang.String.format;
 
-public class Main extends AppCompatActivity {
+@SuppressLint("Registered")
+public class Drill extends FragmentActivity {
     // Debug
     private final String TAG = "Main";
     // private final boolean debug = BuildConfig.DEBUG;
@@ -68,7 +65,7 @@ public class Main extends AppCompatActivity {
     static final int SIM_RESULT = 7;
     static final int CALC = 8;
 
-    private static ArrayList<Ball> ballsOnTable;
+    private static ArrayList<Ball> ballsOnTable = new ArrayList<>();
     private static Ball activeBall;
     private static int currentShot = -1;
 
@@ -78,35 +75,24 @@ public class Main extends AppCompatActivity {
     private static ArrayList<Shot> possibleShots;
     static boolean sim_running = false, drawing = false, calcing = false;
 
-    private static CustomSurfaceView surfaceView;
     private static boolean aiming;
     private Button aimButton;
+    CustomSurfaceView surfaceView;
 
-    @SuppressLint({"HandlerLeak", "SetTextI18n", "ClickableViewAccessibility"})
-    @Override
-    protected void onCreate(Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-        setContentView(R.layout.main);
-
-        // hide the title bar
-        ActionBar a = getSupportActionBar();
-        if (a != null)
-            a.hide();
-        // make app fullscreen
-        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
-
-        RelativeLayout contentLayout = findViewById(R.id.linlay);
-        surfaceView = new CustomSurfaceView(getBaseContext());
+    @SuppressLint({"ClickableViewAccessibility", "HandlerLeak", "SetTextI18n"})
+    Drill(CustomSurfaceView surfaceView) {
         surfaceView.setOnTouchListener(new canvasOnTouchListener());
-        contentLayout.addView(surfaceView, 0);
+        this.surfaceView = surfaceView;
 
         activeBallView = findViewById(R.id.active_ball_view);
         activeBallView.setText("Cueball");
         aimButton = findViewById(R.id.button3);
         aimButton.setText(getString(R.string.aimMode_move));
-        if (ballsOnTable == null) {
+
+        if (ballsOnTable == null)
             ballsOnTable = new ArrayList<>();
-        }
+        initTable();
+        handler.sendEmptyMessage(CALC);
         if (handler == null) {
             handler = new Handler() {
                 private boolean device_busy = false;
@@ -137,6 +123,7 @@ public class Main extends AppCompatActivity {
                             break;
                         case BT_SEND:
                             if (device_busy) {
+                                toast("device busy");
                                 Log.v("Handler", "device busy");
                                 break;
                             }
@@ -167,7 +154,6 @@ public class Main extends AppCompatActivity {
                 }
             };
         }
-
         if (possibleShots == null)
             possibleShots = new ArrayList<>();
     }
@@ -183,8 +169,6 @@ public class Main extends AppCompatActivity {
             btService = new BTService(handler);
         }
         btService.start();
-        initTable();
-        handler.sendEmptyMessage(CALC);
     }
 
     @Override
@@ -303,7 +287,6 @@ public class Main extends AppCompatActivity {
         Vec3 contactPoint, a;
         if (ballsOnTable.isEmpty()) {
             Log.d(TAG, "ballsOnTable empty");
-            calcing = false;
             handler.obtainMessage(TOAST_MESSAGE, "ballsOnTable empty").sendToTarget();
             return;
         }
@@ -317,6 +300,10 @@ public class Main extends AppCompatActivity {
                     break;
                 }
         // calculate possible shots
+        btp = null;
+        if (currentShot > -1) {
+            btp = possibleShots.get(currentShot).ballToPot;
+        }
         possibleShots.clear();
         currentShot = -1;
         for (int bi = 0; bi < ballsOnTable.size(); bi++) {
@@ -356,6 +343,9 @@ public class Main extends AppCompatActivity {
                 }
                 possibleShots.add(new Shot(ballsOnTable, contactPoint, pocket, b));
                 Log.d(TAG, format("shot to %s added", pocket.toString()));
+                // try to select similar shot
+                if (b == btp)
+                    currentShot = possibleShots.size() - 1;
             }
         }
         if (!possibleShots.isEmpty()) {
@@ -370,17 +360,19 @@ public class Main extends AppCompatActivity {
         } else {
             // no available shot
             currentShot = -1;
-            Log.d(TAG, "no shot found");
+            Log.d(TAG, "no shot found, trying once more");
         }
         // startSim(null);
         calcing = false;
         Log.d(TAG, format("calc() finished in %dms", System.currentTimeMillis() - t0));
         draw();
+        //Log.d(TAG, format("calc() finished in %dms, calling handler: draw()", System.currentTimeMillis() - t0));
+        //handler.sendEmptyMessage(DRAW);
     }
 
     public void resetBalls(View view) {
         initTable();
-        calc(view);
+        startSim(view);
     }
 
     public void aimSwitch(View view) {
@@ -399,8 +391,9 @@ public class Main extends AppCompatActivity {
         else {
             int old = currentShot;
             currentShot = currentShot < possibleShots.size() - 1 ? currentShot + 1 : 0;
+            handler.obtainMessage(TOAST_MESSAGE, "old = " + old + " new = " + currentShot).sendToTarget();
             Log.d(TAG, "old = " + old + " new = " + currentShot);
-            draw();
+            handler.sendEmptyMessage(DRAW);
         }
     }
 
@@ -482,6 +475,7 @@ public class Main extends AppCompatActivity {
                         newBall = getBallFromPosition(surfaceView.rX(x), surfaceView.rY(y), ballsOnTable);
                         if (newBall == null || (newBall == activeBall && ballOn == activeBall.id)) {
                             cycleShot();
+                            calc(null);
                             return false;
                         } else {
                             // ball clicked
@@ -545,13 +539,7 @@ public class Main extends AppCompatActivity {
             return "";
     }
 
-    private void draw() {
-        Log.d(TAG, "draw()");
-        if (drawing) {
-            Log.d(TAG, "already drawing, returning");
-            return;
-        }
-        drawing = true;
+    void draw() {
         Canvas canvas;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             canvas = surfaceView.surfaceHolder.lockHardwareCanvas();
@@ -559,13 +547,16 @@ public class Main extends AppCompatActivity {
             canvas = surfaceView.surfaceHolder.lockCanvas();
         }
         if (canvas == null) {
-            Log.e(TAG, "draw(): canvas is null");
-            drawing = false;
+            Log.d(TAG, "draw(): canvas null");
             return;
         }
         Paint paint = surfaceView.paint;
-        paint.setStrokeWidth(0);
-        paint.setAntiAlias(true);
+        Log.d(TAG, "draw()");
+        if (drawing) {
+            Log.d(TAG, "already drawing, returning");
+            return;
+        }
+        drawing = true;
         double t0 = now();
         // draw Table
         // cloth
@@ -575,7 +566,7 @@ public class Main extends AppCompatActivity {
         canvas.drawRect(surfaceView.screenX(0), surfaceView.screenY(0), surfaceView.screenX(tableWidth), surfaceView.screenY(tableLength), paint);
         // lines
         paint.setColor(Color.WHITE);
-        paint.setStyle(Paint.Style.STROKE);
+        paint.setStyle(Style.STROKE);
         canvas.drawLine(surfaceView.screenX(0), surfaceView.screenY(DDistance), surfaceView.screenX(tableWidth), surfaceView.screenY(DDistance),
                 paint);
         canvas.drawArc(new RectF(surfaceView.screenX(yellowSpot.x), surfaceView.screenY(yellowSpot.y - DRadius),
@@ -677,15 +668,14 @@ public class Main extends AppCompatActivity {
                 paint.setStyle(Style.FILL);
                 paint.setColor(getBallColor(btp.value));
                 float scale = (float) (30 / ballRadius / surfaceView.screenScale);
-                int cx = surfaceView.screenWidth / 2;
-                canvas.drawCircle(cx, surfaceView.screenHeight
-                                - (float) (scale * ballRadius * 1.5 * surfaceView.screenScale),
+                canvas.drawCircle(230, surfaceView.screenHeight
+                                - (float) (scale * ballRadius * surfaceView.screenScale),
                         (float) (scale * ballRadius * surfaceView.screenScale), paint);
                 if (btp.value == 7) {
                     paint.setStyle(Style.STROKE);
                     paint.setColor(Color.WHITE);
-                    canvas.drawCircle(cx, surfaceView.screenHeight
-                                    - (float) (scale * ballRadius * 1.5 * surfaceView.screenScale),
+                    canvas.drawCircle(230, surfaceView.screenHeight
+                                    - (float) (scale * ballRadius * surfaceView.screenScale),
                             (float) (scale * ballRadius * surfaceView.screenScale), paint);
                 }
 
@@ -693,9 +683,9 @@ public class Main extends AppCompatActivity {
                 paint.setStyle(Style.FILL);
                 paint.setAlpha(127);
                 paint.setColor(Color.WHITE);
-                canvas.drawCircle(cx + (float) (Math.sin(da1 - da2) * 2 * scale
+                canvas.drawCircle(230 + (float) (Math.sin(da2 - da1) * 2 * scale
                                 * ballRadius * surfaceView.screenScale), surfaceView.screenHeight
-                                - (float) (scale * ballRadius * 1.5 * surfaceView.screenScale),
+                                - (float) (scale * ballRadius * surfaceView.screenScale),
                         (float) (scale * ballRadius * surfaceView.screenScale), paint);
                 paint.setAlpha(255);
             }
