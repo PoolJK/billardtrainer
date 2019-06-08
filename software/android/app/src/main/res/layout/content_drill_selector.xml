@@ -8,4 +8,16 @@
     tools:context=".DrillSelector"
     tools:showIn="@layout/app_bar_drill_selector">
 
+    <LinearLayout
+        android:id="@+id/drill_selector_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical" />
+
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="@android:color/transparent" />
+
+
 </android.support.constraint.ConstraintLayout>

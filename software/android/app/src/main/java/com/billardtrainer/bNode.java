@@ -20,18 +20,18 @@ class bNode {
     private static final String TAG = "bNode";
 
     Vec3 P0, V0, Vc0;
+    private Ball ball;
     private Vec3 W0;
     private bNode previousNode;
-    private int ballId;
     int state;
     double t, collisionTime, inherentTime;
 
-    bNode(Vec3 p, Vec3 v, Vec3 w, double t, int ballId, bNode previousNode) {
+    bNode(Vec3 p, Vec3 v, Vec3 w, double t, Ball ball, bNode previousNode) {
         this.previousNode = previousNode;
-        this.ballId = ballId;
+        this.ball = ball;
         this.t = t;
         collisionTime = -1;
-        P0 = p;
+        this.P0 = p;
         setV0(v, w);
     }
 
@@ -55,7 +55,7 @@ class bNode {
         state = Math.abs(V0.length() - ballRadius * W0.length()) > precision ? STATE_SLIDING
                 : V0.length() > precision ? STATE_ROLLING : STATE_STILL;
         // log for cueball
-        if (ballId == 1 && Main.sim_running)
+        if (ball.value == 0)
             Log.v(TAG, String.format(Locale.ROOT, "V0=%.1f W0=%.1f V0-R*W0=%.1f state=%s",
                     V0.length(), W0.length(), V0.length() - ballRadius * W0.length(), getState()));
     }
@@ -68,10 +68,10 @@ class bNode {
      */
     bNode nextNode(double t) {
         if (state == STATE_STILL)
-            return new bNode(P0, V0, W0, t, ballId, this);
+            return new bNode(P0, V0, W0, t, ball, this);
         else
             // TODO: states
-            return new bNode(getPos(t), getVel(t), getW(t), this.t + t, ballId, this);
+            return new bNode(getPos(t), getVel(t), getW(t), this.t + t, ball, this);
     }
 
     /**
@@ -123,7 +123,7 @@ class bNode {
                     double cT = ball.getNode(t).getCollisionTime(this);
                     if (cT > 0) {
                         collisionTime = cT;
-                        Log.v("bNode", String.format(Locale.ROOT, "balls collide: id1=%d id2=%d coll_t=%.2f", this.ballId, ball.id, collisionTime));
+                        Log.v("bNode", String.format(Locale.ROOT, "balls collide: id1=%d id2=%d coll_t=%.2f", this.ball.id, ball.id, collisionTime));
                     }
                 }
                 break;
@@ -269,7 +269,7 @@ class bNode {
         for (int bi = 0; bi < ballsOnTable.size(); bi++) {
             ball = ballsOnTable.get(bi);
             // self collision
-            if (ball.id == this.ballId || ball.equals(ballOn))
+            if (ball == this.ball || ball.equals(ballOn))
                 continue;
             // if ball away from targetline
             if (distancePointToLine(ball.Pos, P0, new Vec3(target.x - P0.x,

@@ -119,8 +119,6 @@ class TableSim:
                                                self.beamer.ppm_y)
             if settings.show_table:
                 # show current input frame
-                if self.camera_image is None:
-                    continue
                 table_image = self.get_table_image(self.camera_image, beamer_image)
                 cv2.imshow('table_sim', cv2.resize(table_image, (540, 960)))
                 cv2.resizeWindow('table_sim', 540, 960)
@@ -211,6 +209,8 @@ class TableSim:
     def get_table_image(self, camera_image, beamer_image):
         table_image = np.copy(self.table_src)
         # overlay camera
+        if camera_image is None:
+            camera_image = np.zeros(beamer_image.shape, np.uint8)
         camera_image = cv2.resize(camera_image, self.camera_real_size)
         # make outline
         cv2.line(camera_image, (0, 0), (0, (self.camera_real_size[1])), [0, 0, 255], 5)

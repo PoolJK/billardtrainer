@@ -14,6 +14,8 @@ import android.bluetooth.BluetoothDevice;
 import android.bluetooth.BluetoothSocket;
 import android.util.Log;
 
+import static java.lang.String.format;
+
 class BTService extends Thread {
     // Debug
     private final static String TAG = "BTService";
@@ -63,7 +65,7 @@ class BTService extends Thread {
             e.printStackTrace();
             Log.e(TAG, "send called with null Socket");
         }
-        Log.v(TAG, String.format("Message sent: %s", data));
+        Log.v(TAG, format("Message sent: %s", data));
         // mainHandler.obtainMessage(Main.TOAST_MESSAGE, String.format("Message sent: %s", data)).sendToTarget();
     }
 
@@ -73,12 +75,14 @@ class BTService extends Thread {
 
     void connect() {
         if (BTState > DISCONNECTED) {
-            Log.d(TAG, String.format("connect() called while BTState = %d", BTState));
+            Log.d(TAG, format("connect() called while BTState = %d", BTState));
             return;
         }
         Log.v(TAG, "connecting");
         try {
-            Thread.sleep(Math.max(last_connect_time + 1000 - System.currentTimeMillis(), 0));
+            long sleep_time = Math.max(last_connect_time + 1000 - System.currentTimeMillis(), 0);
+            Log.d(TAG, format("sleep_time=%d", sleep_time));
+            Thread.sleep(sleep_time);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -86,6 +90,13 @@ class BTService extends Thread {
         BTState = CONNECTING;
         if (!mBluetoothAdapter.isEnabled()) {
             mBluetoothAdapter.enable();
+        }
+        while (!mBluetoothAdapter.isEnabled()) {
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         Set<BluetoothDevice> pairedDevices = mBluetoothAdapter
                 .getBondedDevices();
@@ -138,7 +149,7 @@ class BTService extends Thread {
             String data;
             while (!this.isInterrupted()) {
                 data = reader.readLine();
-                Log.v(TAG, String.format("Received: \"%s\"", data));
+                Log.v(TAG, format("Received: \"%s\"", data));
                 mainHandler.obtainMessage(Main.BT_RECEIVE, data).sendToTarget();
             }
         }

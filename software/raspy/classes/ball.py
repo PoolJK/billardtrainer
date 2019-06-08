@@ -1,5 +1,4 @@
 from .utils import *
-from . import settings
 
 
 class Ball:

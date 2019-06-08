@@ -16,8 +16,8 @@ import static com.billardtrainer.Utils.*;
 class Ball {
     int value, id;
     private int state = 0;
-    private Vec3 W, Rot;
-    Vec3 Pos, V;
+    private Vec3 V, W, Rot;
+    Vec3 Pos;
     private ArrayList<bNode> nodes;
 
     Ball(double x_position, double y_position, int value, int id) {
@@ -32,8 +32,20 @@ class Ball {
         addNode();
     }
 
+    private Ball(Ball ball) {
+        this.Pos = ball.Pos;
+        this.V = ball.V;
+        this.W = ball.W;
+        this.Rot = ball.Rot;
+        this.value = ball.value;
+        this.id = ball.id;
+        this.state = ball.state;
+        //TODO: copy nodes
+        this.nodes = ball.nodes;
+    }
+
     private void addNode() {
-        addNode(new bNode(Pos, V, W, 0, id, null));
+        addNode(new bNode(Pos, V, W, 0, this, null));
     }
 
     void addNode(bNode node) {
@@ -77,13 +89,7 @@ class Ball {
     }
 
     Ball cloneBall() {
-        Ball b = new Ball(0, 0, value, id);
-        b.Pos = new Vec3(Pos.x, Pos.y, Pos.z);
-        b.Rot = new Vec3(Rot.x, Rot.y, Rot.z);
-        b.state = state;
-        b.V = new Vec3(V.x, V.y, V.z);
-        b.W = new Vec3(W.x, W.y, W.z);
-        return b;
+        return new Ball(this);
     }
 
     @Override

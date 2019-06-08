@@ -22,6 +22,7 @@ import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewTreeObserver;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
@@ -84,6 +85,11 @@ public class Main extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         screenSet = false;
         setContentView(R.layout.main);
+
+        // hide the title bar
+        getSupportActionBar().hide();
+        // make app fullscreen
+        this.getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         SurfaceView surfaceView = findViewById(R.id.surface_view);
         holder = surfaceView.getHolder();
@@ -287,7 +293,12 @@ public class Main extends AppCompatActivity {
             x = 0;
         if (Math.abs(y) < precision)
             y = 0;
-        ballsOnTable.get(0).getNode().setV0(new Vec3(x, y, 0),
+        // get cueball
+        Ball cue = ballsOnTable.get(0);
+        for (Ball b : ballsOnTable)
+            if (b.value == 0)
+                cue = b;
+        cue.getNode().setV0(new Vec3(x, y, 0),
                 new Vec3(0, 0, 0)); // [mm/s]
         ((TextView) findViewById(R.id.Angle)).setText(format(Locale.ROOT, "%.0f°", angle));
         ((TextView) findViewById(R.id.Speed)).setText(format(Locale.ROOT, "%.0f mm/s\u00b2", speed));
@@ -297,7 +308,12 @@ public class Main extends AppCompatActivity {
     private void setCueBallV0(double vx, double vy) {
         angle = Math.toDegrees(Math.atan(vx / vy));
         speed = new Vec3(vx, vy, 0).length() * 2;
-        ballsOnTable.get(0).getNode().setV0(new Vec3(vx, vy, 0),
+        // get cueball
+        Ball cue = ballsOnTable.get(0);
+        for (Ball b : ballsOnTable)
+            if (b.value == 0)
+                cue = b;
+        cue.getNode().setV0(new Vec3(vx, vy, 0),
                 new Vec3(0, 0, 0)); // [mm/s]
         ((TextView) findViewById(R.id.Angle)).setText(format(Locale.ROOT, "%.0f°", angle));
         ((TextView) findViewById(R.id.Speed)).setText(format(Locale.ROOT, "%.0f mm/s\u00b2", speed));
@@ -323,18 +339,15 @@ public class Main extends AppCompatActivity {
         handler.post(sThread);
     }
 
-    boolean secondtry = false;
-
     @SuppressWarnings({"unused", "SameParameterValue"})
     public void calc(View view) {
-        if (calcing && !secondtry) {
+        if (calcing) {
             Log.d(TAG, "calc() while still calcing, returning.");
             return;
         }
         calcing = true;
         Log.d(TAG, "calc() start");
         long t0 = System.currentTimeMillis();
-        Vec3 shot_pocket;
         Ball b, btp, cue;
         Vec3 contactPoint, a;
         numposs = 0;
@@ -357,18 +370,16 @@ public class Main extends AppCompatActivity {
 //        ballspread /= bspreadcount;
         // get cueball
         cue = ballsOnTable.get(0);
-        for (Ball ball : ballsOnTable)
-            if (ball.value == 0) {
-                cue = ball;
-                Log.d(TAG, "cueball has id = " + cue.id + ", val = " + cue.value);
-                break;
-            }
-
+        if (cue.value != 0)
+            for (Ball ball : ballsOnTable)
+                if (ball.value == 0) {
+                    cue = ball;
+                    Log.d(TAG, "cueball has id = " + cue.id + ", val = " + cue.value);
+                    break;
+                }
         // calculate possible shots
-        shot_pocket = null;
         btp = null;
         if (currentShot > -1) {
-            shot_pocket = possibleShots.get(currentShot).pocket;
             btp = possibleShots.get(currentShot).ballToPot;
         }
         possibleShots.clear();
@@ -378,9 +389,6 @@ public class Main extends AppCompatActivity {
             if (b == cue)
                 // obviously, man
                 continue;
-            if (btp != null && b.value != btp.value)
-                // if you already have a shot, only calculate that one. using only value because id might be different
-                continue;
             Log.d(TAG, "ball: " + b.toString());
             // only balls on
             if ((b.value != ballOn && ballOn < 8) || (ballOn > 7 && b.value != 1)) {
@@ -389,9 +397,6 @@ public class Main extends AppCompatActivity {
             }
             // all pockets
             for (Vec3 pocket : pockets) {
-                if (shot_pocket != null && pocket != shot_pocket)
-                    // if you already have a shot, only calculate that one
-                    continue;
                 // if obstructed check next
                 if (b.getNode().hasNoLineTo(pocket, ballsOnTable, null)) {
                     Log.d("calc", format("no line to %s", pocket.toString()));
@@ -435,12 +440,7 @@ public class Main extends AppCompatActivity {
         } else {
             // no available shot
             currentShot = -1;
-            if (!secondtry) {
-                Log.d(TAG, "no shot found, trying once more");
-                secondtry = true;
-                calc(null);
-            } else
-                secondtry = false;
+            Log.d(TAG, "no shot found, trying once more");
         }
         // startSim(null);
         calcing = false;
@@ -685,6 +685,9 @@ public class Main extends AppCompatActivity {
                         if (activeBall.Pos.y + dy < tableLength - ballRadius
                                 && activeBall.Pos.y + dy > ballRadius)
                             activeBall.Pos.y += dy;
+                        // if moving cueball, update angle and speed
+                        if (activeBall.value == 0)
+                            setCueBallV0();
                         calc(null);
                         //startSim(null);
                     } else {
@@ -819,12 +822,13 @@ public class Main extends AppCompatActivity {
                 Ball btp = s.ballToPot;
                 // get cueball from value
                 Ball cue = s.sBalls.get(0);
-                for (Ball b : s.sBalls)
-                    if (b.value == 0) {
-                        cue = b;
-                        Log.v(TAG, format("cueball selected: id = %d value = %d", cue.id, cue.value));
-                        break;
-                    }
+                if (cue.value != 0)
+                    for (Ball b : s.sBalls)
+                        if (b.value == 0) {
+                            cue = b;
+                            Log.v(TAG, format("cueball selected: id = %d value = %d", cue.id, cue.value));
+                            break;
+                        }
                 double da1 = btp.getNode().getTargetAngle(s.pocket);
                 double da2 = cue.getNode().getTargetAngle(
                         btp.getNode().contactPoint(s.pocket));
@@ -942,18 +946,14 @@ public class Main extends AppCompatActivity {
     }
 
     public void switchBalls(View view) {
-        //int id1 = ballsOnTable.get(0).id;
         int va1 = ballsOnTable.get(0).value;
-        //ballsOnTable.get(0).id = ballsOnTable.get(1).id;
         ballsOnTable.get(0).value = ballsOnTable.get(1).value;
-        //ballsOnTable.get(1).id = id1;
         ballsOnTable.get(1).value = va1;
         calc(null);
     }
 
     private void initTable() {
         ballsOnTable.clear();
-
         // setup initial practice exercise
         // cueball
         ballsOnTable.add(new Ball((brownSpot.x + greenSpot.x) / 2, blackSpot.y - 100, 0, 1));
