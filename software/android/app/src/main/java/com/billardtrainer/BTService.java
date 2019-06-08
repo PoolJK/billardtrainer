@@ -64,7 +64,7 @@ class BTService extends Thread {
             Log.e(TAG, "send called with null Socket");
         }
         Log.v(TAG, String.format("Message sent: %s", data));
-        mainHandler.obtainMessage(Main.TOAST_MESSAGE, String.format("Message sent: %s", data)).sendToTarget();
+        // mainHandler.obtainMessage(Main.TOAST_MESSAGE, String.format("Message sent: %s", data)).sendToTarget();
     }
 
     public void run() {

@@ -19,7 +19,14 @@ android {
                 exclude '**/physnooker*'
             }
         }
-
+    }
+    signingConfigs {
+        debug {
+            storeFile file("debug.jks")
+            storePassword "billardtrainer"
+            keyAlias "key0"
+            keyPassword "billardtrainer"
+        }
     }
     buildTypes {
         release {
@@ -28,6 +35,7 @@ android {
             buildConfigField 'boolean', 'TEST', 'true'
         }
         debug {
+            signingConfig signingConfigs.debug
             minifyEnabled false
         }
     }

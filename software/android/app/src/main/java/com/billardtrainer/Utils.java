@@ -30,7 +30,7 @@ class Utils {
             case 6:
                 return Color.rgb(200, 20, 200);
             case 7:
-                return Color.rgb(10, 10, 10);
+                return Color.rgb(60, 60, 60);
             default:
                 return Color.BLACK;
         }

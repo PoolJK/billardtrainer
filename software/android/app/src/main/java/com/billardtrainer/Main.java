@@ -55,6 +55,7 @@ public class Main extends AppCompatActivity {
     static final int BT_DISCONNECTED = 5;
     static final int DEVICE_READY = 6;
     static final int SIM_RESULT = 7;
+    static final int CALC = 8;
 
     private static ArrayList<Ball> ballsOnTable;
     private static Ball activeBall;
@@ -68,7 +69,7 @@ public class Main extends AppCompatActivity {
     static mHandler handler;
     private static int ballOn = 1;
     private static ArrayList<Shot> possibleShots;
-    static boolean sim_running = false, drawing = false;
+    static boolean sim_running = false, drawing = false, calcing = false;
 
     private Canvas canvas;
     private Bitmap bitmap;
@@ -112,8 +113,7 @@ public class Main extends AppCompatActivity {
                     screenSet = true;
                     Log.v(TAG, format(Locale.ROOT, "screenW=%d screenH=%d", screenWidth, screenHeight));
                     initTable();
-                    calc(null);
-                    handler.sendEmptyMessage(DRAW);
+                    handler.sendEmptyMessage(CALC);
                 }
                 return true;
             }
@@ -139,6 +139,10 @@ public class Main extends AppCompatActivity {
                         case TOAST_MESSAGE:
                             toast((String) msg.obj);
                             break;
+                        case CALC:
+                            if (!sim_running)
+                                calc(null);
+                            break;
                         case DRAW:
                             if (!sim_running)
                                 draw();
@@ -160,7 +164,7 @@ public class Main extends AppCompatActivity {
                             break;
                         case BT_RECEIVE:
                             handle_bt_message(msg.obj.toString());
-                            toast(msg.obj.toString());
+                            // toast(msg.obj.toString());
                             break;
                         case BT_CONNECTED:
                             toast("bluetooth connected");
@@ -319,37 +323,38 @@ public class Main extends AppCompatActivity {
         handler.post(sThread);
     }
 
+    boolean secondtry = false;
+
     @SuppressWarnings({"unused", "SameParameterValue"})
     public void calc(View view) {
+        if (calcing && !secondtry) {
+            Log.d(TAG, "calc() while still calcing, returning.");
+            return;
+        }
+        calcing = true;
         Log.d(TAG, "calc() start");
-        handler.obtainMessage(TOAST_MESSAGE, "calc start").sendToTarget();
-        Vec3 pock;
+        long t0 = System.currentTimeMillis();
+        Vec3 shot_pocket;
         Ball b, btp, cue;
         Vec3 contactPoint, a;
         numposs = 0;
         numreach = 0;
         ballspread = 0;
-        pock = null;
-        btp = null;
-        if (currentShot > -1) {
-            pock = possibleShots.get(currentShot).pocket;
-            btp = possibleShots.get(currentShot).ballToPot;
-        }
-        possibleShots.clear();
-        currentShot = -1;
         if (ballsOnTable.isEmpty()) {
             Log.d(TAG, "ballsOnTable empty");
             handler.obtainMessage(TOAST_MESSAGE, "ballsOnTable empty").sendToTarget();
             return;
         }
-        int bspreadcount = 0;
-        for (int bi = 1; bi < ballsOnTable.size(); bi++) {
-            b = ballsOnTable.get(bi);
-            for (int bia = bi + 1; bia < ballsOnTable.size(); bia++) {
-                ballspread += b.Pos.distanceTo(ballsOnTable.get(bia).Pos);
-                bspreadcount += 1;
-            }
-        }
+        // calculate ball spread
+//        int bspreadcount = 0;
+//        for (int bi = 1; bi < ballsOnTable.size(); bi++) {
+//            b = ballsOnTable.get(bi);
+//            for (int bia = bi + 1; bia < ballsOnTable.size(); bia++) {
+//                ballspread += b.Pos.distanceTo(ballsOnTable.get(bia).Pos);
+//                bspreadcount += 1;
+//            }
+//        }
+//        ballspread /= bspreadcount;
         // get cueball
         cue = ballsOnTable.get(0);
         for (Ball ball : ballsOnTable)
@@ -358,25 +363,38 @@ public class Main extends AppCompatActivity {
                 Log.d(TAG, "cueball has id = " + cue.id + ", val = " + cue.value);
                 break;
             }
-        ballspread /= bspreadcount;
+
+        // calculate possible shots
+        shot_pocket = null;
+        btp = null;
+        if (currentShot > -1) {
+            shot_pocket = possibleShots.get(currentShot).pocket;
+            btp = possibleShots.get(currentShot).ballToPot;
+        }
+        possibleShots.clear();
+        currentShot = -1;
         for (int bi = 0; bi < ballsOnTable.size(); bi++) {
             b = ballsOnTable.get(bi);
             if (b == cue)
+                // obviously, man
+                continue;
+            if (btp != null && b.value != btp.value)
+                // if you already have a shot, only calculate that one. using only value because id might be different
                 continue;
             Log.d(TAG, "ball: " + b.toString());
             // only balls on
             if ((b.value != ballOn && ballOn < 8) || (ballOn > 7 && b.value != 1)) {
-                Log.d(TAG, String.format(Locale.ROOT, "b.val=%d ballOn=%d", b.value, ballOn));
-                handler.obtainMessage(TOAST_MESSAGE, String.format(Locale.ROOT, "b.val=%d ballOn=%d", b.value, ballOn)).sendToTarget();
+                Log.d(TAG, String.format(Locale.ROOT, "b.val=%d ballOn=%d, next ball", b.value, ballOn));
                 continue;
             }
             // all pockets
             for (Vec3 pocket : pockets) {
+                if (shot_pocket != null && pocket != shot_pocket)
+                    // if you already have a shot, only calculate that one
+                    continue;
                 // if obstructed check next
                 if (b.getNode().hasNoLineTo(pocket, ballsOnTable, null)) {
-                    if (b.value == 7)
-                        Log.d("calc", "no line to " + pocket.toString());
-                    handler.obtainMessage(TOAST_MESSAGE, "ball has no line to pocket " + pocket.toString()).sendToTarget();
+                    Log.d("calc", format("no line to %s", pocket.toString()));
                     continue;
                 }
                 numposs += 1;
@@ -384,8 +402,7 @@ public class Main extends AppCompatActivity {
                 contactPoint = b.getNode().contactPoint(pocket);
                 // cueball reaches contact
                 if (cue.getNode().hasNoLineTo(contactPoint, ballsOnTable, b)) {
-                    Log.d(TAG, "cueball no line to target");
-                    handler.obtainMessage(TOAST_MESSAGE, "cueball no line to target").sendToTarget();
+                    Log.d(TAG, format("pocket %s: cueball has no line to target point", pocket.toString()));
                     continue;
                 }
                 // angle < 88
@@ -393,20 +410,24 @@ public class Main extends AppCompatActivity {
                 a = contactPoint.subtract(ballsOnTable.get(0).Pos);
                 double deltaAngle = Math.toDegrees(a.deltaAngle(pocket
                         .subtract(b.Pos)));
-//                if (deltaAngle > 88) {
-//                    Log.d(TAG, "angle to high: " + deltaAngle);
-//                    continue;
-//                }
+                if (deltaAngle > 88) {
+                    Log.d(TAG, format("pocket %s: angle to high: %f", pocket.toString(), deltaAngle));
+                    // commented out while angle calculation is wrong
+                    //continue;
+                }
                 numreach += 1;
                 possibleShots.add(new Shot(ballsOnTable, contactPoint, pocket, b));
+                Log.d(TAG, format("shot to %s added", pocket.toString()));
                 // try to select similar shot
-                if (b == btp && pocket == pock)
+                if (b == btp)
                     currentShot = possibleShots.size() - 1;
             }
         }
         if (!possibleShots.isEmpty()) {
-            if (currentShot < 0)
+            if (currentShot < 0) {
                 currentShot = 0;
+                Log.d(TAG, format("shot selected: %d", currentShot));
+            }
             double vx = possibleShots.get(currentShot).target.x - possibleShots.get(currentShot).sBalls.get(0).Pos.x;
             double vy = possibleShots.get(currentShot).target.y - possibleShots.get(currentShot).sBalls.get(0).Pos.y;
             Log.d(TAG, format("vx=%f vy=%f", vx, vy));
@@ -414,9 +435,19 @@ public class Main extends AppCompatActivity {
         } else {
             // no available shot
             currentShot = -1;
+            if (!secondtry) {
+                Log.d(TAG, "no shot found, trying once more");
+                secondtry = true;
+                calc(null);
+            } else
+                secondtry = false;
         }
         // startSim(null);
-        handler.sendEmptyMessage(DRAW);
+        calcing = false;
+        Log.d(TAG, format("calc() finished in %dms", System.currentTimeMillis() - t0));
+        draw();
+        //Log.d(TAG, format("calc() finished in %dms, calling handler: draw()", System.currentTimeMillis() - t0));
+        //handler.sendEmptyMessage(DRAW);
     }
 
     private void calcPos() {
@@ -734,7 +765,12 @@ public class Main extends AppCompatActivity {
     }
 
     private void draw() {
-        Log.v(TAG, "draw()");
+        Log.d(TAG, "draw()");
+        if (drawing) {
+            Log.d(TAG, "already drawing, returning");
+            return;
+        }
+        drawing = true;
         double t0 = now();
         // draw Table
         // cloth
@@ -775,18 +811,25 @@ public class Main extends AppCompatActivity {
             for (Ball ball : ballsOnTable)
                 ball.draw(this, paint, canvas);
             Log.v(TAG, format(Locale.ROOT, "draw balls took %.0fms", now() - t1));
+            // draw current shot info
             if (currentShot > -1 && !possibleShots.isEmpty()) {
                 Shot s = possibleShots.get(currentShot);
+                for (Ball ball : s.sBalls)
+                    ball.draw(this, paint, canvas);
                 Ball btp = s.ballToPot;
+                // get cueball from value
                 Ball cue = s.sBalls.get(0);
                 for (Ball b : s.sBalls)
                     if (b.value == 0) {
                         cue = b;
+                        Log.v(TAG, format("cueball selected: id = %d value = %d", cue.id, cue.value));
                         break;
                     }
                 double da1 = btp.getNode().getTargetAngle(s.pocket);
                 double da2 = cue.getNode().getTargetAngle(
                         btp.getNode().contactPoint(s.pocket));
+                //TODO: why is cuenode = 0, 0, 26?...
+                Log.i(TAG, format("da1= %1.1f=%1.1f° da2= %1.1f=%1.1f° cuenodePos:%s", da1, Math.toDegrees(da1), da2, Math.toDegrees(da2), cue.getNode().P0.toString()));
                 // draw aim line
                 paint.setStyle(Style.STROKE);
                 paint.setColor(Color.WHITE);
@@ -850,8 +893,8 @@ public class Main extends AppCompatActivity {
                 }
 
                 // helper cueball
+                paint.setStyle(Style.FILL);
                 paint.setAlpha(127);
-                paint.setStyle(Style.STROKE);
                 paint.setColor(Color.WHITE);
                 canvas.drawCircle(230 + (float) (Math.sin(da2 - da1) * 2 * scale
                                 * ballRadius * screenScale), screenHeight
@@ -860,20 +903,20 @@ public class Main extends AppCompatActivity {
                 paint.setAlpha(255);
             }
         }
-
-        // simulation
-        if (currentShot > -1) {
-            paint.setStyle(Style.FILL);
-            for (int b = 0; b < possibleShots.get(currentShot).sBalls.size(); b++) {
-                // draw ball
-                paint.setColor(getBallColor(possibleShots.get(currentShot).sBalls
-                        .get(b).value));
-                canvas.drawCircle(
-                        screenX(possibleShots.get(currentShot).sBalls.get(b).Pos.x),
-                        screenY(possibleShots.get(currentShot).sBalls.get(b).Pos.y),
-                        (float) (ballRadius * screenScale), paint);
-            }
-        }
+//
+//        // simulation
+//        if (currentShot > -1) {
+//            paint.setStyle(Style.FILL);
+//            for (int b = 0; b < possibleShots.get(currentShot).sBalls.size(); b++) {
+//                // draw ball
+//                paint.setColor(getBallColor(possibleShots.get(currentShot).sBalls
+//                        .get(b).value));
+//                canvas.drawCircle(
+//                        screenX(possibleShots.get(currentShot).sBalls.get(b).Pos.x),
+//                        screenY(possibleShots.get(currentShot).sBalls.get(b).Pos.y),
+//                        (float) (ballRadius * screenScale), paint);
+//            }
+//        }
         Log.v(TAG, format(Locale.ROOT, "draw before lockCanvas = %.0fms", now() - t0));
         Canvas mCanvas;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
@@ -887,7 +930,7 @@ public class Main extends AppCompatActivity {
         } else
             holder.unlockCanvasAndPost(canvas);
         drawing = false;
-        Log.v(TAG, format(Locale.ROOT, "draw() took %.0fms", now() - t0));
+        Log.d(TAG, format(Locale.ROOT, "draw() took %.0fms", now() - t0));
         if (btService != null && btService.isConnected())
             handler.obtainMessage(BT_SEND, getTableAsJSONString()).sendToTarget();
     }
@@ -899,11 +942,11 @@ public class Main extends AppCompatActivity {
     }
 
     public void switchBalls(View view) {
-        int id1 = ballsOnTable.get(0).id;
+        //int id1 = ballsOnTable.get(0).id;
         int va1 = ballsOnTable.get(0).value;
-        ballsOnTable.get(0).id = ballsOnTable.get(1).id;
+        //ballsOnTable.get(0).id = ballsOnTable.get(1).id;
         ballsOnTable.get(0).value = ballsOnTable.get(1).value;
-        ballsOnTable.get(1).id = id1;
+        //ballsOnTable.get(1).id = id1;
         ballsOnTable.get(1).value = va1;
         calc(null);
     }
