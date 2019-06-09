@@ -29,14 +29,27 @@ android {
         }
     }
     buildTypes {
-        release {
-            minifyEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-            buildConfigField 'boolean', 'TEST', 'true'
-        }
+//        release {
+//            minifyEnabled true
+//        }
         debug {
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.debug
             minifyEnabled false
+        }
+    }
+    flavorDimensions "atclub"
+    productFlavors {
+        atclub {
+            dimension "atclub"
+            buildConfigField 'String', 'BT_DEVICE', '"raspi9b"'
+            manifestPlaceholders = [drill_label: "DrillSelector"]
+        }
+        home {
+            dimension "atclub"
+            manifestPlaceholders = [drill_label: "DS home"]
+            applicationIdSuffix ".home"
+            buildConfigField 'String', 'BT_DEVICE', '"raspberrypi"'
         }
     }
 }

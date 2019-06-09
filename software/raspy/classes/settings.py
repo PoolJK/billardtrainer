@@ -9,13 +9,13 @@ INFO = 3
 WARN = 4
 ERROR = 5
 # @the club:
-# ip = '192.168.43.187'
-# folder = 'bt2/Billardtrainer'
-# pw = 'keins01'
+ip = '192.168.43.187'
+folder = 'bt2/Billardtrainer'
+pw = 'keins01'
 # @home:
-ip = '192.168.0.136'
-folder = 'billardtrainer'
-pw = 'pi'
+# ip = '192.168.0.136'
+# folder = 'billardtrainer'
+# pw = 'pi'
 # default debugging values:
 on_pi = False
 debug = True
