@@ -157,7 +157,7 @@ public class Main extends AppCompatActivity {
                             break;
                         case BT_DISCONNECTED:
                             toast("bluetooth disconnected");
-                            ballsOnTable.clear();
+                            initTable();
                             this.sendEmptyMessage(DRAW);
                             btService.connect();
                             break;
@@ -468,7 +468,6 @@ public class Main extends AppCompatActivity {
                         if (activeBall.value == 0)
                             setCueBallV0();
                         calc(null);
-                        //startSim(null);
                     } else {
                         // activeBall = null, no moving
                         moving = false;
@@ -700,20 +699,6 @@ public class Main extends AppCompatActivity {
                 paint.setAlpha(255);
             }
         }
-//
-//        // simulation
-//        if (currentShot > -1) {
-//            paint.setStyle(Style.FILL);
-//            for (int b = 0; b < possibleShots.get(currentShot).sBalls.size(); b++) {
-//                // draw ball
-//                paint.setColor(getBallColor(possibleShots.get(currentShot).sBalls
-//                        .get(b).value));
-//                canvas.drawCircle(
-//                        surfaceView.screenX(possibleShots.get(currentShot).sBalls.get(b).Pos.x),
-//                        surfaceView.screenY(possibleShots.get(currentShot).sBalls.get(b).Pos.y),
-//                        (float) (ballRadius * surfaceView.screenScale), paint);
-//            }
-//        }
         surfaceView.surfaceHolder.unlockCanvasAndPost(canvas);
         drawing = false;
         Log.d(TAG, format(Locale.ROOT, "draw() took %.0fms", now() - t0));

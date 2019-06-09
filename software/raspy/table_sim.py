@@ -119,6 +119,7 @@ class TableSim:
                                                self.beamer.ppm_y)
             if settings.show_table:
                 # show current input frame
+                self.camera_image = self.camera.image
                 table_image = self.get_table_image(self.camera_image, beamer_image)
                 cv2.imshow('table_sim', cv2.resize(table_image, (540, 960)))
                 cv2.resizeWindow('table_sim', 540, 960)
@@ -176,6 +177,7 @@ class TableSim:
                 print('\n' + message)
                 print('json error.')
                 traceback.print_exc()
+                self.bluetooth.send('done')
                 continue
             objects = []
             if message["what"] == "detect":

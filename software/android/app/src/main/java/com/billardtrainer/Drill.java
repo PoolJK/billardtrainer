@@ -3,20 +3,25 @@ package com.billardtrainer;
 // https://billiards.colostate.edu/technical-proof/
 
 import android.annotation.SuppressLint;
+import android.content.Context;
 import android.graphics.Canvas;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.Paint.Style;
 import android.graphics.RectF;
+import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
-import android.support.v4.app.FragmentActivity;
+import android.support.annotation.NonNull;
+import android.support.v4.app.Fragment;
 import android.util.Log;
-import android.view.Menu;
+import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -46,7 +51,7 @@ import static com.billardtrainer.Utils.now;
 import static java.lang.String.format;
 
 @SuppressLint("Registered")
-public class Drill extends FragmentActivity {
+public class Drill extends Fragment{
     // Debug
     private final String TAG = "Main";
     // private final boolean debug = BuildConfig.DEBUG;
@@ -73,26 +78,65 @@ public class Drill extends FragmentActivity {
     static Handler handler;
     private static int ballOn = 1;
     private static ArrayList<Shot> possibleShots;
-    static boolean sim_running = false, drawing = false, calcing = false;
+    static boolean drawing = false, calcing = false;
 
     private static boolean aiming;
     private Button aimButton;
     CustomSurfaceView surfaceView;
+    DrillSelector drillSelector;
+
+    @Override
+    public void onAttach(Context context) {
+        super.onAttach(context);
+    }
 
     @SuppressLint({"ClickableViewAccessibility", "HandlerLeak", "SetTextI18n"})
-    Drill(CustomSurfaceView surfaceView) {
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View view = inflater.inflate(R.layout.main, container, false);
+        RelativeLayout contentLayout = view.findViewById(R.id.linlay);
+        surfaceView = new CustomSurfaceView(getContext());
+        contentLayout.addView(surfaceView, 0);
         surfaceView.setOnTouchListener(new canvasOnTouchListener());
-        this.surfaceView = surfaceView;
+        view.findViewById(R.id.button2).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                switchBalls(v);
+            }
+        });
+        view.findViewById(R.id.button3).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                aimSwitch(v);
+            }
+        });
+        view.findViewById(R.id.button4).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                resetBalls(v);
+            }
+        });
+        view.findViewById(R.id.button5).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                detect(v);
+            }
+        });
+        view.findViewById(R.id.button6).setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                device_ready(v);
+            }
+        });
 
-        activeBallView = findViewById(R.id.active_ball_view);
+        activeBallView = view.findViewById(R.id.active_ball_view);
         activeBallView.setText("Cueball");
-        aimButton = findViewById(R.id.button3);
-        aimButton.setText(getString(R.string.aimMode_move));
+        aimButton = view.findViewById(R.id.button3);
+        drillSelector = (DrillSelector) getActivity();
+        if (drillSelector == null)
+            drillSelector = new DrillSelector();
+            aimButton.setText(drillSelector.getString(R.string.aimMode_move));
 
-        if (ballsOnTable == null)
-            ballsOnTable = new ArrayList<>();
-        initTable();
-        handler.sendEmptyMessage(CALC);
         if (handler == null) {
             handler = new Handler() {
                 private boolean device_busy = false;
@@ -104,26 +148,22 @@ public class Drill extends FragmentActivity {
                     switch (msg.what) {
                         case SIM_RESULT:
                             ballsOnTable = (ArrayList<Ball>) msg.obj;
-                            sim_running = false;
                             this.sendEmptyMessage(DRAW);
                             break;
                         case TOAST_MESSAGE:
                             toast((String) msg.obj);
                             break;
                         case CALC:
-                            if (!sim_running)
-                                calc(null);
+                            calc(null);
                             break;
                         case DRAW:
-                            if (!sim_running)
-                                draw();
+                            draw();
                             break;
                         case DEVICE_READY:
                             device_busy = false;
                             break;
                         case BT_SEND:
                             if (device_busy) {
-                                toast("device busy");
                                 Log.v("Handler", "device busy");
                                 break;
                             }
@@ -144,7 +184,7 @@ public class Drill extends FragmentActivity {
                             break;
                         case BT_DISCONNECTED:
                             toast("bluetooth disconnected");
-                            ballsOnTable.clear();
+                            initTable();
                             this.sendEmptyMessage(DRAW);
                             btService.connect();
                             break;
@@ -156,11 +196,6 @@ public class Drill extends FragmentActivity {
         }
         if (possibleShots == null)
             possibleShots = new ArrayList<>();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
         // Test case for physics sim
         // startSim(null);
         // Test case to simulate data from bluetooth:
@@ -169,14 +204,7 @@ public class Drill extends FragmentActivity {
             btService = new BTService(handler);
         }
         btService.start();
-    }
-
-    @Override
-    protected void onPause() {
-        if (btService != null)
-            btService.stopAll();
-        btService = null;
-        super.onPause();
+        return view;
     }
 
     int index = -1;
@@ -235,8 +263,8 @@ public class Drill extends FragmentActivity {
                 cue = b;
         cue.getNode().setV0(new Vec3(x, y, 0),
                 new Vec3(0, 0, 0)); // [mm/s]
-        ((TextView) findViewById(R.id.Angle)).setText(format(Locale.ROOT, "%.0f°", angle));
-        ((TextView) findViewById(R.id.Speed)).setText(format(Locale.ROOT, "%.0f mm/s\u00b2", speed));
+        ((TextView) drillSelector.findViewById(R.id.Angle)).setText(format(Locale.ROOT, "%.0f°", angle));
+        ((TextView) drillSelector.findViewById(R.id.Speed)).setText(format(Locale.ROOT, "%.0f mm/s\u00b2", speed));
     }
 
     @SuppressLint("SetTextI18n")
@@ -250,28 +278,8 @@ public class Drill extends FragmentActivity {
                 cue = b;
         cue.getNode().setV0(new Vec3(vx, vy, 0),
                 new Vec3(0, 0, 0)); // [mm/s]
-        ((TextView) findViewById(R.id.Angle)).setText(format(Locale.ROOT, "%.0f°", angle));
-        ((TextView) findViewById(R.id.Speed)).setText(format(Locale.ROOT, "%.0f mm/s\u00b2", speed));
-    }
-
-    public void resetSim(View view) {
-        for (Ball ball : ballsOnTable)
-            ball.clearNodes();
-    }
-
-    public void startSim(View view) {
-        if (ballsOnTable.isEmpty()) {
-            Log.d(TAG, "startSim: no balls on table");
-            return;
-        }
-        if (sim_running) {
-            Log.v(TAG, "startSim: sim running, start cancelled");
-            return;
-        }
-        resetSim(null);
-        SimThread sThread = new SimThread(ballsOnTable);
-        sim_running = true;
-        handler.post(sThread);
+        ((TextView) drillSelector.findViewById(R.id.Angle)).setText(format(Locale.ROOT, "%.0f°", angle));
+        ((TextView) drillSelector.findViewById(R.id.Speed)).setText(format(Locale.ROOT, "%.0f mm/s\u00b2", speed));
     }
 
     @SuppressWarnings({"unused", "SameParameterValue"})
@@ -287,6 +295,7 @@ public class Drill extends FragmentActivity {
         Vec3 contactPoint, a;
         if (ballsOnTable.isEmpty()) {
             Log.d(TAG, "ballsOnTable empty");
+            calcing = false;
             handler.obtainMessage(TOAST_MESSAGE, "ballsOnTable empty").sendToTarget();
             return;
         }
@@ -300,10 +309,6 @@ public class Drill extends FragmentActivity {
                     break;
                 }
         // calculate possible shots
-        btp = null;
-        if (currentShot > -1) {
-            btp = possibleShots.get(currentShot).ballToPot;
-        }
         possibleShots.clear();
         currentShot = -1;
         for (int bi = 0; bi < ballsOnTable.size(); bi++) {
@@ -343,9 +348,6 @@ public class Drill extends FragmentActivity {
                 }
                 possibleShots.add(new Shot(ballsOnTable, contactPoint, pocket, b));
                 Log.d(TAG, format("shot to %s added", pocket.toString()));
-                // try to select similar shot
-                if (b == btp)
-                    currentShot = possibleShots.size() - 1;
             }
         }
         if (!possibleShots.isEmpty()) {
@@ -360,26 +362,26 @@ public class Drill extends FragmentActivity {
         } else {
             // no available shot
             currentShot = -1;
-            Log.d(TAG, "no shot found, trying once more");
+            Log.d(TAG, "no shot found");
         }
         // startSim(null);
         calcing = false;
         Log.d(TAG, format("calc() finished in %dms", System.currentTimeMillis() - t0));
         draw();
-        //Log.d(TAG, format("calc() finished in %dms, calling handler: draw()", System.currentTimeMillis() - t0));
-        //handler.sendEmptyMessage(DRAW);
     }
 
+    @SuppressWarnings("unused")
     public void resetBalls(View view) {
         initTable();
-        startSim(view);
     }
 
+    @SuppressWarnings("unused")
     public void aimSwitch(View view) {
         aiming = !aiming;
         aimButton.setText(!aiming ? "move" : "aim");
     }
 
+    @SuppressWarnings("unused")
     public void device_ready(View view) {
         handler.sendEmptyMessage(DEVICE_READY);
         handler.sendEmptyMessage(DRAW);
@@ -391,9 +393,8 @@ public class Drill extends FragmentActivity {
         else {
             int old = currentShot;
             currentShot = currentShot < possibleShots.size() - 1 ? currentShot + 1 : 0;
-            handler.obtainMessage(TOAST_MESSAGE, "old = " + old + " new = " + currentShot).sendToTarget();
             Log.d(TAG, "old = " + old + " new = " + currentShot);
-            handler.sendEmptyMessage(DRAW);
+            draw();
         }
     }
 
@@ -407,8 +408,6 @@ public class Drill extends FragmentActivity {
         @SuppressLint("ClickableViewAccessibility")
         @Override
         public boolean onTouch(View v, MotionEvent e) {
-            if (ballsOnTable.size() > 0 && ballsOnTable.get(0).nodeCount() > 1)
-                resetSim(null);
             int MIN_MOVEMENT = 4;
             x = e.getX();
             y = e.getY();
@@ -420,6 +419,10 @@ public class Drill extends FragmentActivity {
                     moving = false;
                     return true;
                 case MotionEvent.ACTION_MOVE:
+                    if (e.getX() < surfaceView.screenOffset){
+                        Log.d(TAG, "MotionEvent.ACTION_MOVE with getX < offset");
+                        return false;
+                    }
                     //Log.i("Main", "ACTION_MOVE moving=" + moving);
                     dx = surfaceView.rX(x) - surfaceView.rX(oldX);
                     dy = surfaceView.rY(y) - surfaceView.rY(oldY);
@@ -447,7 +450,6 @@ public class Drill extends FragmentActivity {
                             angle -= 360;
                         else if (angle < 0)
                             angle += 360;
-                        startSim(null);
                         return true;
                     }
                     if (activeBall != null) { // move active Ball
@@ -461,7 +463,6 @@ public class Drill extends FragmentActivity {
                         if (activeBall.value == 0)
                             setCueBallV0();
                         calc(null);
-                        //startSim(null);
                     } else {
                         // activeBall = null, no moving
                         moving = false;
@@ -475,7 +476,6 @@ public class Drill extends FragmentActivity {
                         newBall = getBallFromPosition(surfaceView.rX(x), surfaceView.rY(y), ballsOnTable);
                         if (newBall == null || (newBall == activeBall && ballOn == activeBall.id)) {
                             cycleShot();
-                            calc(null);
                             return false;
                         } else {
                             // ball clicked
@@ -500,6 +500,7 @@ public class Drill extends FragmentActivity {
         }
     }
 
+    @SuppressWarnings("unused")
     public void detect(View view) {
         JSONObject j = new JSONObject();
         try {
@@ -540,6 +541,12 @@ public class Drill extends FragmentActivity {
     }
 
     void draw() {
+        Log.d(TAG, "draw()");
+        if (drawing) {
+            Log.d(TAG, "already drawing, returning");
+            return;
+        }
+        drawing = true;
         Canvas canvas;
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
             canvas = surfaceView.surfaceHolder.lockHardwareCanvas();
@@ -547,16 +554,13 @@ public class Drill extends FragmentActivity {
             canvas = surfaceView.surfaceHolder.lockCanvas();
         }
         if (canvas == null) {
-            Log.d(TAG, "draw(): canvas null");
+            Log.e(TAG, "draw(): canvas is null");
+            drawing = false;
             return;
         }
         Paint paint = surfaceView.paint;
-        Log.d(TAG, "draw()");
-        if (drawing) {
-            Log.d(TAG, "already drawing, returning");
-            return;
-        }
-        drawing = true;
+        paint.setStrokeWidth(0);
+        paint.setAntiAlias(true);
         double t0 = now();
         // draw Table
         // cloth
@@ -668,14 +672,15 @@ public class Drill extends FragmentActivity {
                 paint.setStyle(Style.FILL);
                 paint.setColor(getBallColor(btp.value));
                 float scale = (float) (30 / ballRadius / surfaceView.screenScale);
-                canvas.drawCircle(230, surfaceView.screenHeight
-                                - (float) (scale * ballRadius * surfaceView.screenScale),
+                int cx = surfaceView.screenWidth / 2;
+                canvas.drawCircle(cx, surfaceView.screenHeight
+                                - (float) (scale * ballRadius * 1.5 * surfaceView.screenScale),
                         (float) (scale * ballRadius * surfaceView.screenScale), paint);
                 if (btp.value == 7) {
                     paint.setStyle(Style.STROKE);
                     paint.setColor(Color.WHITE);
-                    canvas.drawCircle(230, surfaceView.screenHeight
-                                    - (float) (scale * ballRadius * surfaceView.screenScale),
+                    canvas.drawCircle(cx, surfaceView.screenHeight
+                                    - (float) (scale * ballRadius * 1.5 * surfaceView.screenScale),
                             (float) (scale * ballRadius * surfaceView.screenScale), paint);
                 }
 
@@ -683,27 +688,13 @@ public class Drill extends FragmentActivity {
                 paint.setStyle(Style.FILL);
                 paint.setAlpha(127);
                 paint.setColor(Color.WHITE);
-                canvas.drawCircle(230 + (float) (Math.sin(da2 - da1) * 2 * scale
+                canvas.drawCircle(cx + (float) (Math.sin(da1 - da2) * 2 * scale
                                 * ballRadius * surfaceView.screenScale), surfaceView.screenHeight
-                                - (float) (scale * ballRadius * surfaceView.screenScale),
+                                - (float) (scale * ballRadius * 1.5 * surfaceView.screenScale),
                         (float) (scale * ballRadius * surfaceView.screenScale), paint);
                 paint.setAlpha(255);
             }
         }
-//
-//        // simulation
-//        if (currentShot > -1) {
-//            paint.setStyle(Style.FILL);
-//            for (int b = 0; b < possibleShots.get(currentShot).sBalls.size(); b++) {
-//                // draw ball
-//                paint.setColor(getBallColor(possibleShots.get(currentShot).sBalls
-//                        .get(b).value));
-//                canvas.drawCircle(
-//                        surfaceView.screenX(possibleShots.get(currentShot).sBalls.get(b).Pos.x),
-//                        surfaceView.screenY(possibleShots.get(currentShot).sBalls.get(b).Pos.y),
-//                        (float) (ballRadius * surfaceView.screenScale), paint);
-//            }
-//        }
         surfaceView.surfaceHolder.unlockCanvasAndPost(canvas);
         drawing = false;
         Log.d(TAG, format(Locale.ROOT, "draw() took %.0fms", now() - t0));
@@ -717,6 +708,7 @@ public class Drill extends FragmentActivity {
         ballsOnTable.add(new Ball(x, y, value, id));
     }
 
+    @SuppressWarnings("unused")
     public void switchBalls(View view) {
         int va1 = ballsOnTable.get(0).value;
         ballsOnTable.get(0).value = ballsOnTable.get(1).value;
@@ -724,7 +716,7 @@ public class Drill extends FragmentActivity {
         calc(null);
     }
 
-    private void initTable() {
+    void initTable() {
         ballsOnTable.clear();
         // setup initial practice exercise
         // cueball
@@ -759,16 +751,11 @@ public class Drill extends FragmentActivity {
         ballsOnTable.add(new Ball(pinkSpot.x, first_red + 4 * red_row_dist, 1, 20));
         ballsOnTable.add(new Ball(pinkSpot.x + 2 * ballRadius, first_red + 4 * red_row_dist, 1, 21));
         ballsOnTable.add(new Ball(pinkSpot.x + 4 * ballRadius, first_red + 4 * red_row_dist, 1, 22));
+        handler.sendEmptyMessage(CALC);
     }
 
     private void toast(String msg) {
-        Toast.makeText(getApplicationContext(), msg, Toast.LENGTH_SHORT).show();
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.main, menu);
-        return true;
+        Toast.makeText(getActivity(), msg, Toast.LENGTH_SHORT).show();
     }
 
     private double d(double value, int precision) {
