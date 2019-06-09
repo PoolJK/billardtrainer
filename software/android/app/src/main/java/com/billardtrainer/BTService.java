@@ -51,25 +51,6 @@ class BTService extends Thread {
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
     }
 
-    synchronized void send(String data) {
-        if (data.equals("")) {
-            Log.e(TAG, "refuse to send empty. shame on you");
-            return;
-        }
-        try {
-            OutputStream os = mSocket.getOutputStream();
-            PrintStream sender = new PrintStream(os);
-            sender.print(data + (char) 4);
-        } catch (IOException e) {
-            e.printStackTrace();
-        } catch (NullPointerException e) {
-            e.printStackTrace();
-            Log.e(TAG, "send called with null Socket");
-        }
-        Log.v(TAG, format("Message sent: %s", data));
-        // mainHandler.obtainMessage(Main.TOAST_MESSAGE, String.format("Message sent: %s", data)).sendToTarget();
-    }
-
     public void run() {
         connect();
     }
@@ -81,7 +62,7 @@ class BTService extends Thread {
         }
         Log.v(TAG, "connecting");
         try {
-            long sleep_time = Math.max(last_connect_time + 1000 - System.currentTimeMillis(), 0);
+            long sleep_time = Math.max(last_connect_time + 2000 - System.currentTimeMillis(), 0);
             Log.d(TAG, format("sleep_time=%d", sleep_time));
             Thread.sleep(sleep_time);
         } catch (InterruptedException e) {
@@ -184,6 +165,24 @@ class BTService extends Thread {
                 mainHandler.obtainMessage(Main.BT_DISCONNECTED).sendToTarget();
             BTState = DISCONNECTED;
         }
+    }
+
+    synchronized void send(String data) {
+        if (data.equals("")) {
+            Log.e(TAG, "refuse to send empty. shame on you");
+            return;
+        }
+        try {
+            OutputStream os = mSocket.getOutputStream();
+            PrintStream sender = new PrintStream(os);
+            sender.print(data + (char) 4);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (NullPointerException e) {
+            e.printStackTrace();
+            Log.e(TAG, "send called with null Socket");
+        }
+        Log.v(TAG, format("Message sent: %s", data));
     }
 
     void stopAll() {

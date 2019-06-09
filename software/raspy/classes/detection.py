@@ -37,11 +37,12 @@ class Detection:
                 balls = Ball.find(Ball.grad_val, Ball.acc_thr, Ball.dp, Ball.min_dist, Ball.min_radius, Ball.max_radius,
                                   1, image, self.camera.offset_x, self.camera.offset_y, self.camera.ppm_x,
                                   self.camera.ppm_y)
-            if balls is not None:
+            if balls is not None and index >= 0:
                 self.output_q.put([index, image, balls])
             d = dt(t0, now())
             debug('detection: index: {}: {:3d}ms   {} balls added'
                   .format(index, d, len(balls) if balls is not None else 0), settings.TIMING)
+            return index, image, balls
 
     def stop(self):
         self.stopped = True

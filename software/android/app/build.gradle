@@ -9,9 +9,7 @@ android {
         targetSdkVersion 28
         versionCode 1
         versionName "0.1.0"
-    }
-    dependencies {
-        implementation 'com.android.support:appcompat-v7:28.0.0'
+        manifestPlaceholders = [main_label: "Billardtrainer"]
     }
     sourceSets {
         main {
@@ -29,9 +27,9 @@ android {
         }
     }
     buildTypes {
-//        release {
-//            minifyEnabled true
-//        }
+        release {
+            minifyEnabled true
+        }
         debug {
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.debug
@@ -43,13 +41,12 @@ android {
         atclub {
             dimension "atclub"
             buildConfigField 'String', 'BT_DEVICE', '"raspi9b"'
-            manifestPlaceholders = [drill_label: "DrillSelector"]
         }
         home {
             dimension "atclub"
-            manifestPlaceholders = [drill_label: "DS home"]
-            applicationIdSuffix ".home"
             buildConfigField 'String', 'BT_DEVICE', '"raspberrypi"'
+            manifestPlaceholders = [main_label: "BT home"]
+            applicationIdSuffix ".home"
         }
     }
 }

@@ -54,6 +54,7 @@ class TableSim:
             cv2.namedWindow('table_sim', cv2.WINDOW_NORMAL)
         self.key = 0
         self.display_q = Queue(self.queue_size)
+        self.continuous = False
         self.stopped = False
         self.bluetooth = BT()
         self.camera = Camera(
@@ -107,11 +108,15 @@ class TableSim:
         t.start()
         while True:
             t0 = now()
-            try:
-                index, objects = self.display_q.get_nowait()
-                self.beamer.objects = objects
-            except queue.Empty:  # display queue empty
-                objects = self.beamer.objects
+            if self.continuous:
+                index, self.camera_image, objects = self.detection.detect(-1, self.camera.image)
+            else:
+                try:
+                    index, objects = self.display_q.get_nowait()
+                    self.beamer.objects = objects
+                except queue.Empty:  # display queue empty
+                    objects = self.beamer.objects
+                self.camera_image = self.camera.image
             beamer_image = Beamer.draw_objects(objects, self.beamer.outPict,
                                                self.beamer.offset_x,
                                                self.beamer.offset_y,
@@ -119,7 +124,6 @@ class TableSim:
                                                self.beamer.ppm_y)
             if settings.show_table:
                 # show current input frame
-                self.camera_image = self.camera.image
                 table_image = self.get_table_image(self.camera_image, beamer_image)
                 cv2.imshow('table_sim', cv2.resize(table_image, (540, 960)))
                 cv2.resizeWindow('table_sim', 540, 960)
@@ -135,6 +139,8 @@ class TableSim:
                 break
             if self.key == ord('d'):
                 self.bluetooth.output_q.put(json.dumps({"what": "detect"}))
+            if self.key == ord('c'):
+                self.continuous = not self.continuous
         print('Stopping after {} seconds'.format(dt(t_start, now()) / 1000))
         cv2.destroyAllWindows()
         self.stopped = True

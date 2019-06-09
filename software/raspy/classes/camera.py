@@ -49,7 +49,7 @@ class Camera:
 
     def update(self):
         # development @home: read images from resources/detection_input instead of camera
-        path = 'resources/experimental/detection_input'
+        path = 'resources/experimental/detection_input/shot4'
         if settings.on_pi and not settings.simulate:
             for frame in self.camera.capture_continuous(self.rawCapture, format="bgr",
                                                         use_video_port=True):
