@@ -3,6 +3,8 @@
 import argparse
 import sys
 import threading
+from time import sleep
+from queue import Queue
 import cv2
 import numpy as np
 import settings
@@ -10,6 +12,13 @@ from ball import Ball
 from table import Table
 from beamer import Beamer
 from web import webserv
+
+
+class Photo(Exception):
+    def __init__(self, msg):
+        print(msg)
+        #cv2.destroyAllWindows()
+        sys.exit(-1)
 
 
 # size of output window
@@ -52,8 +61,11 @@ def main():
     else:
         settings.on_win = False
 
+    webq = Queue()
+
     #start Flask webserver in background
-    webThread = threading.Thread(target=webserv.wapp.run).start()
+    webserv.websetup(webq)
+    webThread = threading.Thread(target=webserv.wapp.run, daemon=True).start()
 
     # create window for result output (height, width, dimension for numpy array)
     if settings.on_raspy:
@@ -68,9 +80,7 @@ def main():
         src = cv2.imread(args.filename, cv2.IMREAD_COLOR)
         # Check if image is loaded fine
         if src is None:
-            print('Error opening image!')
-            return -1
-
+            raise Photo('Error opening image!')
         cv2.imshow("Source Image", src)
     else:
         miniBeamer = Beamer(1280, 720)
@@ -91,17 +101,15 @@ def main():
         # take picture from camera
         capture = cv2.VideoCapture(0)
         if not capture.isOpened:
-            print("Error access camera!")
-            return -1
+            raise Photo("Error access camera!")
 
         capture.set(cv2.CAP_PROP_FRAME_WIDTH, IMAGEWIDTH)
         capture.set(cv2.CAP_PROP_FRAME_HEIGHT, IMAGEHEIGHT)
 
         has_frame, src = capture.read()
         if not has_frame:
-            print("Error taking picture")
-            return -1
-        
+            raise Photo("Error taking picture")
+
     # attach mouse callback to window for measuring
     cv2.setMouseCallback("result", mouse_callback)
 
@@ -120,32 +128,38 @@ def main():
     #find table
     found_table = Table.find(gray)
 
-    #draw table
-    if found_table is not None:
-        found_table.drawSelf(outPict)
+    # if settings.debugging:
+    #     cv2.imshow("Found table", outPict)
+    #     print("table: y: {}  y: {}  width: {}  height: {}  angle: {}"
+    #           .format(found_table.x, found_table.y, found_table.w, found_table.h, found_table.angle))
 
-    if settings.debugging:
-        cv2.imshow("Found table", outPict)
-        print("table: y: {}  y: {}  width: {}  height: {}  angle: {}"
-              .format(found_table.x, found_table.y, found_table.w, found_table.h, found_table.angle))
+    while webq.get() == 'Start':
+        #clear result image
+        outPict[:] = (0, 0, 0)
 
-    #find balls
-    found_balls = Ball.find(gray)
+        # draw table
+        if found_table is not None:
+            found_table.drawSelf(outPict)
 
-    #draw balls (inside table)
-    for ball in found_balls:
-        #if(found_table.isInside(ball)):
-        ball.draw(outPict)
+        #find balls
+        found_balls = Ball.find(gray)
 
-    if settings.on_raspy:
-        cv2.imshow("result", miniBeamer.getImage(found_table, outPict))
-    else:
-        cv2.imshow("result", outPict)
+        #draw balls (inside table)
+        for ball in found_balls:
+            #if(found_table.isInside(ball)):
+            ball.draw(outPict)
 
-    #    if (cv2.waitKey(30) & 0xFF) == 27:
-    #       break
+        if settings.on_raspy:
+            cv2.imshow("./web/static/result", miniBeamer.getImage(found_table, outPict))
+        else:
+            cv2.imshow("result", outPict)
 
-    cv2.waitKey()
+        cv2.imwrite("./web/static/result.jpg", outPict)
+        cv2.waitKey(1)
+        #    if (cv2.waitKey(30) & 0xFF) == 27:
+        #       break
+        #cv2.waitKey()
+
     cv2.destroyAllWindows()
     return 0
 

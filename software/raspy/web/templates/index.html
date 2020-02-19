@@ -6,21 +6,15 @@
     <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='indexer.css' ) }}">
 </head>
 <body>
-<img src="{{ url_for('static', filename='8ball.jpg' ) }}">
 
 <form method="post" action=".">
     <table>
+        <tr><img src="{{ url_for('static', filename='8ball.jpg' ) }}"></tr>
         <tr>
-            <th>Easy Lessons</th>
-            <th>Advanced Lessons</th>
+            <td><input type="submit" name="Button1" value="Start" id="submit"/></td>
         </tr>
         <tr>
-            <td><input type="submit" name="Button1" value="Lesson 1" id="submit"/></td>
-            <td><input type="submit" name="Button1" value="Lesson 2" id="submit"/></td>
-        </tr>
-        <tr>
-            <td><input type="submit" name="Button1" value="Lesson 3" id="submit"/></td>
-            <td><input type="submit" name="Button1" value="Lesson 4" id="submit"/></td>
+            <td><input type="submit" name="Button1" value="Stop" id="submit"/></td>
         </tr>
     </table>
 </form>
