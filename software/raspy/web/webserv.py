@@ -1,0 +1,20 @@
+from flask import Flask, render_template, request
+
+wapp = Flask(__name__)
+
+
+@wapp.route('/')
+def index():
+    return render_template("index.html")
+
+
+@wapp.route('/', methods=['POST'])
+def getvalue():
+    if request.method == 'POST':
+        number = request.form['Button1']
+        print(number)
+        return render_template('lesson.html', n=number)
+
+
+if __name__ == "__main__":
+    wapp.run(debug=True)

@@ -3,5 +3,6 @@
 Some settings to evaluate on runtime for all modules
 """
 on_raspy = False
+on_win = False
 debugging = True
 debug_level = 0

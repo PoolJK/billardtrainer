@@ -2,12 +2,14 @@
 
 import argparse
 import sys
+import threading
 import cv2
 import numpy as np
 import settings
 from ball import Ball
 from table import Table
 from beamer import Beamer
+from web import webserv
 
 
 # size of output window
@@ -26,6 +28,8 @@ def mouse_callback(event, x, y, flags, param):
 def main():
     print("OpenCV version :  {0}".format(cv2.__version__))
     clParser = argparse.ArgumentParser()
+    clParser.add_argument('-p', '--platform', dest="platform", help="Platform to run on ('pi' for Raspi, 'win' for Windows)",
+                          required=True)
     clParser.add_argument('-f', '--file', dest="filename", help="image file to process",
                           required=False)
     clParser.add_argument('-d', '--debug',  dest="debug", help="show more debug output",
@@ -38,11 +42,18 @@ def main():
     else:
         settings.debugging = False
 
-    if args.filename:
-        settings.on_raspy = False
-    else:
+    if args.platform == 'pi':
         settings.on_raspy = True
-    
+    else:
+        settings.on_raspy = False
+
+    if args.platform == 'win':
+        settings.on_win = True
+    else:
+        settings.on_win = False
+
+    #start Flask webserver in background
+    webThread = threading.Thread(target=webserv.wapp.run).start()
 
     # create window for result output (height, width, dimension for numpy array)
     if settings.on_raspy:
@@ -91,7 +102,7 @@ def main():
             print("Error taking picture")
             return -1
         
-    # attach mous callback to window for measuring
+    # attach mouse callback to window for measuring
     cv2.setMouseCallback("result", mouse_callback)
 
 
@@ -108,6 +119,7 @@ def main():
 
     #find table
     found_table = Table.find(gray)
+
     #draw table
     if found_table is not None:
         found_table.drawSelf(outPict)
