@@ -11,7 +11,7 @@ import settings
 from ball import Ball
 from table import Table
 from beamer import Beamer
-from web import webserv
+from web.webserv import Webserver
 
 
 class Photo(Exception):
@@ -62,10 +62,9 @@ def main():
         settings.on_win = False
 
     webq = Queue()
-
+    wserv = Webserver(webq)
     #start Flask webserver in background
-    webserv.websetup(webq)
-    webThread = threading.Thread(target=webserv.wapp.run, daemon=True).start()
+    webThread = threading.Thread(target=wserv.run, daemon=True).start()
 
     # create window for result output (height, width, dimension for numpy array)
     if settings.on_raspy:
