@@ -1,0 +1,14 @@
+.title KiCad schematic
+.include "/Volumes/Macintosh HD/Users/jorgkrein/Downloads/LF356.MOD"
+V1 +15V 0 dc 15
+V2 -15V 0 dc -15
+V3 Net-_R3-Pad1_ 0 sin(2.5 2.5 1k)
+R1 0 "/Vout" 1meg
+R2 -2V5 "/Vin" 10k
+V4 -2V5 0 dc -2.5
+R3 Net-_R3-Pad1_ "/Vin" 10k
+R5 Net-_R4-Pad1_ "/Vout" 4.7k
+R4 Net-_R4-Pad1_ 0 1.5k
+XU1 "/Vin" Net-_R4-Pad1_ +15V -15V "/Vout" LF356/NS
+.ac dec 10 100 1000k
+.end

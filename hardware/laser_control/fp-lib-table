@@ -1,0 +1,3 @@
+(fp_lib_table
+  (lib (name laser_control)(type KiCad)(uri ${KIPRJMOD}/laser_control.pretty)(options "")(descr ""))
+)

@@ -1,0 +1,248 @@
+EESchema Schematic File Version 4
+LIBS:laser_control-cache
+EELAYER 29 0
+EELAYER END
+$Descr A4 11693 8268
+encoding utf-8
+Sheet 2 4
+Title ""
+Date ""
+Rev ""
+Comp ""
+Comment1 ""
+Comment2 ""
+Comment3 ""
+Comment4 ""
+$EndDescr
+$Comp
+L power:+15V #PWR04
+U 1 1 5CF507AF
+P 3850 3450
+F 0 "#PWR04" H 3850 3300 50  0001 C CNN
+F 1 "+15V" H 3865 3623 50  0000 C CNN
+F 2 "" H 3850 3450 50  0001 C CNN
+F 3 "" H 3850 3450 50  0001 C CNN
+	1    3850 3450
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:GND #PWR05
+U 1 1 5CF50C55
+P 3850 4050
+F 0 "#PWR05" H 3850 3800 50  0001 C CNN
+F 1 "GND" H 3855 3877 50  0000 C CNN
+F 2 "" H 3850 4050 50  0001 C CNN
+F 3 "" H 3850 4050 50  0001 C CNN
+	1    3850 4050
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4950 3800 4950 3950
+Wire Wire Line
+	4950 3950 4350 3950
+Wire Wire Line
+	3850 3950 3850 4050
+Connection ~ 4950 3950
+Wire Wire Line
+	3850 3450 3850 3500
+Wire Wire Line
+	3850 3500 4350 3500
+Wire Wire Line
+	5250 3500 5450 3500
+$Comp
+L power:+5V #PWR06
+U 1 1 5CF5971E
+P 6100 3350
+F 0 "#PWR06" H 6100 3200 50  0001 C CNN
+F 1 "+5V" H 6115 3523 50  0000 C CNN
+F 2 "" H 6100 3350 50  0001 C CNN
+F 3 "" H 6100 3350 50  0001 C CNN
+	1    6100 3350
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	6100 3350 6100 3500
+$Comp
+L Device:C_Small C2
+U 1 1 5CF5C1F5
+P 5450 3700
+F 0 "C2" H 5542 3746 50  0000 L CNN
+F 1 "100nF" H 5542 3655 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 5450 3700 50  0001 C CNN
+F 3 "~" H 5450 3700 50  0001 C CNN
+	1    5450 3700
+	1    0    0    -1  
+$EndComp
+Connection ~ 4350 3500
+Wire Wire Line
+	4350 3500 4650 3500
+Connection ~ 4350 3950
+Wire Wire Line
+	4350 3950 3850 3950
+Wire Wire Line
+	5450 3600 5450 3500
+Connection ~ 5450 3500
+Wire Wire Line
+	5450 3500 6100 3500
+Wire Wire Line
+	4950 3950 5450 3950
+Wire Wire Line
+	6100 3950 6100 4000
+Wire Wire Line
+	5450 3800 5450 3950
+Connection ~ 5450 3950
+Wire Wire Line
+	5450 3950 6100 3950
+$Comp
+L power:GND #PWR07
+U 1 1 5CF608E5
+P 6100 4000
+F 0 "#PWR07" H 6100 3750 50  0001 C CNN
+F 1 "GND" H 6105 3827 50  0000 C CNN
+F 2 "" H 6100 4000 50  0001 C CNN
+F 3 "" H 6100 4000 50  0001 C CNN
+	1    6100 4000
+	1    0    0    -1  
+$EndComp
+$Comp
+L dk_Rectangular-Connectors-Headers-Male-Pins:0022232031 J1
+U 1 1 5CFAA7D4
+P 1850 3650
+F 0 "J1" V 1625 3658 50  0000 C CNN
+F 1 "0022232031" V 1716 3658 50  0000 C CNN
+F 2 "digikey-footprints:PinHeader_1x3_P2.54mm_Drill1.02mm" H 2050 3850 60  0001 L CNN
+F 3 "https://www.molex.com/pdm_docs/sd/022232031_sd.pdf" H 2050 3950 60  0001 L CNN
+F 4 "WM4201-ND" H 2050 4050 60  0001 L CNN "Digi-Key_PN"
+F 5 "0022232031" H 2050 4150 60  0001 L CNN "MPN"
+F 6 "Connectors, Interconnects" H 2050 4250 60  0001 L CNN "Category"
+F 7 "Rectangular Connectors - Headers, Male Pins" H 2050 4350 60  0001 L CNN "Family"
+F 8 "https://www.molex.com/pdm_docs/sd/022232031_sd.pdf" H 2050 4450 60  0001 L CNN "DK_Datasheet_Link"
+F 9 "/product-detail/en/molex/0022232031/WM4201-ND/26669" H 2050 4550 60  0001 L CNN "DK_Detail_Page"
+F 10 "CONN HEADER VERT 3POS 2.54MM" H 2050 4650 60  0001 L CNN "Description"
+F 11 "Molex" H 2050 4750 60  0001 L CNN "Manufacturer"
+F 12 "Active" H 2050 4850 60  0001 L CNN "Status"
+	1    1850 3650
+	0    1    1    0   
+$EndComp
+$Comp
+L power:+15V #PWR01
+U 1 1 5CFAC0A9
+P 2200 3250
+F 0 "#PWR01" H 2200 3100 50  0001 C CNN
+F 1 "+15V" H 2215 3423 50  0000 C CNN
+F 2 "" H 2200 3250 50  0001 C CNN
+F 3 "" H 2200 3250 50  0001 C CNN
+	1    2200 3250
+	1    0    0    -1  
+$EndComp
+$Comp
+L power:-15V #PWR02
+U 1 1 5CFAC65D
+P 2200 4250
+F 0 "#PWR02" H 2200 4350 50  0001 C CNN
+F 1 "-15V" H 2215 4423 50  0000 C CNN
+F 2 "" H 2200 4250 50  0001 C CNN
+F 3 "" H 2200 4250 50  0001 C CNN
+	1    2200 4250
+	-1   0    0    1   
+$EndComp
+$Comp
+L power:GND #PWR03
+U 1 1 5CFACB8E
+P 2500 3750
+F 0 "#PWR03" H 2500 3500 50  0001 C CNN
+F 1 "GND" H 2505 3577 50  0000 C CNN
+F 2 "" H 2500 3750 50  0001 C CNN
+F 3 "" H 2500 3750 50  0001 C CNN
+	1    2500 3750
+	0    -1   -1   0   
+$EndComp
+Wire Wire Line
+	1950 3650 2200 3650
+Wire Wire Line
+	2200 3650 2200 3300
+Wire Wire Line
+	1950 3850 2200 3850
+Wire Wire Line
+	1950 3750 2400 3750
+Wire Wire Line
+	2200 3300 2400 3300
+Wire Wire Line
+	2400 3300 2400 3350
+Connection ~ 2200 3300
+Wire Wire Line
+	2200 3300 2200 3250
+Wire Wire Line
+	2400 3650 2400 3750
+Connection ~ 2400 3750
+Wire Wire Line
+	2400 3750 2500 3750
+Wire Wire Line
+	2400 3750 2400 3850
+$Comp
+L Device:CP C11
+U 1 1 5D007B2B
+P 2400 3500
+F 0 "C11" H 2518 3546 50  0000 L CNN
+F 1 "4,7uF" H 2518 3455 50  0000 L CNN
+F 2 "Capacitor_SMD:C_1210_3225Metric_Pad1.42x2.65mm_HandSolder" H 2438 3350 50  0001 C CNN
+F 3 "~" H 2400 3500 50  0001 C CNN
+	1    2400 3500
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2200 3850 2200 4200
+$Comp
+L Device:CP C12
+U 1 1 5D0082E4
+P 2400 4000
+F 0 "C12" H 2518 4046 50  0000 L CNN
+F 1 "4,7uF" H 2518 3955 50  0000 L CNN
+F 2 "Capacitor_SMD:C_1210_3225Metric_Pad1.42x2.65mm_HandSolder" H 2438 3850 50  0001 C CNN
+F 3 "~" H 2400 4000 50  0001 C CNN
+	1    2400 4000
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	2400 4150 2400 4200
+Wire Wire Line
+	2400 4200 2200 4200
+Connection ~ 2200 4200
+Wire Wire Line
+	2200 4200 2200 4250
+$Comp
+L Device:C_Small C1
+U 1 1 5D00EE41
+P 4350 3700
+F 0 "C1" H 4442 3746 50  0000 L CNN
+F 1 "100nF" H 4442 3655 50  0000 L CNN
+F 2 "Capacitor_SMD:C_0805_2012Metric_Pad1.15x1.40mm_HandSolder" H 4350 3700 50  0001 C CNN
+F 3 "~" H 4350 3700 50  0001 C CNN
+	1    4350 3700
+	1    0    0    -1  
+$EndComp
+Wire Wire Line
+	4350 3500 4350 3600
+Wire Wire Line
+	4350 3800 4350 3950
+$Comp
+L dk_PMIC-Voltage-Regulators-Linear:MC7805BDTRKG U1
+U 1 1 5D00E52C
+P 4950 3500
+F 0 "U1" H 4950 3787 60  0000 C CNN
+F 1 "MC7805BDTRKG" H 4950 3681 60  0000 C CNN
+F 2 "digikey-footprints:TO-252-3" H 5150 3700 60  0001 L CNN
+F 3 "http://www.onsemi.com/pub/Collateral/MC7800-D.PDF" H 5150 3800 60  0001 L CNN
+F 4 "MC7805BDTRKGOSCT-ND" H 5150 3900 60  0001 L CNN "Digi-Key_PN"
+F 5 "MC7805BDTRKG" H 5150 4000 60  0001 L CNN "MPN"
+F 6 "Integrated Circuits (ICs)" H 5150 4100 60  0001 L CNN "Category"
+F 7 "PMIC - Voltage Regulators - Linear" H 5150 4200 60  0001 L CNN "Family"
+F 8 "http://www.onsemi.com/pub/Collateral/MC7800-D.PDF" H 5150 4300 60  0001 L CNN "DK_Datasheet_Link"
+F 9 "/product-detail/en/on-semiconductor/MC7805BDTRKG/MC7805BDTRKGOSCT-ND/1139742" H 5150 4400 60  0001 L CNN "DK_Detail_Page"
+F 10 "IC REG LINEAR 5V 1A DPAK" H 5150 4500 60  0001 L CNN "Description"
+F 11 "ON Semiconductor" H 5150 4600 60  0001 L CNN "Manufacturer"
+F 12 "Active" H 5150 4700 60  0001 L CNN "Status"
+	1    4950 3500
+	1    0    0    -1  
+$EndComp
+$EndSCHEMATC

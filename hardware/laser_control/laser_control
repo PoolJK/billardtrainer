@@ -1,0 +1,58 @@
+Source,/Volumes/Macintosh HD/Users/jorgkrein/PycharmProjects/billardtrainer/hardware/laser_control/laser_control.sch
+Kicad Rev,Eeschema (5.1.2-1)-1
+Generated Date,Tuesday, 11 June 2019 at 22:02:25
+
+Title,Laser Control
+Company,Jörg Krein
+Revision,1.0
+Date Issue,Not Set
+Comment,© 2019
+
+Reference,Value,Category,DK_Datasheet_Link,DK_Detail_Page,Description,Digi-Key_PN,Family,MPN,Manufacturer,Status,Spice_Lib_File,Spice_Model,Spice_Netlist_Enabled,Spice_Primitive,Library,Library Ref
+U1,L7805,Regulator_Linear,L7805
+C2,100nF,Device,C_Small
+J1,0022232031,Connectors, Interconnects,https://www.molex.com/pdm_docs/sd/022232031_sd.pdf,/product-detail/en/molex/0022232031/WM4201-ND/26669,CONN HEADER VERT 3POS 2.54MM,WM4201-ND,Rectangular Connectors - Headers, Male Pins,0022232031,Molex,Active,,,,,dk_Rectangular-Connectors-Headers-Male-Pins,0022232031
+C11,4,7uF,Device,CP
+C12,4,7uF,Device,CP
+C1,100nF,Device,C_Small
+U2,MCP4922,Analog_DAC,MCP4922
+U3,LM324,,,,,,,,,,/Volumes/Macintosh HD/Users/jorgkrein/Downloads/LMx24_LM2902.cir,LMX24_LM2902,Y,X,Amplifier_Operational,LM324
+R19,100R,,,,,,,,,,,100,Y,R,Device,R
+R15,12k,,,,,,,,,,,12k,Y,R,Device,R
+R12,10k,,,,,,,,,,,10k,Y,R,Device,R
+R18,100R,,,,,,,,,,,100,Y,R,Device,R
+U4,LM324,,,,,,,,,,/Volumes/Macintosh HD/Users/jorgkrein/Downloads/LMx24_LM2902.cir,LMX24_LM2902,Y,X,Amplifier_Operational,LM324
+R17,100R,Device,R
+R14,12k,Device,R
+R13,10k,Device,R
+R16,100R,Device,R
+R8,10k,,,,,,,,,,,100,Y,R,Device,R
+R10,10k,,,,,,,,,,,100,Y,R,Device,R
+R2,0R,,,,,,,,,,,100,Y,R,Device,R
+R4,n.b.,,,,,,,,,,,100,Y,R,Device,R
+R6,10R,,,,,,,,,,,100,Y,R,Device,R
+R9,10k,,,,,,,,,,,100,Y,R,Device,R
+R11,10k,,,,,,,,,,,100,Y,R,Device,R
+R3,0R,,,,,,,,,,,100,Y,R,Device,R
+R5,n.b.,,,,,,,,,,,100,Y,R,Device,R
+R7,100R,,,,,,,,,,,100,Y,R,Device,R
+C5,100nF,Device,C
+C6,100nF,Device,C
+C3,100nF,Device,C
+R1,10k,,,,,,,,,,,100,Y,R,Device,R
+C4,220nF,Device,C
+C8,100nF,Device,C
+C7,100nF,Device,C
+C9,100nF,Device,C
+C10,100nF,Device,C
+J2,B3B-XH-A_LF__SN_,Connectors, Interconnects,http://www.jst-mfg.com/product/pdf/eng/eXH.pdf,/product-detail/en/jst-sales-america-inc/B3B-XH-A(LF)(SN)/455-2248-ND/1651046,CONN HEADER VERT 3POS 2.5MM,455-2248-ND,Rectangular Connectors - Headers, Male Pins,B3B-XH-A(LF)(SN),JST Sales America Inc.,Active,,,,,dk_Rectangular-Connectors-Headers-Male-Pins,B3B-XH-A_LF__SN_
+J3,B3B-XH-A_LF__SN_,Connectors, Interconnects,http://www.jst-mfg.com/product/pdf/eng/eXH.pdf,/product-detail/en/jst-sales-america-inc/B3B-XH-A(LF)(SN)/455-2248-ND/1651046,CONN HEADER VERT 3POS 2.5MM,455-2248-ND,Rectangular Connectors - Headers, Male Pins,B3B-XH-A(LF)(SN),JST Sales America Inc.,Active,,,,,dk_Rectangular-Connectors-Headers-Male-Pins,B3B-XH-A_LF__SN_
+R24,3.9k,,,,,,,,,,,10k,Y,R,Device,R
+R22,20k,,,,,,,,,,,10k,Y,R,Device,R
+R25,3.9k,Device,R
+R23,20k,Device,R
+R21,10k,Device,R
+D1,LED,Device,LED
+R20,220R,Device,R
+J4,Conn_01x04,Connector_Generic,Conn_01x04
+A1,Arduino_Nano_v3.x,MCU_Module,Arduino_Nano_v3.x

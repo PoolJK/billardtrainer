@@ -1,0 +1,6 @@
+{
+    "terminal.integrated.env.osx": {
+        "PATH": "/usr/local/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/X11/bin:/opt/local/bin:/opt/local/sbin:/opt/local/bin:/opt/local/sbin:/Volumes/Macintosh HD/Users/jorgkrein/android-sdks/platform-tools:/Volumes/Macintosh HD/Users/jorgkrein/android-ndk:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/usr/local/share/dotnet:/opt/X11/bin:~/.dotnet/tools",
+        "PLATFORMIO_CALLER": "vscode"
+    }
+}

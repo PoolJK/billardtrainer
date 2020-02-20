@@ -1,0 +1,22 @@
+ERC report (Saturday, 08 June 2019 at 20:42:57, Encoding UTF8 )
+
+***** Sheet /
+
+***** Sheet /Power/
+ErrType(5): Conflict problem between pins. Severity: error
+    @(133.35 mm, 88.90 mm): Pin 3 (Power output) of component U1 is connected to 
+    @(50.80 mm, 78.74 mm): pin 9 (Output) of component U2 (net 7).
+ErrType(3): Pin connected to other pins, but not driven by any pin
+    @(58.42 mm, 104.14 mm): Pin 1 (Power input) of component #PWR02 is not driven (Net 32).
+
+***** Sheet /DAC/
+ErrType(3): Pin connected to other pins, but not driven by any pin
+    @(130.81 mm, 167.64 mm): Pin 4 (Power input) of component U3 is not driven (Net 33).
+
+***** Sheet /USB-Connect/
+ErrType(2): Pin not connected (use a “no connection” flag to suppress this error)
+    @(102.87 mm, 106.68 mm): Pin 15 (Bidirectional) of component A1 is unconnected.
+ErrType(3): Pin connected to other pins, but not driven by any pin
+    @(74.93 mm, 106.68 mm): Pin 1 (Power input) of component #PWR024 is not driven (Net 6).
+
+ ** ERC messages: 5  Errors 1  Warnings 4
