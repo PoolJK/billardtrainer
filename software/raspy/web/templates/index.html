@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Python Webtest</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='indexer.css' ) }}">
+</head>
+<body>
+
+<form method="post" action=".">
+    <table>
+        <tr><img src="{{ url_for('static', filename='8ball.jpg' ) }}"></tr>
+        <tr>
+            <td><input type="submit" name="Button1" value="Start" id="submit"/></td>
+        </tr>
+        <tr>
+            <td><input type="submit" name="Button1" value="Stop" id="submit"/></td>
+        </tr>
+    </table>
+</form>
+</body>
+</html>
