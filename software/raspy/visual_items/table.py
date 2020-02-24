@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-from software.raspy.settings import Settings
-from software.raspy.visual_items.visual_item import VisualItem
+import settings
+from visual_items.visual_item import VisualItem
 #from software.raspy.ball import Ball
 
 
@@ -45,7 +45,7 @@ class Table(VisualItem):
         box = np.int0(box)
         cv2.drawContours(image, [box],  0, (255, 255, 255), 2)
         # draw mid point for debugging
-        if Settings.debugging:
+        if settings.debugging:
             print("table drawn: x: {}, y: {}, w: {}, h: {}, a: {} (pixels)"
                   .format((self.x - offs_x) * pix_per_mm + (image.shape[1] / 2),
                           (self.y - offs_y) * pix_per_mm + (image.shape[0] / 2),
@@ -67,7 +67,7 @@ class Table(VisualItem):
         # binary = cv2.bitwise_not(gray)
         # cv2.imshow("thresh", thresh)
         # _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-        if Settings.on_raspy:
+        if settings.on_raspy:
             _, contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         else:
             contours, hierarchy = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -75,7 +75,7 @@ class Table(VisualItem):
         for contour in contours:
             (x, y), (w, h), angle = cv2.minAreaRect(contour)
             if w > 300 and h > 200:
-                if Settings.debugging:
+                if settings.debugging:
                     print("table found: x: {}, y:{}, w: {}, h: {}, a:{} (mm)"
                           .format(((x - (image.shape[1] / 2)) / pix_per_mm) - offs_x,
                                   ((y - (image.shape[0] / 2)) / pix_per_mm) - offs_y,

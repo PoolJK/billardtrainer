@@ -1,4 +1,4 @@
-from software.raspy.visual_items.visual_item import VisualItem
+from visual_items.visual_item import VisualItem
 import cv2
 
 

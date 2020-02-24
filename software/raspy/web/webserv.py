@@ -3,7 +3,7 @@ from flask import Flask, render_template, request
 
 class Webserver:
     """
-    Simple webserver with Flask
+    Simple web server with Flask
     Show some pages and react to form methods.
     Send form results via message queue.
     """
@@ -15,7 +15,7 @@ class Webserver:
         """
         self.repq = que
         self.wapp = Flask(__name__)
-        self.wapp.add_url_rule('/', 'index', self.index, methods=['POST'])
+        self.wapp.add_url_rule('/', 'index', self.index, methods=['POST', 'GET'])
 
     def index(self):
         """
@@ -24,10 +24,10 @@ class Webserver:
         :return: requested web page
         """
         if request.method == 'POST':
-            number = request.form['Button1']
+            action = request.form['Button1']
             #print(number)
-            self.repq.put(number)
-            return render_template('result.html', n=number)
+            self.repq.put(action)
+            return render_template('result.html', n=action)
         else:
             return render_template("index.html")
 

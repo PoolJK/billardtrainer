@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-from software.raspy.visual_items.visual_item import VisualItem
-from software.raspy.settings import Settings
+from visual_items.visual_item import VisualItem
+import settings
 
 
 class Ball(VisualItem):
@@ -28,7 +28,7 @@ class Ball(VisualItem):
 
     
     def draw_self(self, image, pix_per_mm, offs_x, offs_y) -> None:
-        if Settings.debugging:
+        if settings.debugging:
             print("ball drawn at: x:{}, y:{} (pixels)".format( int((self.x - offs_x) * pix_per_mm + (image.shape[1] / 2)),
                                                     int((self.y - offs_y) * pix_per_mm + (image.shape[0] / 2))))
         # circle outline
@@ -36,7 +36,7 @@ class Ball(VisualItem):
                            int((self.y - offs_y) * pix_per_mm + (image.shape[0] / 2))),
                             int(self.radius * pix_per_mm), (255, 255, 255), 3)
         # draw mid point for debugging
-        if Settings.debugging:
+        if settings.debugging:
             cv2.drawMarker(image, (int((self.x - offs_x) * pix_per_mm + (image.shape[1] / 2)),
                                    int((self.y - offs_y) * pix_per_mm + (image.shape[0] / 2))),
                                  (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
@@ -65,7 +65,7 @@ class Ball(VisualItem):
                 balls.append(Ball(((i[0] - (image.shape[1] / 2)) / pix_per_mm) - offs_x,
                                    ((i[1] - (image.shape[0] / 2)) / pix_per_mm) - offs_y,
                                    i[2] / pix_per_mm))
-                if Settings.debugging:
+                if settings.debugging:
                     print("ball found: x:{}, y:{} (mm)".format(((i[0] - (image.shape[1] / 2))/ pix_per_mm) - offs_x,
                                                            ((i[1] - (image.shape[0] / 2))/ pix_per_mm) - offs_y))
         return balls

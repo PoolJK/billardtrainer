@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
-from software.raspy.visual_items.ball import Ball
-from software.raspy.visual_items.table import Table
-from software.raspy.settings import Settings
+import settings
 
 
 
@@ -17,9 +15,9 @@ class Beamer:
         self.resolution_y = resolution_y
         self.pix_per_mm = pix_per_mm
         #: x offset of beamer from table mid point in mm
-        self.offset_x = 1000
+        self.offset_x = 0 #1000
         #: y offset of beamer from table mid point in mm
-        self.offset_y = -100
+        self.offset_y = 0 #-100
         #: objects to show in image
         self.objects = []
         # create black image to show objects in
@@ -29,7 +27,7 @@ class Beamer:
         #self.hdmiPict = np.zeros((768, 1024, 3), np.uint8)
         #print(self.hdmiPict.shape)
         # create window for beamer output (height, width, dimension for numpy array)
-        if  Settings.on_raspy:
+        if settings.on_raspy:
             cv2.namedWindow("beamer", cv2.WINDOW_AUTOSIZE + cv2.WINDOW_NORMAL)
             cv2.setWindowProperty("beamer", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         else:
@@ -39,7 +37,7 @@ class Beamer:
     def show_objects(self):
         for obj in self.objects:
             obj.draw_self(self.outPict, self.pix_per_mm, self.offset_x, self.offset_y)
-        if Settings.debugging:
+        if settings.debugging:
             cv2.drawMarker(self.outPict, (int(self.outPict.shape[1] / 2),
                                           int(self.outPict.shape[0] / 2)),
                            (0, 165, 255), cv2.MARKER_CROSS, int(self.outPict.shape[1]), 2)
@@ -78,4 +76,5 @@ class Beamer:
         Add object to show with show_objects()
         :param object:
         """
-        self.objects.append(object)
+        if object is not None:
+            self.objects.append(object)

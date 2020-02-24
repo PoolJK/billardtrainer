@@ -1,7 +1,10 @@
 """
 Some settings to evaluate on runtime to be accessed across all modules
 """
-class Settings:
-    on_raspy= False
-    debugging = False
-    debug_level = 0
+
+on_raspy = False
+on_win = False
+debugging = True
+debug_level = 1
+beamer_offset_x = 0  # 1000
+beamer_offset_y = 0  # -100

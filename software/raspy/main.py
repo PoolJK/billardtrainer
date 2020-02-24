@@ -1,40 +1,68 @@
 #!/usr/bin/python3
 
 import argparse
+import sys
 import cv2
+import threading
+from queue import Queue
 import numpy as np
-from software.raspy.settings import Settings
-from software.raspy.visual_items.ball import Ball
-from software.raspy.visual_items.table import Table, MiniTable
-from software.raspy.visual_items.cross import Cross
-from software.raspy.beamer import Beamer
-from software.raspy.camera import Camera
+import settings
+from visual_items.ball import Ball
+from visual_items.table import Table, MiniTable
+from visual_items.cross import Cross
+from beamer import Beamer
+from camera import Camera
+from web.webserv import Webserver
+
+
+class GetImage(Exception):
+    def __init__(self, msg):
+        print(msg)
+        # cv2.destroyAllWindows()
+        sys.exit(-1)
+
+
+def mouse_callback(event, x, y, flags, param):
+    """
+    print coordinates of mouse on click
+    """
+    if event == cv2.EVENT_LBUTTONDOWN:
+        print("Coord: {} {}".format(x, y))
 
 
 def main():
-    #print("OpenCV version :  {0}".format(cv2.__version__))
+    print("OpenCV version :  {0}".format(cv2.__version__))
     clParser = argparse.ArgumentParser()
+
+    clParser.add_argument('-p', '--platform', dest="platform",
+                          help="Platform to run on ('pi' for Raspi, 'win' for Windows)",
+                          required=True)
     clParser.add_argument('-f', '--file', dest="filename", help="image file to process",
                           required=False)
-    clParser.add_argument('-d', '--debug',  dest="debug", help="show more debug output",
-                          action="store_true", default=False)
 
     args = clParser.parse_args()
 
-    if args.debug:
-        Settings.debugging = True
+    if args.platform == 'pi':
+        settings.on_raspy = True
     else:
-        Settings.debugging = False
+        settings.on_raspy = False
 
-    if args.filename:
-        Settings.on_raspy = False
+    if args.platform == 'win':
+        settings.on_win = True
     else:
-        Settings.on_raspy = True
+        settings.on_win = False
 
     # create Beamer and Camera for taking picture and showing results
     miniBeamer = Beamer()
     raspiCam = Camera()
-    minTable = MiniTable()
+
+    # start Flask webserver in background
+    webq = Queue()
+    wserv = Webserver(webq)
+    webThread = threading.Thread(target=wserv.run, daemon=True).start()
+
+    # attach mouse callback to window for measuring
+    #cv2.setMouseCallback("result", mouse_callback)
 
     # get image from file or camera
     if args.filename:
@@ -42,8 +70,7 @@ def main():
         src = cv2.imread(args.filename, cv2.IMREAD_COLOR)
         # Check if image is loaded fine
         if src is None:
-            print('Error opening image!')
-            return -1
+            raise GetImage('Error opening image!')
     else:
         """ give out white image with beamer and take picture"""
         miniBeamer.show_white()
@@ -51,73 +78,45 @@ def main():
         # time.sleep(5)
         src = raspiCam.take_picture(1280, 720)
         if src is None:
-            print('Error taking picture!')
-            return -1
+            raise GetImage('Error taking picture!')
 
-    if Settings.debugging:
+    if settings.debugging is True:
         cv2.namedWindow("source", cv2.WINDOW_NORMAL)
         cv2.imshow("source", src)
+        cv2.waitKey(1)
 
-    #if args.debug:
-    #   cv2.imshow("gray", gray)
-
-    #find table of undistortion
+    # find table
     found_table = Table.find_self(src, raspiCam.pix_per_mm, raspiCam.offset_x, raspiCam.offset_y)
 
-##    if found_table is not None:
-##        # get undistorted image
-##        undistorted = raspiCam.get_undistorted_image(src, found_table)
-##        if Settings.debugging:
-##            #draw found table and reference table in source image after recognition
-##            found_table.draw_self(src, raspiCam.pix_per_mm, raspiCam.offset_x, raspiCam.offset_y)
-##            minTable.draw_self(src, raspiCam.pix_per_mm,raspiCam.offset_x, raspiCam.offset_y)
-##            cv2.imshow("source", src)
-##    else:
-##        print("no table for correction found")
-##        return -1
-
-    #find table in undistorted image
-##    found_table = Table.find_self(undistorted, raspiCam.pix_per_mm, raspiCam.offset_x, raspiCam.offset_y)
-
-    if found_table is not None:
-        miniBeamer.add_object(found_table)
-        #if Settings.debugging:
-        #     found_table.draw_self(undistorted, raspiCam.pix_per_mm, 0, 0)
-        #    print("undistorted table: x: {}, y: {}, w: {}, h: {}".format(found_table.x, found_table.y,
-        #                                                            found_table.w,found_table.h))
-    else:
+    if found_table is None:
         print("No table in undistorted found!")
 
-##    if Settings.debugging:
-##        cv2.namedWindow("undist", cv2.WINDOW_NORMAL)
-##        cv2.imshow("undist", undistorted)
+    while webq.get() == 'Start':
+        # clear result image
+        miniBeamer.clear_image()
 
-    #find balls
-    found_balls = Ball.find_self(src, raspiCam.pix_per_mm, raspiCam.offset_x, raspiCam.offset_y)
+        miniBeamer.add_object(found_table)
 
-    #draw balls (inside table)
-    for ball in found_balls:
-        #if(found_table.isInside(ball)):
-        miniBeamer.add_object(ball)
-        #print("ball found")
-    miniBeamer.show_objects()
+        # find balls
+        found_balls = Ball.find_self(src, raspiCam.pix_per_mm, raspiCam.offset_x, raspiCam.offset_y)
 
-    if Settings.debugging:
-        # draw found table in undistorted image
-##        if found_table is not None:
-##            found_table.draw_self(undistorted, raspiCam.pix_per_mm, raspiCam.offset_x, raspiCam.offset_y)
-        # draw mid point cross hair in images
-        cv2.drawMarker(src, (int(src.shape[1] / 2), int(src.shape[0] / 2)),
-                       (0, 165, 255), cv2.MARKER_CROSS, int(src.shape[1]), 2)
-        cv2.imshow("source", src)
+        # add draw balls
+        for ball in found_balls:
+            # if(found_table.isInside(ball)):
+            miniBeamer.add_object(ball)
+            # print("ball found")
 
-##        cv2.drawMarker(undistorted, (int(undistorted.shape[1] / 2), int(undistorted.shape[0] / 2)),
-##                       (0, 165, 255), cv2.MARKER_CROSS, int(undistorted.shape[1]), 2)
-##        cv2.imshow("undist", undistorted)
+        miniBeamer.show_objects()
 
-    cv2.waitKey()
+        cv2.imwrite("./web/static/result.jpg", miniBeamer.outPict)
+        cv2.waitKey(1)
+        #    if (cv2.waitKey(30) & 0xFF) == 27:
+        #       break
+        # cv2.waitKey()
+
     cv2.destroyAllWindows()
     return 0
+
 
 if __name__ == '__main__':
     main()

@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-from software.raspy.settings import Settings
-from software.raspy.visual_items.table import MiniTable
+import settings
+from visual_items.table import MiniTable
 
 
 class Camera:
@@ -51,7 +51,7 @@ class Camera:
 
         box1 = cv2.boxPoints(((table.x, table.y), (table.w, table.h), table.angle))
 
-        if Settings.debugging:
+        if settings.debugging:
             print("box1: {}".format(box1))
         #using mini table for undistortion, values already in mm
             print("mini table: x: {}, y: {}, w:{}, h:{}, a:{}".format(self.ref_table.x, self.ref_table.y,
@@ -59,7 +59,7 @@ class Camera:
         box2 = cv2.boxPoints(((self.ref_table.x, self.ref_table.y),
                               (self.ref_table.w , self.ref_table.h), self.ref_table.angle))
 
-        if Settings.debugging:
+        if settings.debugging:
             print("box2: {}".format(box2))
 
         pts_dst = np.array([box2[0], box2[1], box2[2], box2[3]])
@@ -71,7 +71,7 @@ class Camera:
 
         # Warp source image to destination
         warped_image = cv2.warpPerspective(image, h, (image.shape[1], image.shape[0]))
-        if Settings.debugging:
+        if settings.debugging:
             # draw camera position
             # cv2.drawMarker(warped_image, (int(self.offset_x * self.pix_per_mm), int(self.offset_y * self.pix_per_mm)),
             #                (47, 255, 173), cv2.MARKER_CROSS, int(self.resolution_y), 2)

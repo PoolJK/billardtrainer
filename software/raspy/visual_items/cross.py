@@ -1,5 +1,5 @@
-from software.raspy.visual_items.visual_item import VisualItem
-from software.raspy.settings import Settings
+from visual_items.visual_item import VisualItem
+import settings
 import cv2
 
 
@@ -9,7 +9,7 @@ class Cross(VisualItem):
         self.length = length
 
     def draw_self(self, image, pix_per_mm, offs_x, offs_y) -> None:
-        if Settings.debugging:
+        if settings.debugging:
             print("cross drawn at: x:{}, y:{} (pixels)".format( int((self.x - offs_x) * pix_per_mm + (image.shape[1] / 2)),
                                                     int((self.y - offs_y) * pix_per_mm + (image.shape[0] / 2))))
         cv2.drawMarker(image, (int((self.x - offs_x) * pix_per_mm + (image.shape[1] / 2)),
