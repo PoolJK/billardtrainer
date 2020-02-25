@@ -10,14 +10,13 @@ class Beamer:
     Needs to take offset and distance in account to correct displayed image.
     """
 
-    def __init__(self, resolution_x=1280, resolution_y=720, pix_per_mm=206/170):
-        self.resolution_x = resolution_x
-        self.resolution_y = resolution_y
-        self.pix_per_mm = pix_per_mm
-        #: x offset of beamer from table mid point in mm
-        self.offset_x = 0 #1000
-        #: y offset of beamer from table mid point in mm
-        self.offset_y = 0 #-100
+    def __init__(self):
+        self.resolution_x = settings.beamer_resolution_x
+        self.resolution_y = settings.beamer_resolution_y
+        self.pix_per_mm = settings.beamer_pix_per_mm
+        self.offset_x = settings.beamer_offset_x
+        self.offset_y = settings.beamer_offset_y
+        self.rotation = settings.beamer_rotation
         #: objects to show in image
         self.objects = []
         # create black image to show objects in
@@ -78,3 +77,7 @@ class Beamer:
         """
         if object is not None:
             self.objects.append(object)
+
+    def add_objects(self, objects):
+        for item in objects:
+            self.objects.append(item)

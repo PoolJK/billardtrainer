@@ -1,5 +1,4 @@
 import cv2
-import numpy as np
 from visual_items.visual_item import VisualItem
 import settings
 

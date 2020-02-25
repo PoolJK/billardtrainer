@@ -9,28 +9,27 @@ class Camera:
     Taking pictures from camera and undistort them
     """
 
-    def __init__(self, pix_per_mm=1.21):
+    def __init__(self):
         self.picture = []
         self.ref_table = MiniTable()
-        #: mounted height of camera lens in mm
-        self.mount_height = 927.0
-        #: resolution of camera at mounted height
-        self.pix_per_mm = pix_per_mm
-        #: x offset of camera from table mid point in mm
-        self.offset_x = 0
-        #: y offset of camera from table mid point in mm
-        self.offset_y = 0
+        self.mount_height = settings.camera_mount_height
+        self.pix_per_mm = settings.camera_pix_per_mm
+        self.offset_x = settings.camera_offset_x
+        self.offset_y = settings.camera_offset_y
+        self.resolution_x = settings.camera_resolution_x
+        self.resolution_y = settings.camera_resolution_y
+        self.rotation = settings.camera_rotation
 
 
-    def take_picture(self, resolution_x=1280, resolution_y=960):
+    def take_picture(self ):
         # take picture from camera
         capture = cv2.VideoCapture("http://192.168.178.23/live", cv2.CAP_FFMPEG)
         if not capture.isOpened:
             print("Error access camera!")
             return -1
 
-        capture.set(cv2.CAP_PROP_FRAME_WIDTH, resolution_x)
-        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, resolution_y)
+        capture.set(cv2.CAP_PROP_FRAME_WIDTH, self.resolution_x)
+        capture.set(cv2.CAP_PROP_FRAME_HEIGHT, self.resolution_y)
 
         has_frame, self.picture = capture.read()
         if not has_frame:

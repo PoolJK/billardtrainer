@@ -5,14 +5,11 @@ import sys
 import cv2
 import threading
 from queue import Queue
-import numpy as np
 import settings
-from visual_items.ball import Ball
-from visual_items.table import Table, MiniTable
-from visual_items.cross import Cross
 from beamer import Beamer
 from camera import Camera
 from web.webserv import Webserver
+from detector import Detector
 
 
 class GetImage(Exception):
@@ -20,14 +17,6 @@ class GetImage(Exception):
         print(msg)
         # cv2.destroyAllWindows()
         sys.exit(-1)
-
-
-def mouse_callback(event, x, y, flags, param):
-    """
-    print coordinates of mouse on click
-    """
-    if event == cv2.EVENT_LBUTTONDOWN:
-        print("Coord: {} {}".format(x, y))
 
 
 def main():
@@ -61,50 +50,21 @@ def main():
     wserv = Webserver(webq)
     webThread = threading.Thread(target=wserv.run, daemon=True).start()
 
-    # attach mouse callback to window for measuring
-    #cv2.setMouseCallback("result", mouse_callback)
-
-    # get image from file or camera
+    dectsem = threading.Semaphore()
+    # start object detector in background
     if args.filename:
-        """ Load image from disk if filename is given as parameter"""
-        src = cv2.imread(args.filename, cv2.IMREAD_COLOR)
-        # Check if image is loaded fine
-        if src is None:
-            raise GetImage('Error opening image!')
+        detect = Detector(semaphore=dectsem, cam=None, filename=args.filename)
+
     else:
-        """ give out white image with beamer and take picture"""
-        miniBeamer.show_white()
-        cv2.waitKey()
-        # time.sleep(5)
-        src = raspiCam.take_picture(1280, 720)
-        if src is None:
-            raise GetImage('Error taking picture!')
+        detect = Detector(semaphore=dectsem, cam=raspiCam)
 
-    if settings.debugging is True:
-        cv2.namedWindow("source", cv2.WINDOW_NORMAL)
-        cv2.imshow("source", src)
-        cv2.waitKey(1)
-
-    # find table
-    found_table = Table.find_self(src, raspiCam.pix_per_mm, raspiCam.offset_x, raspiCam.offset_y)
-
-    if found_table is None:
-        print("No table in undistorted found!")
+    dectThread = threading.Thread(target=detect.run, daemon=True).start()
 
     while webq.get() == 'Start':
         # clear result image
         miniBeamer.clear_image()
 
-        miniBeamer.add_object(found_table)
-
-        # find balls
-        found_balls = Ball.find_self(src, raspiCam.pix_per_mm, raspiCam.offset_x, raspiCam.offset_y)
-
-        # add draw balls
-        for ball in found_balls:
-            # if(found_table.isInside(ball)):
-            miniBeamer.add_object(ball)
-            # print("ball found")
+        miniBeamer.add_objects(detect.get_objects())
 
         miniBeamer.show_objects()
 
