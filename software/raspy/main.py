@@ -10,13 +10,7 @@ from beamer import Beamer
 from camera import Camera
 from web.webserv import Webserver
 from detector import Detector
-
-
-class GetImage(Exception):
-    def __init__(self, msg):
-        print(msg)
-        # cv2.destroyAllWindows()
-        sys.exit(-1)
+from less_eck_pos import EckertPositoinDrill
 
 
 def main():
@@ -60,19 +54,32 @@ def main():
 
     dectThread = threading.Thread(target=detect.run, daemon=True).start()
 
-    while webq.get() == 'Start':
-        # clear result image
-        miniBeamer.clear_image()
+    less1 = EckertPositoinDrill()
 
-        miniBeamer.add_objects(detect.get_objects())
+    # wait for web server form action
+    action = webq.get()
+    while action is not 'Stop':
+        if action == 'Start':
+            # show new image
+            miniBeamer.clear_image()
+            miniBeamer.add_objects(detect.get_objects())
+            miniBeamer.show_objects()
+            # write new image for webserver
+            cv2.imwrite("./web/static/result.jpg", miniBeamer.outPict)
+            cv2.waitKey(1)
+            #    if (cv2.waitKey(30) & 0xFF) == 27:
+            #       break
+            # cv2.waitKey()
+        elif action == 'lesson1':
+            # show new image
+            miniBeamer.clear_image()
+            miniBeamer.add_objects(less1.get_objects())
+            miniBeamer.show_objects()
+            # write new image for webserver
+            cv2.imwrite("./web/static/result.jpg", miniBeamer.outPict)
+            cv2.waitKey(1)
 
-        miniBeamer.show_objects()
-
-        cv2.imwrite("./web/static/result.jpg", miniBeamer.outPict)
-        cv2.waitKey(1)
-        #    if (cv2.waitKey(30) & 0xFF) == 27:
-        #       break
-        # cv2.waitKey()
+        action = webq.get()
 
     cv2.destroyAllWindows()
     return 0

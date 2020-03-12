@@ -1,6 +1,5 @@
 import sys
 import cv2
-import time
 import settings
 from visual_items.table import Table
 from visual_items.ball import Ball
@@ -14,7 +13,10 @@ def mouse_callback(event, x, y, flags, param):
         print("Coord: {} {}".format(x, y))
 
 
-class TakeImage(Exception):
+class TakeImageError(Exception):
+    """
+    Exception while taking picture
+    """
     def __init__(self, msg):
         print(msg)
         # cv2.destroyAllWindows()
@@ -22,6 +24,10 @@ class TakeImage(Exception):
 
 
 class Detector:
+    """
+    Detect visual items in an image
+    Detection is started after objects are requested
+    """
     def __init__(self, semaphore, cam, filename):
         self.objects = []
         self.src = []
@@ -32,7 +38,7 @@ class Detector:
             self.src = cv2.imread(filename, cv2.IMREAD_COLOR)
             # Check if image is loaded fine
             if self.src is None:
-                raise TakeImage('Error loading image file!')
+                raise TakeImageError('Error loading image file!')
         if settings.debugging is True:
             cv2.namedWindow("source", cv2.WINDOW_NORMAL)
             cv2.imshow("source", self.src)
@@ -41,12 +47,16 @@ class Detector:
 
 
     def run(self):
+        """
+        Thread to be started in background
+        If no image file was given, tries to take picture
+        """
         while self.isrunning:
             self.sema.acquire()
             if self.camera is not None:
                 self.src = self.camera.take_picture()
                 if self.src is None:
-                    raise TakeImage('Error taking picture!')
+                    raise TakeImageError('Error taking picture!')
             # find table
             found_table = Table.find_self(self.src, settings.camera_pix_per_mm,
                                           settings.camera_offset_x, settings.camera_offset_y)
@@ -61,9 +71,16 @@ class Detector:
 
 
     def get_objects(self):
+        """
+        return found visual items
+        starts new detection
+        """
         self.sema.release()
         return self.objects
 
 
     def stop(self):
+        """
+        stop background thread permanently
+        """
         self.isrunning = False

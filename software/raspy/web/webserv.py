@@ -16,6 +16,7 @@ class Webserver:
         self.repq = que
         self.wapp = Flask(__name__)
         self.wapp.add_url_rule('/', 'index', self.index, methods=['POST', 'GET'])
+        self.wapp.add_url_rule('/eckpos', 'eckpos', self.eckpos, methods=['POST', 'GET'])
 
     def index(self):
         """
@@ -31,8 +32,16 @@ class Webserver:
         else:
             return render_template("index.html")
 
+    def eckpos(self):
+        if request.method == 'POST':
+            action = 'lesson1'
+            self.repq.put(action)
+            return render_template('result.html', n=action)
+        else:
+            return render_template("eckpos.html")
+
     def run(self):
         """
-        Run flask
+        Run flask in background
         """
         self.wapp.run()

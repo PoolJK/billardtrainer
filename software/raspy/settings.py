@@ -1,5 +1,5 @@
 """
-Some settings to evaluate on runtime to be accessed across all modules
+Some settings to evaluate on runtime to be accessible across all modules
 """
 
 on_raspy = False
