@@ -10,7 +10,7 @@ from beamer import Beamer
 from camera import Camera
 from web.webserv import Webserver
 from detector import Detector
-from less_eck_pos import EckertPositoinDrill
+from less_eck_pos import EckertPositionDrill
 
 
 def main():
@@ -54,11 +54,11 @@ def main():
 
     dectThread = threading.Thread(target=detect.run, daemon=True).start()
 
-    less1 = EckertPositoinDrill()
+    less1 = EckertPositionDrill()
 
     # wait for web server form action
     action = webq.get()
-    while action is not 'Stop':
+    while action != 'Stop':
         if action == 'Start':
             # show new image
             miniBeamer.clear_image()
@@ -70,7 +70,7 @@ def main():
             #    if (cv2.waitKey(30) & 0xFF) == 27:
             #       break
             # cv2.waitKey()
-        elif action == 'lesson1':
+        elif action == 'Start Lesson':
             # show new image
             miniBeamer.clear_image()
             miniBeamer.add_objects(less1.get_objects())

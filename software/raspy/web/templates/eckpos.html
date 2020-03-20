@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Eckert Position Drill</title>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static', filename='indexer.css' ) }}">
+</head>
+<body>
+<img src="{{ url_for('static', filename='table_eck_pos.png' ) }}">
+<p>Try to pot each ball in it's corner pocket.</p>
+<p>The cue ball must land in the middle landing zone after each stroke.</p>
+<p>If all four balls are potted, the balls get set up again.</p>
+<p>Try to pot as many balls as possible.</p>
+<form method="post" action="{{ url_for('eckpos') }}">
+    <input type="submit" name="Button1" value="Start Lesson" id="submit"/>
+    <input type="submit" name="Button1" value="Stop Lesson" id="submit"/>
+</form>
+</body>
+</html>

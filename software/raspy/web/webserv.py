@@ -34,7 +34,7 @@ class Webserver:
 
     def eckpos(self):
         if request.method == 'POST':
-            action = 'lesson1'
+            action = request.form['Button1']
             self.repq.put(action)
             return render_template('result.html', n=action)
         else:
